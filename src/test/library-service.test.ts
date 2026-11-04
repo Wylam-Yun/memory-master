@@ -174,7 +174,7 @@ describe("library service", () => {
 		const writePromise = req(`/api/agent/projects/${project.id}/tasks/${task.id}`, {
 			method: "PUT",
 			token,
-			body: { status: "Done" },
+			body: { status: "Done", baseVersion: task.version },
 		});
 		await holds.waitForWaiter();
 		const revoke = await req("/api/clients/codex", { method: "PUT", body: { enabled: false } });
@@ -198,10 +198,11 @@ describe("library service", () => {
 	test("overview writes persist on disk and reject sentinel injection", async () => {
 		await setupLibrary();
 		const project = await createProject("订单系统");
+		const { version } = await json(await req(`/api/projects/${project.id}/overview`));
 
 		const put = await req(`/api/projects/${project.id}/overview`, {
 			method: "PUT",
-			body: { goal: "一个月内上线退款流程", current: "梳理中" },
+			body: { goal: "一个月内上线退款流程", current: "梳理中", baseVersion: version },
 		});
 		expect(put.status).toBe(200);
 
@@ -210,9 +211,10 @@ describe("library service", () => {
 		expect(overview).toContain("一个月内上线退款流程");
 		expect(overview).toContain("梳理中");
 
+		const fresh = await json(await req(`/api/projects/${project.id}/overview`));
 		const evil = await req(`/api/projects/${project.id}/overview`, {
 			method: "PUT",
-			body: { goal: "x\n<!-- SECTION:GOAL:BEGIN -->" },
+			body: { goal: "x\n<!-- SECTION:GOAL:BEGIN -->", baseVersion: fresh.version },
 		});
 		expect(evil.status).toBe(400);
 	});
@@ -331,7 +333,7 @@ describe("library service", () => {
 		const writePromise = req(`/api/agent/projects/${project.id}/tasks/${task.id}`, {
 			method: "PUT",
 			token,
-			body: { status: "Done" },
+			body: { status: "Done", baseVersion: task.version },
 		})
 			.then((r) => ({ status: r.status }) as { status: number | "failed" })
 			.catch(() => ({ status: "failed" as const }));

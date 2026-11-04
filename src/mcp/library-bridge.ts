@@ -60,13 +60,17 @@ export class LibraryBridge {
 			error?: string;
 			code?: string;
 			candidates?: unknown;
+			current?: unknown;
+			version?: unknown;
 		};
 		if (!response.ok) {
 			const suffix = data.code ? ` [${data.code}]` : "";
 			const hint =
 				data.code === "PROJECT_AMBIGUOUS" && Array.isArray(data.candidates)
 					? ` Candidates: ${JSON.stringify(data.candidates)}`
-					: "";
+					: data.code === "VERSION_CONFLICT"
+						? ` Latest value: ${JSON.stringify(data.current)}`
+						: "";
 			throw new Error(`${data.error ?? `Request failed with status ${response.status}`}${suffix}${hint}`);
 		}
 		return data;
@@ -77,6 +81,17 @@ export class LibraryBridge {
 			throw new Error("No project selected. Call project_open (or project_list to see candidates) first.");
 		}
 		return this.selectedProject;
+	}
+
+	/** Updates are optimistic-concurrency writes: the caller must prove which version it saw. */
+	private requireBaseVersion(args: Record<string, unknown>): string {
+		const version = typeof args.base_version === "string" ? args.base_version.trim() : "";
+		if (!version) {
+			throw new Error(
+				"base_version is required. Read the record first (task_get / overview_read / task_list) and pass back its `version` field — the write conflicts if the record changed since.",
+			);
+		}
+		return version;
 	}
 
 	async callTool(name: string, args: Record<string, unknown>): Promise<ToolResult> {
@@ -97,7 +112,8 @@ export class LibraryBridge {
 				case "overview_read":
 					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/overview`));
 				case "overview_write": {
-					const body: Record<string, unknown> = {};
+					const baseVersion = this.requireBaseVersion(args);
+					const body: Record<string, unknown> = { baseVersion };
 					for (const key of ["description", "goal", "current"] as const) {
 						if (args[key] !== undefined) body[key] = args[key];
 					}
@@ -126,7 +142,7 @@ export class LibraryBridge {
 						}),
 					);
 				case "task_update": {
-					const body: Record<string, unknown> = {};
+					const body: Record<string, unknown> = { baseVersion: this.requireBaseVersion(args) };
 					for (const key of ["title", "status", "description"] as const) {
 						if (args[key] !== undefined) body[key] = args[key];
 					}
@@ -136,6 +152,13 @@ export class LibraryBridge {
 							{ method: "PUT", body },
 						),
 					);
+				}
+				case "history_list": {
+					const params = new URLSearchParams();
+					if (args.since !== undefined) params.set("since", String(args.since));
+					if (args.until !== undefined) params.set("until", String(args.until));
+					const query = params.size ? `?${params}` : "";
+					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/history${query}`));
 				}
 				default:
 					return fail(`Unknown tool: ${name}`);
@@ -175,14 +198,17 @@ export class LibraryBridge {
 			},
 			{
 				name: "overview_write",
-				description: "Update the selected project's overview sections.",
+				description:
+					"Update the selected project's overview sections. Requires base_version from a preceding overview_read — the write conflicts if the record changed since that read.",
 				inputSchema: {
 					type: "object" as const,
 					properties: {
+						base_version: str("The `version` value returned by your last overview_read (required)"),
 						description: str("What the project is"),
 						goal: str("Project goal"),
 						current: str("Current progress"),
 					},
+					required: ["base_version"],
 				},
 			},
 			{
@@ -217,16 +243,30 @@ export class LibraryBridge {
 			},
 			{
 				name: "task_update",
-				description: "Update a task's title, status, or description.",
+				description:
+					"Update a task's title, status, or description. Requires base_version from a preceding task_get/task_list — the write conflicts if the record changed since that read.",
 				inputSchema: {
 					type: "object" as const,
 					properties: {
 						task_id: str("Task ID, e.g. TASK-1"),
+						base_version: str("The `version` value returned by your last read of this task (required)"),
 						title: str("New title"),
 						status: str("New status"),
 						description: str("New description"),
 					},
-					required: ["task_id"],
+					required: ["task_id", "base_version"],
+				},
+			},
+			{
+				name: "history_list",
+				description:
+					"List the selected project's change history (who changed what, before → after values). Optionally filter by ISO timestamps.",
+				inputSchema: {
+					type: "object" as const,
+					properties: {
+						since: str("ISO timestamp lower bound (inclusive)"),
+						until: str("ISO timestamp upper bound (inclusive)"),
+					},
 				},
 			},
 		];

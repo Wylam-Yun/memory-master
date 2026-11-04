@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import {
+	ApiError,
 	api,
 	type ClientSlotInfo,
 	hasWebKey,
+	type HistoryEntry,
 	type LibraryProject,
 	setOnUnauthorized,
 	setWebKey,
@@ -142,33 +144,96 @@ function ProjectsPage({ projects, reload }: { projects: LibraryProject[]; reload
 	);
 }
 
+const FIELD_LABELS: Record<string, string> = {
+	title: "标题",
+	status: "状态",
+	description: "描述",
+	goal: "目标",
+	current: "当前进展",
+	name: "名称",
+};
+
+function actorLabel(actor: HistoryEntry["actor"]): string {
+	if (actor.type === "user") return "用户";
+	return actor.client === "claude-code" ? "Claude Code" : actor.client === "codex" ? "Codex" : actor.client;
+}
+
+function targetLabel(entry: HistoryEntry): string {
+	if (entry.target.type === "project") return "项目";
+	if (entry.target.type === "overview") return "概览";
+	return entry.target.id ?? "任务";
+}
+
+function HistorySection({ entries }: { entries: HistoryEntry[] }) {
+	return (
+		<section className="mt-4 rounded border bg-white p-4">
+			<h2 className="mb-3 text-sm font-semibold">变更记录</h2>
+			{entries.length === 0 ? (
+				<p className="text-sm text-gray-400">暂无记录</p>
+			) : (
+				<ul className="divide-y text-sm">
+					{[...entries].reverse().map((e, i) => (
+						<li key={i} className="py-2">
+							<span className="mr-2 font-mono text-xs text-gray-400">{new Date(e.ts).toLocaleString()}</span>
+							<span className="mr-2 font-medium">{actorLabel(e.actor)}</span>
+							<span className="mr-2 text-gray-500">
+								{e.action === "create" ? "创建" : "更新"}
+								{targetLabel(e)}
+								{e.target.title ? `「${e.target.title}」` : ""}
+							</span>
+							<span className="block pl-4 text-xs text-gray-500">
+								{Object.entries(e.changes).map(([field, c]) => (
+									<span key={field} className="mr-3">
+										{FIELD_LABELS[field] ?? field}: {c.from ?? "—"} → {c.to ?? "—"}
+									</span>
+								))}
+							</span>
+						</li>
+					))}
+				</ul>
+			)}
+		</section>
+	);
+}
+
 function ProjectPage({ projects }: { projects: LibraryProject[] }) {
 	const { id } = useParams();
 	const project = projects.find((p) => p.id === id);
-	const [overview, setOverview] = useState({ description: "", goal: "", current: "" });
+	const [overview, setOverview] = useState({ description: "", goal: "", current: "", version: "" });
 	const [tasks, setTasks] = useState<Task[]>([]);
+	const [history, setHistory] = useState<HistoryEntry[]>([]);
 	const [newTask, setNewTask] = useState("");
 	const [error, setError] = useState<unknown>(null);
 	const [saved, setSaved] = useState(false);
 
 	const load = useCallback(async () => {
 		if (!id) return;
-		const [ov, ts] = await Promise.all([api.getOverview(id), api.listTasks(id)]);
+		const [ov, ts, hs] = await Promise.all([api.getOverview(id), api.listTasks(id), api.history(id)]);
 		setOverview(ov);
 		setTasks(ts);
+		setHistory(hs);
 	}, [id]);
 	useEffect(() => {
 		load().catch(setError);
 	}, [load]);
 
+	/** A VERSION_CONFLICT means someone else wrote first — show it and reload the latest values. */
+	const onError = async (e: unknown) => {
+		setError(e);
+		if (e instanceof ApiError && e.code === "VERSION_CONFLICT") {
+			await load().catch(() => {});
+		}
+	};
+
 	const saveOverview = async () => {
 		setError(null);
 		setSaved(false);
 		try {
-			setOverview(await api.putOverview(id!, overview));
+			setOverview(await api.putOverview(id!, overview, overview.version));
 			setSaved(true);
+			await load();
 		} catch (e) {
-			setError(e);
+			await onError(e);
 		}
 	};
 	const addTask = async () => {
@@ -178,7 +243,7 @@ function ProjectPage({ projects }: { projects: LibraryProject[] }) {
 			setNewTask("");
 			await load();
 		} catch (e) {
-			setError(e);
+			await onError(e);
 		}
 	};
 	const advance = async (task: Task) => {
@@ -186,10 +251,10 @@ function ProjectPage({ projects }: { projects: LibraryProject[] }) {
 		const next = STATUSES[Math.min(idx + 1, STATUSES.length - 1)];
 		setError(null);
 		try {
-			await api.updateTask(id!, task.id, { status: next });
+			await api.updateTask(id!, task.id, { status: next }, task.version ?? "");
 			await load();
 		} catch (e) {
-			setError(e);
+			await onError(e);
 		}
 	};
 
@@ -263,6 +328,8 @@ function ProjectPage({ projects }: { projects: LibraryProject[] }) {
 					</button>
 				</div>
 			</section>
+
+			<HistorySection entries={history} />
 		</Layout>
 	);
 }

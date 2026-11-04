@@ -1,6 +1,7 @@
 import { Core } from "../core/memaster.ts";
 import type { FileSystem } from "../file-system/operations.ts";
 import type { Task } from "../types/index.ts";
+import { contentVersion } from "./history.ts";
 import { LIBRARY_ERROR_CODES, LibraryError, type LibraryProject } from "./types.ts";
 
 /**
@@ -21,6 +22,7 @@ export type TaskWriteInput = {
 export class ProjectStore {
 	readonly project: LibraryProject;
 	readonly core: Core;
+	private writeChain: Promise<unknown> = Promise.resolve();
 
 	constructor(project: LibraryProject) {
 		this.project = project;
@@ -29,6 +31,29 @@ export class ProjectStore {
 
 	get filesystem(): FileSystem {
 		return this.core.filesystem;
+	}
+
+	/**
+	 * Serializes every write that touches this project (tasks + overview share
+	 * one changelog, so they share one queue). Inside the lock, "record write →
+	 * history append → rollback-on-failure" is one indivisible unit: no other
+	 * service writer can interleave between the state change and its record.
+	 */
+	async withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
+		const run = this.writeChain.catch(() => {}).then(fn);
+		this.writeChain = run.catch(() => {});
+		return run;
+	}
+
+	/** Content-hash version of a task's file on disk; undefined when unreadable. */
+	async taskVersion(task: Pick<Task, "filePath">): Promise<string | undefined> {
+		const filePath = task.filePath?.trim();
+		if (!filePath) return undefined;
+		try {
+			return contentVersion(await Bun.file(filePath).bytes());
+		} catch {
+			return undefined;
+		}
 	}
 
 	async listTasks(status?: string): Promise<Task[]> {

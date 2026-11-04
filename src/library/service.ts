@@ -6,6 +6,7 @@ import type { TaskWriteHooks } from "../core/memaster.ts";
 import libraryIndexHtml from "../library-web/index.html";
 import type { Task } from "../types/index.ts";
 import { getVersion } from "../utils/version.ts";
+import { type Actor, appendHistory, contentVersion, diffFields, type HistoryEntry, readHistory } from "./history.ts";
 import { initialOverviewContent, overviewFilePath, readOverview, writeOverview } from "./overview.ts";
 import { ProjectStore, type TaskWriteInput } from "./project-store.ts";
 import { createProject, getProjectById, listProjects, resolveProject } from "./registry.ts";
@@ -20,6 +21,7 @@ import {
 	LibraryError,
 	type LibraryProject,
 	unauthorizedError,
+	versionConflictError,
 } from "./types.ts";
 
 const SERVICE_HOST = "127.0.0.1";
@@ -152,11 +154,19 @@ export class LibraryService {
 	}
 
 	// --- Write paths ------------------------------------------------------------
-	// Every mutation funnels here: (optional) client check at entry → the write
-	// lock → hold point for tests → client re-check → persist. A revoke that has
-	// already returned therefore always beats a write still parked before commit.
+	// Every mutation funnels through one atomic unit per project:
+	//   project write lock → (entry client check at route) → Core write with a
+	//   preWrite re-check inside the entity lock → history append → rollback on
+	//   failure. A revoke that has already returned always beats a write still
+	//   parked before commit, and a record update never lands without its
+	//   history entry — the pair commits or neither does.
 
-	private writeHooks(clientToken: string | null): TaskWriteHooks {
+	/** Who is writing: an authorized agent identity, or null for the web user. */
+	private actorOf(identity: { id: LibraryClientId } | null): Actor {
+		return identity ? { type: "agent", client: identity.id } : { type: "user" };
+	}
+
+	private writeHooks(clientToken: string | null, versionCheck?: () => Promise<void>): TaskWriteHooks {
 		return {
 			preWrite: async () => {
 				await this.holds.waitIfAny();
@@ -164,16 +174,36 @@ export class LibraryService {
 					throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "The Memory Master service is stopping.", 503);
 				}
 				if (clientToken !== null) await this.settings.assertAuthorized(clientToken);
+				if (versionCheck) await versionCheck();
 			},
 		};
 	}
 
+	/** Stop signal shared by every write path, checked inside entity locks. */
+	private assertRunning(): void {
+		if (this.stopping) {
+			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "The Memory Master service is stopping.", 503);
+		}
+	}
+
+	private async taskWithVersion(store: ProjectStore, task: Task): Promise<Task & { version?: string }> {
+		return { ...task, version: await store.taskVersion(task) };
+	}
+
+	private async overviewWithVersion(projectDir: string): Promise<unknown> {
+		const path = overviewFilePath(projectDir);
+		const file = Bun.file(path);
+		const version = contentVersion((await file.exists()) ? await file.bytes() : "");
+		return { ...(await readOverview(projectDir)), version };
+	}
+
 	private async writeTask(
-		clientToken: string | null,
+		identity: { token: string; id: LibraryClientId } | null,
 		projectId: string,
 		taskId: string | null,
 		input: TaskWriteInput,
-	): Promise<Task> {
+		baseVersion: string | undefined,
+	): Promise<Task & { version?: string }> {
 		const store = this.storeFor(await this.projectFor(projectId));
 		// Validate up front for a 400 (Core would otherwise throw a plain 500 error).
 		const status = input.status !== undefined ? await store.assertValidStatus(input.status) : undefined;
@@ -182,14 +212,83 @@ export class LibraryService {
 			// draft concept in phase 1, so refuse it outright at the boundary.
 			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, 'Status "Draft" is not supported here.', 400);
 		}
-		const hooks = this.writeHooks(clientToken);
+		if (taskId && baseVersion === undefined) {
+			throw new LibraryError(
+				LIBRARY_ERROR_CODES.VALIDATION,
+				"baseVersion is required for updates — read the record first and send back its version.",
+				400,
+			);
+		}
+		const actor = this.actorOf(identity);
+		const token = identity?.token ?? null;
 
-		if (taskId) {
-			if (!(await store.getTask(taskId))) {
+		return await store.withWriteLock(async () => {
+			if (!taskId) {
+				if (!input.title?.trim()) {
+					throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Task title is required.", 400);
+				}
+				const hooks = this.writeHooks(token);
+				const { task, filePath } = await store.core.createTaskFromInput(
+					{
+						title: input.title,
+						...(status !== undefined ? { status } : {}),
+						...(input.description !== undefined ? { description: input.description } : {}),
+					},
+					false,
+					hooks,
+				);
+				const version = (await store.taskVersion({ filePath })) ?? "";
+				const entry: HistoryEntry = {
+					ts: new Date().toISOString(),
+					actor,
+					target: { type: "task", id: task.id, title: task.title },
+					action: "create",
+					changes: diffFields(
+						{},
+						{
+							title: task.title,
+							...(task.status !== undefined ? { status: task.status } : {}),
+							...(task.description !== undefined ? { description: task.description } : {}),
+						},
+					),
+					version,
+				};
+				try {
+					this.holds.throwIfHistoryFailpoint();
+					await appendHistory(store.project.dir, entry);
+				} catch (error) {
+					if (filePath) {
+						const { unlink } = await import("node:fs/promises");
+						await unlink(filePath).catch(() => {});
+					}
+					throw error;
+				}
+				return { ...task, version };
+			}
+
+			const before = await store.getTask(taskId);
+			if (!before) {
 				throw new LibraryError(LIBRARY_ERROR_CODES.PROJECT_NOT_FOUND, `Task "${taskId}" not found.`, 404);
 			}
+			const beforeVersion = await store.taskVersion(before);
+			if (beforeVersion !== baseVersion) {
+				throw versionConflictError({ ...before, version: beforeVersion }, beforeVersion ?? "");
+			}
+			// Snapshot the record BEFORE Core touches it — rollback needs the
+			// pre-write bytes, not whatever is on disk after a partial failure.
+			const beforeBytes = before.filePath ? await Bun.file(before.filePath).bytes() : null;
+			const recheckVersion = async () => {
+				const current = await store.getTask(taskId);
+				const currentVersion = current ? await store.taskVersion(current) : undefined;
+				if (currentVersion !== baseVersion) {
+					throw versionConflictError(current ? { ...current, version: currentVersion } : null, currentVersion ?? "");
+				}
+			};
+			const hooks = this.writeHooks(token, recheckVersion);
+
+			let result: Task;
 			try {
-				return await store.core.updateTaskFromInput(
+				result = await store.core.updateTaskFromInput(
 					taskId,
 					{
 						...(input.title !== undefined ? { title: input.title } : {}),
@@ -206,28 +305,59 @@ export class LibraryService {
 				}
 				throw error;
 			}
-		}
 
-		if (!input.title?.trim()) {
-			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Task title is required.", 400);
-		}
-		const { task } = await store.core.createTaskFromInput(
-			{
-				title: input.title,
-				...(status !== undefined ? { status } : {}),
-				...(input.description !== undefined ? { description: input.description } : {}),
-			},
-			false,
-			hooks,
-		);
-		return task;
+			// A no-op update leaves the file untouched — and, per the spec, records nothing.
+			const afterVersion = await store.taskVersion(result);
+			if (afterVersion === beforeVersion) {
+				return { ...result, version: afterVersion };
+			}
+
+			const changes = diffFields(
+				{ title: before.title, status: before.status, description: before.description },
+				{ title: result.title, status: result.status, description: result.description },
+			);
+			try {
+				this.holds.throwIfHistoryFailpoint();
+				await appendHistory(store.project.dir, {
+					ts: new Date().toISOString(),
+					actor,
+					target: { type: "task", id: result.id, title: result.title },
+					action: "update",
+					changes,
+					version: afterVersion ?? "",
+				});
+			} catch (error) {
+				// Roll the record back so state and history stay in lockstep.
+				if (before.filePath && beforeBytes) {
+					await store.filesystem
+						.withTaskLock({ id: before.id, filePath: before.filePath }, () =>
+							Bun.write(before.filePath as string, beforeBytes),
+						)
+						.catch(() => {});
+				}
+				if (result.filePath && result.filePath !== before.filePath) {
+					const { unlink } = await import("node:fs/promises");
+					await unlink(result.filePath).catch(() => {});
+				}
+				throw error;
+			}
+			return { ...result, version: afterVersion };
+		});
 	}
 
 	private async writeOverview(
-		clientToken: string | null,
+		identity: { token: string; id: LibraryClientId } | null,
 		projectId: string,
 		update: { description?: string; goal?: string; current?: string },
+		baseVersion: string | undefined,
 	): Promise<unknown> {
+		if (baseVersion === undefined) {
+			throw new LibraryError(
+				LIBRARY_ERROR_CODES.VALIDATION,
+				"baseVersion is required for updates — read the record first and send back its version.",
+				400,
+			);
+		}
 		const project = await this.projectFor(projectId);
 		const store = this.storeFor(project);
 		for (const [key, value] of Object.entries(update)) {
@@ -239,25 +369,56 @@ export class LibraryService {
 				);
 			}
 		}
-		// The lock mechanism stats the target file — recreate a missing overview
-		// first (hand-made project dirs may not have one yet).
+		const actor = this.actorOf(identity);
+		const token = identity?.token ?? null;
 		const path = overviewFilePath(project.dir);
-		if (!(await Bun.file(path).exists())) {
-			await Bun.write(path, initialOverviewContent(project.name));
-		}
-		// Serialize with the same file-lock machinery tasks use, and re-check
-		// authorization inside it so revocation beats a parked write.
-		return await store.filesystem.withTaskLock(
-			{ id: "overview", filePath: overviewFilePath(project.dir) },
-			async () => {
-				await this.holds.waitIfAny();
-				if (this.stopping) {
-					throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "The Memory Master service is stopping.", 503);
+
+		return await store.withWriteLock(async () => {
+			// The lock mechanism stats the target file — recreate a missing overview
+			// first (hand-made project dirs may not have one yet).
+			if (!(await Bun.file(path).exists())) {
+				await Bun.write(path, initialOverviewContent(project.name));
+			}
+			const beforeBytes = await Bun.file(path).bytes();
+			const before = await readOverview(project.dir);
+			return await store.filesystem.withTaskLock({ id: "overview", filePath: path }, async () => {
+				const lockBytes = await Bun.file(path).bytes();
+				if (contentVersion(lockBytes) !== baseVersion) {
+					throw versionConflictError(
+						{ ...(await readOverview(project.dir)), version: contentVersion(lockBytes) },
+						contentVersion(lockBytes),
+					);
 				}
-				if (clientToken !== null) await this.settings.assertAuthorized(clientToken);
-				return await writeOverview(project.dir, update);
-			},
-		);
+				await this.holds.waitIfAny();
+				this.assertRunning();
+				if (token !== null) await this.settings.assertAuthorized(token);
+				const after = await writeOverview(project.dir, update);
+				const afterBytes = await Bun.file(path).bytes();
+				const afterVersion = contentVersion(afterBytes);
+				if (afterVersion === contentVersion(beforeBytes)) {
+					return { ...after, version: afterVersion };
+				}
+				const changes = diffFields(
+					{ description: before.description, goal: before.goal, current: before.current },
+					{ description: after.description, goal: after.goal, current: after.current },
+				);
+				try {
+					this.holds.throwIfHistoryFailpoint();
+					await appendHistory(project.dir, {
+						ts: new Date().toISOString(),
+						actor,
+						target: { type: "overview" },
+						action: "update",
+						changes,
+						version: afterVersion,
+					});
+				} catch (error) {
+					await Bun.write(path, beforeBytes);
+					throw error;
+				}
+				return { ...after, version: afterVersion };
+			});
+		});
 	}
 
 	// --- Route handlers ---------------------------------------------------------
@@ -317,35 +478,59 @@ export class LibraryService {
 			name,
 			workingDir: optionalString(body.workingDir),
 		});
+		// First changelog line: the project's own creation, attributed to the user
+		// (project creation is only exposed on the web channel).
+		await appendHistory(project.dir, {
+			ts: new Date().toISOString(),
+			actor: { type: "user" },
+			target: { type: "project", id: project.id, title: project.name },
+			action: "create",
+			changes: { name: { to: project.name } },
+			version: "",
+		});
 		return json(project, 201);
 	}
 
 	private async handleGetOverview(projectId: string): Promise<Response> {
 		const project = await this.projectFor(projectId);
-		return json(await readOverview(project.dir));
+		return json(await this.overviewWithVersion(project.dir));
 	}
 
-	private async handlePutOverview(req: Request, projectId: string, clientToken: string | null): Promise<Response> {
+	private async handlePutOverview(
+		req: Request,
+		projectId: string,
+		identity: { token: string; id: LibraryClientId } | null,
+	): Promise<Response> {
 		const body = await parseBody(req);
 		const update = {
 			...(typeof body.description === "string" ? { description: body.description } : {}),
 			...(typeof body.goal === "string" ? { goal: body.goal } : {}),
 			...(typeof body.current === "string" ? { current: body.current } : {}),
 		};
-		return json(await this.writeOverview(clientToken, projectId, update));
+		const baseVersion = typeof body.baseVersion === "string" ? body.baseVersion : undefined;
+		return json(await this.writeOverview(identity, projectId, update, baseVersion));
 	}
 
 	private async handleListTasks(projectId: string, req: Request): Promise<Response> {
 		const store = this.storeFor(await this.projectFor(projectId));
 		const status = new URL(req.url).searchParams.get("status") ?? undefined;
-		return json(await store.listTasks(status));
+		const tasks = await store.listTasks(status);
+		return json(await Promise.all(tasks.map((task) => this.taskWithVersion(store, task))));
 	}
 
 	private async handleGetTask(projectId: string, taskId: string): Promise<Response> {
 		const store = this.storeFor(await this.projectFor(projectId));
 		const task = await store.getTask(taskId);
 		if (!task) throw new LibraryError(LIBRARY_ERROR_CODES.PROJECT_NOT_FOUND, `Task "${taskId}" not found.`, 404);
-		return json(task);
+		return json(await this.taskWithVersion(store, task));
+	}
+
+	private async handleListHistory(projectId: string, req: Request): Promise<Response> {
+		const project = await this.projectFor(projectId);
+		const params = new URL(req.url).searchParams;
+		const since = params.get("since") ?? undefined;
+		const until = params.get("until") ?? undefined;
+		return json(await readHistory(project.dir, { since, until }));
 	}
 
 	private taskInputFrom(body: Record<string, unknown>): TaskWriteInput {
@@ -356,17 +541,26 @@ export class LibraryService {
 		};
 	}
 
-	private async handleCreateTask(req: Request, projectId: string, clientToken: string | null): Promise<Response> {
-		return json(await this.writeTask(clientToken, projectId, null, this.taskInputFrom(await parseBody(req))), 201);
+	private async handleCreateTask(
+		req: Request,
+		projectId: string,
+		identity: { token: string; id: LibraryClientId } | null,
+	): Promise<Response> {
+		return json(
+			await this.writeTask(identity, projectId, null, this.taskInputFrom(await parseBody(req)), undefined),
+			201,
+		);
 	}
 
 	private async handleUpdateTask(
 		req: Request,
 		projectId: string,
 		taskId: string,
-		clientToken: string | null,
+		identity: { token: string; id: LibraryClientId } | null,
 	): Promise<Response> {
-		return json(await this.writeTask(clientToken, projectId, taskId, this.taskInputFrom(await parseBody(req))));
+		const body = await parseBody(req);
+		const baseVersion = typeof body.baseVersion === "string" ? body.baseVersion : undefined;
+		return json(await this.writeTask(identity, projectId, taskId, this.taskInputFrom(body), baseVersion));
 	}
 
 	private async handleListClients(): Promise<Response> {
@@ -418,13 +612,16 @@ export class LibraryService {
 		return json(await resolveProject(await this.requireLibraryRoot(), name));
 	}
 
-	private async withAgentRoute(req: Request, handler: (clientToken: string) => Promise<Response>): Promise<Response> {
+	private async withAgentRoute(
+		req: Request,
+		handler: (identity: { token: string; id: LibraryClientId }) => Promise<Response>,
+	): Promise<Response> {
 		try {
 			if (!isLoopbackHost(req)) {
 				throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Forbidden host.", 403);
 			}
-			await this.requireClient(req);
-			return await handler(this.bearerToken(req));
+			const clientId = await this.requireClient(req);
+			return await handler({ token: this.bearerToken(req), id: clientId });
 		} catch (error) {
 			return errorResponse(error);
 		}
@@ -529,6 +726,10 @@ export class LibraryService {
 					PUT: async (req: Request & { params: { id: string; taskId: string } }) =>
 						this.withRoute(req, () => this.handleUpdateTask(req, req.params.id, req.params.taskId, null)),
 				},
+				"/api/projects/:id/history": {
+					GET: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handleListHistory(req.params.id, req)),
+				},
 				"/api/clients": { GET: async (req: Request) => this.withRoute(req, () => this.handleListClients()) },
 				"/api/clients/:id": {
 					PUT: async (req: Request & { params: { id: string } }) =>
@@ -548,19 +749,25 @@ export class LibraryService {
 					GET: async (req: Request & { params: { id: string } }) =>
 						this.withAgentRoute(req, () => this.handleGetOverview(req.params.id)),
 					PUT: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, (token) => this.handlePutOverview(req, req.params.id, token)),
+						this.withAgentRoute(req, (identity) => this.handlePutOverview(req, req.params.id, identity)),
 				},
 				"/api/agent/projects/:id/tasks": {
 					GET: async (req: Request & { params: { id: string } }) =>
 						this.withAgentRoute(req, () => this.handleListTasks(req.params.id, req)),
 					POST: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, (token) => this.handleCreateTask(req, req.params.id, token)),
+						this.withAgentRoute(req, (identity) => this.handleCreateTask(req, req.params.id, identity)),
 				},
 				"/api/agent/projects/:id/tasks/:taskId": {
 					GET: async (req: Request & { params: { id: string; taskId: string } }) =>
 						this.withAgentRoute(req, () => this.handleGetTask(req.params.id, req.params.taskId)),
 					PUT: async (req: Request & { params: { id: string; taskId: string } }) =>
-						this.withAgentRoute(req, (token) => this.handleUpdateTask(req, req.params.id, req.params.taskId, token)),
+						this.withAgentRoute(req, (identity) =>
+							this.handleUpdateTask(req, req.params.id, req.params.taskId, identity),
+						),
+				},
+				"/api/agent/projects/:id/history": {
+					GET: async (req: Request & { params: { id: string } }) =>
+						this.withAgentRoute(req, () => this.handleListHistory(req.params.id, req)),
 				},
 
 				"/api/test/holds": {

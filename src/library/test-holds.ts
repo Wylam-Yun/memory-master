@@ -12,6 +12,7 @@ export class TestHolds {
 	private holds = new Map<string, { name: string; promise: Promise<void>; release: () => void }>();
 	private waiting = 0;
 	private waiterWatchers: Array<() => void> = [];
+	private failNextHistory = false;
 
 	constructor(enabled = process.env.MEMORY_MASTER_TEST_MODE === "1") {
 		this.enabled = enabled;
@@ -60,5 +61,21 @@ export class TestHolds {
 				resolve();
 			});
 		});
+	}
+
+	/**
+	 * Arm a one-shot failure at the history-append point — used to prove the
+	 * write unit is atomic: state update lands, history throws, everything
+	 * rolls back. The service calls throwIfHistoryFailpoint() immediately
+	 * before appendHistory.
+	 */
+	armHistoryFailure(): void {
+		if (this.enabled) this.failNextHistory = true;
+	}
+
+	throwIfHistoryFailpoint(): void {
+		if (!this.enabled || !this.failNextHistory) return;
+		this.failNextHistory = false;
+		throw new Error("Injected failure at history append.");
 	}
 }

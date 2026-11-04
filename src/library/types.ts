@@ -64,6 +64,7 @@ export const LIBRARY_ERROR_CODES = {
 	PROJECT_NOT_FOUND: "PROJECT_NOT_FOUND",
 	PROJECT_AMBIGUOUS: "PROJECT_AMBIGUOUS",
 	PROJECT_EXISTS: "PROJECT_EXISTS",
+	VERSION_CONFLICT: "VERSION_CONFLICT",
 	LIBRARY_NOT_SET: "LIBRARY_NOT_SET",
 	VALIDATION: "VALIDATION",
 } as const;
@@ -102,6 +103,20 @@ export function projectNotFoundError(reference: string): LibraryError {
 		LIBRARY_ERROR_CODES.PROJECT_NOT_FOUND,
 		`No Memory Master project matches "${reference}".`,
 		404,
+	);
+}
+
+/**
+ * Optimistic-concurrency failure: the caller's base version no longer matches
+ * the record on disk. `current` carries the latest record (with its version)
+ * so the caller can decide whether to retry on top of it.
+ */
+export function versionConflictError(current: unknown, version: string): LibraryError {
+	return new LibraryError(
+		LIBRARY_ERROR_CODES.VERSION_CONFLICT,
+		"The record changed since you read it. Review the latest value in `current` and retry if still appropriate.",
+		409,
+		{ current, version },
 	);
 }
 

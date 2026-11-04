@@ -48,6 +48,8 @@ export interface ProjectOverview {
 	description: string;
 	goal: string;
 	current: string;
+	/** Content-hash version — must be sent back as baseVersion on update. */
+	version: string;
 }
 
 export interface Task {
@@ -56,6 +58,17 @@ export interface Task {
 	status: string;
 	description?: string;
 	createdDate?: string;
+	/** Content-hash version — must be sent back as baseVersion on update. */
+	version?: string;
+}
+
+export interface HistoryEntry {
+	ts: string;
+	actor: { type: "user" } | { type: "agent"; client: string };
+	target: { type: "project" | "task" | "overview"; id?: string; title?: string };
+	action: "create" | "update";
+	changes: Record<string, { from?: string; to?: string }>;
+	version: string;
 }
 
 export interface ClientSlotInfo {
@@ -104,13 +117,28 @@ export const api = {
 	createProject: (name: string, workingDir?: string) =>
 		request<LibraryProject>("/api/projects", { method: "POST", body: { name, workingDir } }),
 	getOverview: (id: string) => request<ProjectOverview>(`/api/projects/${id}/overview`),
-	putOverview: (id: string, update: Partial<ProjectOverview>) =>
-		request<ProjectOverview>(`/api/projects/${id}/overview`, { method: "PUT", body: update }),
+	putOverview: (id: string, update: Partial<Omit<ProjectOverview, "version">>, baseVersion: string) =>
+		request<ProjectOverview>(`/api/projects/${id}/overview`, { method: "PUT", body: { ...update, baseVersion } }),
 	listTasks: (id: string) => request<Task[]>(`/api/projects/${id}/tasks`),
 	createTask: (id: string, title: string) =>
 		request<Task>(`/api/projects/${id}/tasks`, { method: "POST", body: { title } }),
-	updateTask: (id: string, taskId: string, update: Partial<Pick<Task, "title" | "status" | "description">>) =>
-		request<Task>(`/api/projects/${id}/tasks/${taskId}`, { method: "PUT", body: update }),
+	updateTask: (
+		id: string,
+		taskId: string,
+		update: Partial<Pick<Task, "title" | "status" | "description">>,
+		baseVersion: string,
+	) =>
+		request<Task>(`/api/projects/${id}/tasks/${taskId}`, {
+			method: "PUT",
+			body: { ...update, baseVersion },
+		}),
+	history: (id: string, range: { since?: string; until?: string } = {}) => {
+		const params = new URLSearchParams();
+		if (range.since) params.set("since", range.since);
+		if (range.until) params.set("until", range.until);
+		const query = params.size ? `?${params}` : "";
+		return request<HistoryEntry[]>(`/api/projects/${id}/history${query}`);
+	},
 	listClients: () => request<ClientSlotInfo[]>("/api/clients"),
 	setClient: (id: string, enabled: boolean) =>
 		request<ClientSlotInfo>(`/api/clients/${id}`, { method: "PUT", body: { enabled } }),
