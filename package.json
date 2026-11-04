@@ -1,6 +1,6 @@
 {
-  "name": "backlog.md",
-  "version": "1.55.3",
+  "name": "memory-master",
+  "version": "0.1.0",
   "type": "module",
   "module": "src/cli.ts",
   "files": [
@@ -11,14 +11,7 @@
   "bin": {
     "backlog": "scripts/cli.cjs"
   },
-  "optionalDependencies": {
-    "backlog.md-darwin-arm64": "*",
-    "backlog.md-darwin-x64": "*",
-    "backlog.md-linux-arm64": "*",
-    "backlog.md-linux-x64": "*",
-    "backlog.md-windows-arm64": "*",
-    "backlog.md-windows-x64": "*"
-  },
+  "optionalDependencies": {},
   "devDependencies": {
     "@biomejs/biome": "2.6.2",
     "@clack/core": "1.5.1",
@@ -75,15 +68,7 @@
       "biome check --write --files-ignore-unknown=true"
     ]
   },
-  "author": "Alex Gavrilescu (https://github.com/MrLesk)",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/MrLesk/Backlog.md.git"
-  },
-  "bugs": {
-    "url": "https://github.com/MrLesk/Backlog.md/issues"
-  },
-  "homepage": "https://backlog.md",
+  "author": "wylam",
   "keywords": [
     "cli",
     "markdown",
