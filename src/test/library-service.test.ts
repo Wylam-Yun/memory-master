@@ -256,6 +256,70 @@ describe("library service", () => {
 		expect(down.content[0]!.text).toContain("Cannot reach the Memory Master service");
 	});
 
+	test("a second service instance on the same settings home is refused", async () => {
+		const second = new LibraryService({
+			settings: new AppSettingsStore(home),
+			holds: new TestHolds(true),
+		});
+		await expect(second.start(0)).rejects.toThrow(/already running/);
+	});
+
+	test("authorization reflects settings changed by another process", async () => {
+		await setupLibrary();
+		const token = await enableClient("codex");
+		expect((await req("/api/agent/ping", { token })).status).toBe(200);
+
+		// Another process (or hand edit) disables the client directly in the file.
+		const path = join(home, "settings.json");
+		const current = JSON.parse(await Bun.file(path).text());
+		current.clients.codex.enabled = false;
+		await Bun.write(path, JSON.stringify(current));
+		// mtime granularity can equal the previous write; nudge it forward.
+		const { utimes } = await import("node:fs/promises");
+		const future = new Date(Date.now() + 2000);
+		await utimes(path, future, future);
+
+		const denied = await req("/api/agent/ping", { token });
+		expect(denied.status).toBe(403);
+		expect((await json(denied)).code).toBe("ACCESS_DISABLED");
+	});
+
+	test("a write parked before commit is cancelled when the service stops", async () => {
+		await setupLibrary();
+		const project = await createProject("订单系统");
+		const token = await enableClient("codex");
+		const created = await req(`/api/projects/${project.id}/tasks`, {
+			method: "POST",
+			body: { title: "初始任务" },
+		});
+		const task = await json(created);
+
+		const hold = await json(await req("/api/test/holds", { method: "POST", body: { name: "pre-commit" } }));
+		const writePromise = req(`/api/agent/projects/${project.id}/tasks/${task.id}`, {
+			method: "PUT",
+			token,
+			body: { status: "Done" },
+		})
+			.then((r) => ({ status: r.status }) as { status: number | "failed" })
+			.catch(() => ({ status: "failed" as const }));
+
+		await holds.waitForWaiter();
+		// stop() sets `stopping` synchronously then drains in-flight requests —
+		// release the hold so the parked write resumes and hits the stopping check.
+		const stopPromise = service.stop();
+		holds.release(hold.id);
+
+		const result = await writePromise;
+		await stopPromise;
+		// Either the handler answered 503 or the connection died mid-stop: both mean "not written".
+		expect(result.status === 503 || result.status === "failed").toBe(true);
+
+		const [file] = await readdir(join(project.dir, "memaster", "tasks"));
+		const content = await Bun.file(join(project.dir, "memaster", "tasks", file!)).text();
+		expect(content).toContain("To Do");
+		expect(content).not.toContain("status: Done");
+	});
+
 	test("stopping the service rejects everything; restart restores authorization state", async () => {
 		await setupLibrary();
 		const token = await enableClient("codex");

@@ -87,6 +87,8 @@ export class LibraryService {
 	readonly holds: TestHolds;
 	private server: Server<unknown> | null = null;
 	private readonly stores = new Map<string, ProjectStore>();
+	private stopping = false;
+	private releaseInstanceLock: (() => Promise<void>) | null = null;
 
 	constructor(options: { settings?: AppSettingsStore; holds?: TestHolds } = {}) {
 		this.settings = options.settings ?? new AppSettingsStore();
@@ -147,6 +149,9 @@ export class LibraryService {
 		return {
 			preWrite: async () => {
 				await this.holds.waitIfAny();
+				if (this.stopping) {
+					throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "The Memory Master service is stopping.", 503);
+				}
 				if (clientToken !== null) await this.settings.assertAuthorized(clientToken);
 			},
 		};
@@ -235,6 +240,9 @@ export class LibraryService {
 			{ id: "overview", filePath: overviewFilePath(project.dir) },
 			async () => {
 				await this.holds.waitIfAny();
+				if (this.stopping) {
+					throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "The Memory Master service is stopping.", 503);
+				}
 				if (clientToken !== null) await this.settings.assertAuthorized(clientToken);
 				return await writeOverview(project.dir, update);
 			},
@@ -426,6 +434,30 @@ export class LibraryService {
 
 	async start(port?: number): Promise<void> {
 		if (this.server) return;
+		this.stopping = false;
+
+		// One service per settings home. The lock auto-breaks when the holder
+		// dies (stale after 4s of missed updates), and refuses while one lives.
+		const { mkdir } = await import("node:fs/promises");
+		const lockfile = await import("proper-lockfile");
+		await mkdir(this.settings.homeDir, { recursive: true });
+		const lockPath = join(this.settings.homeDir, "service.lock");
+		await Bun.write(lockPath, `${process.pid}\n`);
+		try {
+			this.releaseInstanceLock = await lockfile.lock(lockPath, {
+				stale: 4000,
+				update: 1000,
+				retries: 0,
+				realpath: false,
+			});
+		} catch {
+			throw new LibraryError(
+				LIBRARY_ERROR_CODES.VALIDATION,
+				"Another Memory Master service is already running. Stop it first.",
+				409,
+			);
+		}
+
 		const finalPort = port ?? (await this.settings.getPort());
 		const requireTestMode = () => {
 			if (!this.holds.enabled) {
@@ -529,6 +561,10 @@ export class LibraryService {
 	}
 
 	async stop(): Promise<void> {
+		// Stopping semantics: new requests are refused by the socket closing, and
+		// any write still parked before commit is cancelled (its preWrite re-check
+		// sees `stopping` and throws) — uncommitted work never lands after stop.
+		this.stopping = true;
 		const server = this.server;
 		this.server = null;
 		if (server) {
@@ -537,5 +573,11 @@ export class LibraryService {
 			} catch {}
 		}
 		this.stores.clear();
+		if (this.releaseInstanceLock) {
+			try {
+				await this.releaseInstanceLock();
+			} catch {}
+			this.releaseInstanceLock = null;
+		}
 	}
 }

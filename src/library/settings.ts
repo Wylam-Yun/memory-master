@@ -33,6 +33,7 @@ export class AppSettingsStore {
 	readonly homeDir: string;
 	readonly filePath: string;
 	private settings: LibrarySettings | null = null;
+	private settingsMtime = 0;
 	/** Serializes mutations so a token save can never interleave with a revoke. */
 	private queue: Promise<unknown> = Promise.resolve();
 
@@ -69,11 +70,14 @@ export class AppSettingsStore {
 	private async load(): Promise<LibrarySettings> {
 		const file = Bun.file(this.filePath);
 		if (!(await file.exists())) {
+			this.settingsMtime = 0;
 			return AppSettingsStore.defaultSettings();
 		}
 		let raw: unknown;
 		try {
 			raw = await file.json();
+			const { stat } = await import("node:fs/promises");
+			this.settingsMtime = (await stat(this.filePath)).mtimeMs;
 		} catch (error) {
 			throw new LibraryError(
 				"VALIDATION",
@@ -113,12 +117,36 @@ export class AppSettingsStore {
 		await Bun.write(join(this.homeDir, ".keep"), "");
 		const tmpPath = `${this.filePath}.tmp-${process.pid}-${randomBytes(4).toString("hex")}`;
 		await Bun.write(tmpPath, `${JSON.stringify(next, null, 2)}\n`);
-		const { chmod, rename } = await import("node:fs/promises");
+		const { chmod, rename, stat } = await import("node:fs/promises");
 		// The file carries client credentials — restrict the temp file before the
 		// rename publishes it, so it is never briefly world-readable.
 		await chmod(tmpPath, 0o600).catch(() => {});
 		await rename(tmpPath, this.filePath);
 		this.settings = next;
+		try {
+			this.settingsMtime = (await stat(this.filePath)).mtimeMs;
+		} catch {}
+	}
+
+	/**
+	 * Re-read the file when it changed on disk. Mutations in this process update
+	 * the cache directly, but a revoke from another process — or a hand edit —
+	 * must be visible before the next authorization decision.
+	 */
+	private async refreshIfChanged(): Promise<void> {
+		const { stat } = await import("node:fs/promises");
+		let mtime = 0;
+		try {
+			mtime = (await stat(this.filePath)).mtimeMs;
+		} catch {
+			// Missing or unreadable file: keep the in-memory view; a missing file
+			// only exists before the first persist, which is already the default.
+			if (this.settingsMtime !== 0) this.settings = await this.load();
+			return;
+		}
+		if (mtime !== this.settingsMtime) {
+			this.settings = await this.load();
+		}
 	}
 
 	/** Serialize a mutation: fn gets a mutable draft, result is persisted then returned. */
@@ -200,6 +228,7 @@ export class AppSettingsStore {
 	 * so a revoke that already returned cannot be outrun by a parked write.
 	 */
 	async assertAuthorized(token: string | null | undefined): Promise<LibraryClientId> {
+		await this.refreshIfChanged();
 		if (!token) throw unauthorizedError();
 		const clientId = await this.resolveToken(token);
 		if (!clientId) throw unauthorizedError();

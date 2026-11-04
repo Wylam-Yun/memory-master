@@ -259,6 +259,25 @@ function ProjectPage({ projects }: { projects: LibraryProject[] }) {
 	);
 }
 
+function clientConfigJson(client: ClientSlotInfo): string {
+	return JSON.stringify(
+		{
+			mcpServers: {
+				"memory-master": {
+					command: "memaster",
+					args: ["bridge"],
+					env: {
+						MEMORY_MASTER_URL: window.location.origin,
+						MEMORY_MASTER_TOKEN: client.token,
+					},
+				},
+			},
+		},
+		null,
+		2,
+	);
+}
+
 function SettingsPage({ libraryRoot, reload }: { libraryRoot: string; reload: () => void }) {
 	const [root, setRoot] = useState(libraryRoot);
 	const [clients, setClients] = useState<ClientSlotInfo[]>([]);
@@ -319,17 +338,36 @@ function SettingsPage({ libraryRoot, reload }: { libraryRoot: string; reload: ()
 				</p>
 				<ul className="divide-y">
 					{clients.map((c) => (
-						<li key={c.id} className="flex items-center justify-between py-3">
-							<div>
-								<div className="text-sm font-medium">{c.label}</div>
-								<div className="font-mono text-xs text-gray-400">{c.token ?? "启用后生成凭据"}</div>
+						<li key={c.id} className="py-3">
+							<div className="flex items-center justify-between">
+								<div>
+									<div className="text-sm font-medium">{c.label}</div>
+									<div className="font-mono text-xs text-gray-400">{c.token ?? "启用后生成凭据"}</div>
+								</div>
+								<button
+									className={`rounded px-3 py-1 text-sm text-white ${c.enabled ? "bg-gray-500" : "bg-blue-600"}`}
+									onClick={() => toggle(c, !c.enabled)}
+								>
+									{c.enabled ? "停用" : "启用"}
+								</button>
 							</div>
-							<button
-								className={`rounded px-3 py-1 text-sm text-white ${c.enabled ? "bg-gray-500" : "bg-blue-600"}`}
-								onClick={() => toggle(c, !c.enabled)}
-							>
-								{c.enabled ? "停用" : "启用"}
-							</button>
+							{c.enabled && c.token && (
+								<div className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs">
+									<p className="mb-1 text-amber-800">
+										已授权 ≠ 已连接：把下面的配置写入 {c.label} 的 MCP 设置后客户端才能真正接入
+										（也可运行 <code>memaster connect {c.id}</code> 获取）。
+									</p>
+									<pre className="overflow-x-auto rounded bg-white p-2 font-mono text-[11px] leading-relaxed">
+										{clientConfigJson(c)}
+									</pre>
+									<button
+										className="mt-1 text-blue-600 underline"
+										onClick={() => navigator.clipboard.writeText(clientConfigJson(c))}
+									>
+										复制配置
+									</button>
+								</div>
+							)}
 						</li>
 					))}
 				</ul>

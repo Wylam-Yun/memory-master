@@ -45,8 +45,13 @@
 ## 已知边界 / 未做
 
 - `loadLibraryProject` 对坏 config 仍静默跳过该目录（评审 M7 完整版未做）。
-- 双 serve 实例无单实例锁：`settings.json` 进程级缓存，双开会互相覆盖外部改动。
-- `service.stop()` 不 drain 在途写：shutdown 期间被放行的挂起写仍可能落盘。
+- **授权边界声明**：`/api/*`（web 通道）= 本机用户身份，按设计不鉴权。停权只约束
+  `/api/agent/*`（受管 agent 入口）。同机进程本来就能直接读写 markdown 文件，
+  给 web 通道加鉴权不改变真实安全边界——边界是"受管入口"，不是"这台机器"。
+- 双实例已防（`~/.memory-master/service.lock` + stale 检测）；跨进程改动也已同步
+  （assertAuthorized 前按 mtime 重读 settings）。
+- 停服语义已定义：`stop()` 同步置 `stopping` → drain 在途请求；`preWrite` 重检
+  命中 stopping → 取消，**未提交的写永不落盘**。已过 preWrite 的 µs 级写入会完成。
 - `ProjectPage.advance` 推进按钮硬编码 [To Do/In Progress/Done]，未读 config.statuses。
 - `memaster` 需在客户端 PATH（connect 打印的 command 是 `memaster`）；dev 环境可改
   配置为 `bun <repo>/src/cli.ts`。
