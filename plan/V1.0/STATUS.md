@@ -45,9 +45,12 @@
 ## 已知边界 / 未做
 
 - `loadLibraryProject` 对坏 config 仍静默跳过该目录（评审 M7 完整版未做）。
-- **授权边界声明**：`/api/*`（web 通道）= 本机用户身份，按设计不鉴权。停权只约束
-  `/api/agent/*`（受管 agent 入口）。同机进程本来就能直接读写 markdown 文件，
-  给 web 通道加鉴权不改变真实安全边界——边界是"受管入口"，不是"这台机器"。
+- **授权边界**：`/api/*`（web 通道）要求 per-process 会话密钥 `webKey`——只经
+  `memaster serve` 终端打印的 `?k=` URL 分发，不落盘、不经任何 HTTP 接口发放；
+  服务重启即轮换。`/api/agent/*` 用各客户端凭据。两条通道凭据互不通用，
+  停用客户端后它经任何 MM 接口都无法读写。残留边界：同 UID 进程若能读
+  用户终端 scrollback/浏览器存储可窃取密钥——但直接读项目文件更省事，
+  同权限进程本就在边界外。
 - 双实例已防（`~/.memory-master/service.lock` + stale 检测）；跨进程改动也已同步
   （assertAuthorized 前按 mtime 重读 settings）。
 - 停服语义已定义：`stop()` 同步置 `stopping` → drain 在途请求；`preWrite` 重检

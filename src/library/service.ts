@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Server } from "bun";
@@ -18,6 +19,7 @@ import {
 	type LibraryClientId,
 	LibraryError,
 	type LibraryProject,
+	unauthorizedError,
 } from "./types.ts";
 
 const SERVICE_HOST = "127.0.0.1";
@@ -79,12 +81,21 @@ function optionalString(value: unknown): string | undefined {
  * so closing the page changes nothing; stopping the process ends every client
  * access. Serves three route families:
  *   - the library web UI (SPA bundle)
- *   - /api/* for the web UI itself (localhost-trusted, no credential)
+ *   - /api/* for the web UI itself — gated by `webKey`, a per-process session
+ *     credential delivered out-of-band (the `?k=` URL `memaster serve` prints).
+ *     It is never written to disk or served over HTTP, so an agent on the same
+ *     machine has no way to obtain it through the service itself — revoking a
+ *     client therefore closes every Memory Master interface to it, not only
+ *     the MCP routes. (An agent that can read the user's own terminal/browser
+ *     could still steal it, but at that point reading the project files
+ *     directly is strictly easier — same-UID processes are out of scope.)
  *   - /api/agent/* for MCP bridges (Bearer credential + per-request auth check)
  */
 export class LibraryService {
 	readonly settings: AppSettingsStore;
 	readonly holds: TestHolds;
+	/** Per-process web session key; regenerated every service start, never persisted. */
+	readonly webKey = `mm_web_${randomBytes(16).toString("hex")}`;
 	private server: Server<unknown> | null = null;
 	private readonly stores = new Map<string, ProjectStore>();
 	private stopping = false;
@@ -419,11 +430,27 @@ export class LibraryService {
 		}
 	}
 
+	/**
+	 * Web-route gate: the session key must arrive as `Authorization: Bearer`.
+	 * The key only ever travels user→browser (printed URL or pasted), so nothing
+	 * reachable purely over HTTP can mint itself a usable credential.
+	 */
+	private requireWebKey(req: Request): void {
+		const header = req.headers.get("authorization") ?? "";
+		const key = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
+		if (key !== this.webKey) {
+			throw unauthorizedError(
+				"Missing or invalid web access key. Open the keyed URL printed by `memaster serve` (…/?k=…), or paste the key on the entry screen.",
+			);
+		}
+	}
+
 	private async withRoute(req: Request, handler: () => Promise<Response>): Promise<Response> {
 		try {
 			if (!isLoopbackHost(req)) {
 				throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Forbidden host.", 403);
 			}
+			this.requireWebKey(req);
 			return await handler();
 		} catch (error) {
 			return errorResponse(error);

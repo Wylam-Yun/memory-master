@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
-import { api, type ClientSlotInfo, type LibraryProject, type Task } from "./api.ts";
+import {
+	api,
+	type ClientSlotInfo,
+	hasWebKey,
+	type LibraryProject,
+	setOnUnauthorized,
+	setWebKey,
+	type Task,
+} from "./api.ts";
 
 const STATUSES = ["To Do", "In Progress", "Done"];
 
@@ -376,7 +384,40 @@ function SettingsPage({ libraryRoot, reload }: { libraryRoot: string; reload: ()
 	);
 }
 
+/** Entry gate: the service only authorizes web calls holding the per-start session key. */
+function KeyPage({ error, onSubmit }: { error: string | null; onSubmit: (key: string) => void }) {
+	const [input, setInput] = useState("");
+	return (
+		<div className="flex min-h-screen items-center justify-center bg-gray-50">
+			<div className="w-full max-w-md rounded border bg-white p-6">
+				<h1 className="mb-2 text-xl font-semibold">输入访问密钥</h1>
+				<p className="mb-4 text-sm text-gray-600">
+					启动 <code>memaster serve</code> 的终端里打印了带密钥的访问地址（
+					<code>http://127.0.0.1:端口/?k=…</code>）。把完整地址或密钥粘贴到下面。
+				</p>
+				<input
+					className="mb-3 w-full rounded border px-3 py-2 font-mono text-sm"
+					placeholder="mm_web_… 或完整 ?k= 地址"
+					value={input}
+					onChange={(e) => setInput(e.target.value)}
+					onKeyDown={(e) => e.key === "Enter" && input.trim() && onSubmit(input)}
+				/>
+				<ErrorBox error={error} />
+				<button
+					className="mt-3 rounded bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-50"
+					disabled={!input.trim()}
+					onClick={() => onSubmit(input)}
+				>
+					进入
+				</button>
+			</div>
+		</div>
+	);
+}
+
 export default function App() {
+	const [authed, setAuthed] = useState(hasWebKey());
+	const [keyError, setKeyError] = useState<string | null>(null);
 	const [state, setState] = useState<{
 		loaded: boolean;
 		error: string | null;
@@ -396,6 +437,14 @@ export default function App() {
 		});
 	}, []);
 	useEffect(() => {
+		setOnUnauthorized(() => {
+			setAuthed(false);
+			setKeyError("密钥已失效——服务重启后会生成新密钥，请从终端输出重新复制访问地址。");
+		});
+		return () => setOnUnauthorized(null);
+	}, []);
+	useEffect(() => {
+		if (!authed) return;
 		load().catch((e) =>
 			setState((s) => ({
 				...s,
@@ -403,8 +452,21 @@ export default function App() {
 				error: e instanceof Error ? e.message : String(e),
 			})),
 		);
-	}, [load]);
+	}, [load, authed]);
 
+	if (!authed) {
+		return (
+			<KeyPage
+				error={keyError}
+				onSubmit={(key) => {
+					setWebKey(key);
+					setKeyError(null);
+					setState((s) => ({ ...s, loaded: false }));
+					setAuthed(true);
+				}}
+			/>
+		);
+	}
 	if (!state.loaded) return <div className="p-8 text-sm text-gray-500">加载中…</div>;
 	if (state.error) {
 		return (
