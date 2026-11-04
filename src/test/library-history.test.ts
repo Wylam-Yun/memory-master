@@ -39,6 +39,7 @@ describe("library history & versioning", () => {
 	beforeEach(async () => {
 		home = await mkdtemp(join(tmpdir(), "mm-hist-"));
 		library = join(home, "library");
+		process.env.MEMORY_MASTER_CLIENT_HOME = join(home, "client-home");
 		holds = new TestHolds(true);
 		service = new LibraryService({ settings: new AppSettingsStore(home), holds });
 		await service.start(0);
@@ -47,6 +48,7 @@ describe("library history & versioning", () => {
 	});
 	afterEach(async () => {
 		await service.stop();
+		delete process.env.MEMORY_MASTER_CLIENT_HOME;
 		await rm(home, { recursive: true, force: true });
 	});
 
@@ -57,7 +59,10 @@ describe("library history & versioning", () => {
 	};
 	const enableClient = async (id: "codex" | "claude-code"): Promise<string> => {
 		const res = await req(`/api/clients/${id}`, { method: "PUT", body: { enabled: true } });
-		return (await json(res)).token;
+		const token = (await json(res)).token;
+		const ping = await req("/api/agent/ping", { token });
+		expect(ping.status).toBe(200);
+		return token;
 	};
 	const historyOf = async (projectId: string) => await json(await req(`/api/projects/${projectId}/history`));
 
@@ -271,7 +276,7 @@ describe("library history & versioning", () => {
 	});
 
 	test("bridge enforces base_version and surfaces conflicts with the latest value", async () => {
-		const project = await createProject("订单系统");
+		await createProject("订单系统");
 		const codex = await enableClient("codex");
 		const claude = await enableClient("claude-code");
 		const a = new LibraryBridge({ serviceUrl: base, token: codex });

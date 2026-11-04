@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
 	accessDisabledError,
 	type ClientSlot,
+	connectionPendingError,
 	LIBRARY_CLIENT_IDS,
 	type LibraryClientId,
 	LibraryError,
@@ -50,7 +51,7 @@ export class AppSettingsStore {
 	static defaultSettings(): LibrarySettings {
 		const clients = {} as Record<LibraryClientId, ClientSlot>;
 		for (const id of LIBRARY_CLIENT_IDS) {
-			clients[id] = { enabled: false, token: null };
+			clients[id] = { enabled: false, token: null, connection: "none", installError: null, lastSeenAt: null };
 		}
 		return { version: SETTINGS_VERSION, libraryRoot: null, port: DEFAULT_SERVICE_PORT, clients };
 	}
@@ -102,10 +103,13 @@ export class AppSettingsStore {
 			for (const id of LIBRARY_CLIENT_IDS) {
 				const slot = (clients as Record<string, unknown>)[id];
 				if (typeof slot === "object" && slot !== null) {
-					const { enabled, token } = slot as Record<string, unknown>;
+					const { enabled, token, connection, installError, lastSeenAt } = slot as Record<string, unknown>;
 					settings.clients[id] = {
 						enabled: enabled === true,
 						token: typeof token === "string" ? token : null,
+						connection: connection === "configured" || connection === "connected" ? connection : "none",
+						installError: typeof installError === "string" ? installError : null,
+						lastSeenAt: typeof lastSeenAt === "string" ? lastSeenAt : null,
 					};
 				}
 			}
@@ -184,10 +188,10 @@ export class AppSettingsStore {
 	}
 
 	/**
-	 * Flip one client's authorization switch. Enabling generates a credential on
-	 * first use and reuses it afterwards; disabling keeps the token so the client
-	 * configuration stays valid for the next enable. The new state is persisted
-	 * before this resolves.
+	 * Flip one client's authorization switch. Disabling keeps token and connection
+	 * state so re-enabling can repair rather than recreate. Enabling directly
+	 * (without the install flow) marks the slot configured — the probe gate still
+	 * requires the client to actually connect before project access opens.
 	 */
 	async setClientEnabled(clientId: LibraryClientId, enabled: boolean): Promise<ClientSlot> {
 		return await this.mutate((draft) => {
@@ -196,6 +200,49 @@ export class AppSettingsStore {
 			if (enabled && !slot.token) {
 				slot.token = AppSettingsStore.generateToken(clientId);
 			}
+			if (enabled && slot.connection === "none") {
+				slot.connection = "configured";
+			}
+			return { ...slot };
+		});
+	}
+
+	/** Issue (or reuse) a credential for an install attempt; does not enable. */
+	async ensureToken(clientId: LibraryClientId): Promise<string> {
+		return await this.mutate((draft) => {
+			const slot = draft.clients[clientId];
+			if (!slot.token) slot.token = AppSettingsStore.generateToken(clientId);
+			return slot.token as string;
+		});
+	}
+
+	/** Install succeeded: enabled + configured, awaiting the client's first contact. */
+	async markConfigured(clientId: LibraryClientId): Promise<ClientSlot> {
+		return await this.mutate((draft) => {
+			const slot = draft.clients[clientId];
+			slot.enabled = true;
+			slot.connection = "configured";
+			slot.installError = null;
+			return { ...slot };
+		});
+	}
+
+	/** Install failed: stays disabled, records why for the UI's retry affordance. */
+	async markInstallFailed(clientId: LibraryClientId, error: string): Promise<ClientSlot> {
+		return await this.mutate((draft) => {
+			const slot = draft.clients[clientId];
+			slot.enabled = false;
+			slot.installError = error;
+			return { ...slot };
+		});
+	}
+
+	/** The client's bridge reached the service — full project access opens. */
+	async markConnected(clientId: LibraryClientId): Promise<ClientSlot> {
+		return await this.mutate((draft) => {
+			const slot = draft.clients[clientId];
+			slot.connection = "connected";
+			slot.lastSeenAt = new Date().toISOString();
 			return { ...slot };
 		});
 	}
@@ -214,25 +261,45 @@ export class AppSettingsStore {
 		return null;
 	}
 
-	/** True only when the token maps to a client whose switch is currently on. */
+	/** True only when the token maps to a connected (fully authorized) client. */
 	async isAuthorized(token: string | null | undefined): Promise<boolean> {
 		if (!token) return false;
 		const clientId = await this.resolveToken(token);
 		if (!clientId) return false;
-		return (await this.getClient(clientId)).enabled;
+		const slot = await this.getClient(clientId);
+		return slot.enabled && slot.connection === "connected";
 	}
 
-	/**
-	 * Throw unless the credential currently maps to an enabled client. Called at
-	 * request entry and again inside the write lock immediately before persisting,
-	 * so a revoke that already returned cannot be outrun by a parked write.
-	 */
-	async assertAuthorized(token: string | null | undefined): Promise<LibraryClientId> {
-		await this.refreshIfChanged();
+	private async resolveEnabled(token: string | null | undefined): Promise<LibraryClientId> {
 		if (!token) throw unauthorizedError();
 		const clientId = await this.resolveToken(token);
 		if (!clientId) throw unauthorizedError();
 		if (!(await this.getClient(clientId)).enabled) throw accessDisabledError(clientId);
+		return clientId;
+	}
+
+	/**
+	 * Probe gate: enabled + at least configured. The ping route is the only
+	 * thing open during probing — project read/write waits for `connected`.
+	 */
+	async assertProbeAuthorized(token: string | null | undefined): Promise<LibraryClientId> {
+		await this.refreshIfChanged();
+		const clientId = await this.resolveEnabled(token);
+		const slot = await this.getClient(clientId);
+		if (slot.connection === "none") throw connectionPendingError(clientId);
+		return clientId;
+	}
+
+	/**
+	 * Full gate: enabled + connected. Called at request entry and again inside
+	 * the write lock immediately before persisting, so a revoke that already
+	 * returned cannot be outrun by a parked write.
+	 */
+	async assertAuthorized(token: string | null | undefined): Promise<LibraryClientId> {
+		await this.refreshIfChanged();
+		const clientId = await this.resolveEnabled(token);
+		const slot = await this.getClient(clientId);
+		if (slot.connection !== "connected") throw connectionPendingError(clientId);
 		return clientId;
 	}
 }

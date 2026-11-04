@@ -160,6 +160,42 @@ export class LibraryBridge {
 					const query = params.size ? `?${params}` : "";
 					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/history${query}`));
 				}
+				case "question_ask":
+					return ok(
+						await this.api(`/api/agent/projects/${this.requireProject().id}/questions`, {
+							method: "POST",
+							body: {
+								title: args.title,
+								...(args.task_id !== undefined ? { task: args.task_id } : {}),
+								...(args.detail !== undefined ? { detail: args.detail } : {}),
+							},
+						}),
+					);
+				case "question_list": {
+					const query = args.status ? `?status=${encodeURIComponent(String(args.status))}` : "";
+					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/questions${query}`));
+				}
+				case "question_get":
+					return ok(
+						await this.api(
+							`/api/agent/projects/${this.requireProject().id}/questions/${encodeURIComponent(String(args.question_id ?? ""))}`,
+						),
+					);
+				case "question_answer":
+					return ok(
+						await this.api(
+							`/api/agent/projects/${this.requireProject().id}/questions/${encodeURIComponent(String(args.question_id ?? ""))}`,
+							{ method: "PUT", body: { answer: args.answer } },
+						),
+					);
+				case "resource_list":
+					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/resources`));
+				case "resource_read":
+					return ok(
+						await this.api(
+							`/api/agent/projects/${this.requireProject().id}/resources/${encodeURIComponent(String(args.name ?? ""))}`,
+						),
+					);
 				default:
 					return fail(`Unknown tool: ${name}`);
 			}
@@ -269,12 +305,86 @@ export class LibraryBridge {
 					},
 				},
 			},
+			{
+				name: "question_ask",
+				description:
+					"Record a decision the user must make (a question that would change the expected outcome). Also ask the user directly in the conversation — this persists it on the project so the web page shows it too. Link a task with task_id when relevant.",
+				inputSchema: {
+					type: "object" as const,
+					properties: {
+						title: str("The concrete question, one line"),
+						task_id: str("Related task ID (optional)"),
+						detail: str("Context, options, and your recommendation"),
+					},
+					required: ["title"],
+				},
+			},
+			{
+				name: "question_list",
+				description: "List the selected project's pending questions (待决定事项). Filter by status: Open or Answered.",
+				inputSchema: {
+					type: "object" as const,
+					properties: { status: str('"Open" or "Answered"') },
+				},
+			},
+			{
+				name: "question_get",
+				description: "Read one question by ID (QUESTION-N).",
+				inputSchema: {
+					type: "object" as const,
+					properties: { question_id: str("Question ID, e.g. QUESTION-1") },
+					required: ["question_id"],
+				},
+			},
+			{
+				name: "question_answer",
+				description:
+					"Write the answer the user gave you in conversation back into the question. Once answered it is final — a second answer conflicts.",
+				inputSchema: {
+					type: "object" as const,
+					properties: {
+						question_id: str("Question ID, e.g. QUESTION-1"),
+						answer: str("The user's answer"),
+					},
+					required: ["question_id", "answer"],
+				},
+			},
+			{
+				name: "resource_list",
+				description: "List the selected project's uploaded resources (项目资料) — names and sizes.",
+				inputSchema: { type: "object" as const, properties: {} },
+			},
+			{
+				name: "resource_read",
+				description: "Read one uploaded resource by name. Text files return inline text; binary files return base64.",
+				inputSchema: {
+					type: "object" as const,
+					properties: { name: str("Exact file name from resource_list") },
+					required: ["name"],
+				},
+			},
 		];
 	}
 }
 
 export async function startLibraryBridge(options: BridgeOptions): Promise<void> {
 	const bridge = new LibraryBridge(options);
+	// The startup ping is what proves this client's setup reached the service —
+	// it flips the slot configured → connected. Warn (never block) on failure.
+	try {
+		const res = await fetch(`${options.serviceUrl}/api/agent/ping`, {
+			headers: { authorization: `Bearer ${options.token}` },
+			signal: AbortSignal.timeout(5_000),
+		});
+		if (!res.ok) {
+			const body = (await res.json().catch(() => ({}))) as { error?: string };
+			console.error(
+				`[memory-master] ping failed (${res.status}): ${body.error ?? "see the Memory Master settings page"}`,
+			);
+		}
+	} catch {
+		console.error(`[memory-master] cannot reach the service at ${options.serviceUrl} — is it running?`);
+	}
 	const server = new Server({ name: "memory-master", version: await getVersion() }, { capabilities: { tools: {} } });
 	server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: bridge.listTools() }));
 	server.setRequestHandler(CallToolRequestSchema, async (request) => {

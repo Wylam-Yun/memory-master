@@ -65,17 +65,44 @@ export interface Task {
 export interface HistoryEntry {
 	ts: string;
 	actor: { type: "user" } | { type: "agent"; client: string };
-	target: { type: "project" | "task" | "overview"; id?: string; title?: string };
+	target: { type: "project" | "task" | "overview" | "question"; id?: string; title?: string };
 	action: "create" | "update";
 	changes: Record<string, { from?: string; to?: string }>;
 	version: string;
 }
+
+export interface ProjectQuestion {
+	id: string;
+	title: string;
+	status: "Open" | "Answered";
+	task?: string;
+	askedBy: string;
+	askedAt: string;
+	answer?: string;
+	answeredBy?: string;
+	answeredAt?: string;
+	detail?: string;
+	version?: string;
+}
+
+export interface ResourceInfo {
+	name: string;
+	size: number;
+	modifiedAt: string;
+}
+
+export type ClientConnection = "none" | "configured" | "connected";
 
 export interface ClientSlotInfo {
 	id: "codex" | "claude-code";
 	label: string;
 	enabled: boolean;
 	token: string | null;
+	connection: ClientConnection;
+	installError: string | null;
+	lastSeenAt: string | null;
+	/** Present on a successful enable — the files the installer wrote. */
+	installed?: string[];
 }
 
 export class ApiError extends Error {
@@ -142,4 +169,18 @@ export const api = {
 	listClients: () => request<ClientSlotInfo[]>("/api/clients"),
 	setClient: (id: string, enabled: boolean) =>
 		request<ClientSlotInfo>(`/api/clients/${id}`, { method: "PUT", body: { enabled } }),
+	listQuestions: (id: string) => request<ProjectQuestion[]>(`/api/projects/${id}/questions`),
+	createQuestion: (id: string, title: string, task?: string, detail?: string) =>
+		request<ProjectQuestion>(`/api/projects/${id}/questions`, {
+			method: "POST",
+			body: { title, ...(task ? { task } : {}), ...(detail ? { detail } : {}) },
+		}),
+	answerQuestion: (id: string, questionId: string, answer: string) =>
+		request<ProjectQuestion>(`/api/projects/${id}/questions/${questionId}`, {
+			method: "PUT",
+			body: { answer },
+		}),
+	listResources: (id: string) => request<ResourceInfo[]>(`/api/projects/${id}/resources`),
+	uploadResource: (id: string, name: string, base64: string) =>
+		request<ResourceInfo>(`/api/projects/${id}/resources`, { method: "POST", body: { name, base64 } }),
 };

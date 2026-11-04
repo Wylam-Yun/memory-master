@@ -7,6 +7,8 @@ import {
 	hasWebKey,
 	type HistoryEntry,
 	type LibraryProject,
+	type ProjectQuestion,
+	type ResourceInfo,
 	setOnUnauthorized,
 	setWebKey,
 	type Task,
@@ -202,16 +204,26 @@ function ProjectPage({ projects }: { projects: LibraryProject[] }) {
 	const [overview, setOverview] = useState({ description: "", goal: "", current: "", version: "" });
 	const [tasks, setTasks] = useState<Task[]>([]);
 	const [history, setHistory] = useState<HistoryEntry[]>([]);
+	const [questions, setQuestions] = useState<ProjectQuestion[]>([]);
+	const [resources, setResources] = useState<ResourceInfo[]>([]);
 	const [newTask, setNewTask] = useState("");
 	const [error, setError] = useState<unknown>(null);
 	const [saved, setSaved] = useState(false);
 
 	const load = useCallback(async () => {
 		if (!id) return;
-		const [ov, ts, hs] = await Promise.all([api.getOverview(id), api.listTasks(id), api.history(id)]);
+		const [ov, ts, hs, qs, rs] = await Promise.all([
+			api.getOverview(id),
+			api.listTasks(id),
+			api.history(id),
+			api.listQuestions(id),
+			api.listResources(id),
+		]);
 		setOverview(ov);
 		setTasks(ts);
 		setHistory(hs);
+		setQuestions(qs);
+		setResources(rs);
 	}, [id]);
 	useEffect(() => {
 		load().catch(setError);
@@ -329,35 +341,203 @@ function ProjectPage({ projects }: { projects: LibraryProject[] }) {
 				</div>
 			</section>
 
+			<QuestionsSection
+				projectId={id!}
+				questions={questions}
+				tasks={tasks}
+				onError={onError}
+				reload={load}
+			/>
+
+			<ResourcesSection projectId={id!} resources={resources} onError={onError} reload={load} />
+
 			<HistorySection entries={history} />
 		</Layout>
 	);
 }
 
-function clientConfigJson(client: ClientSlotInfo): string {
-	return JSON.stringify(
-		{
-			mcpServers: {
-				"memory-master": {
-					command: "memaster",
-					args: ["bridge"],
-					env: {
-						MEMORY_MASTER_URL: window.location.origin,
-						MEMORY_MASTER_TOKEN: client.token,
-					},
-				},
-			},
-		},
-		null,
-		2,
+/** 待决定事项 — questions agents raise for the user; answered here or in dialog. */
+function QuestionsSection({
+	projectId,
+	questions,
+	tasks,
+	onError,
+	reload,
+}: {
+	projectId: string;
+	questions: ProjectQuestion[];
+	tasks: Task[];
+	onError: (e: unknown) => Promise<void>;
+	reload: () => Promise<void>;
+}) {
+	const [drafts, setDrafts] = useState<Record<string, string>>({});
+	const [newQuestion, setNewQuestion] = useState("");
+	const add = async () => {
+		try {
+			await api.createQuestion(projectId, newQuestion);
+			setNewQuestion("");
+			await reload();
+		} catch (e) {
+			await onError(e);
+		}
+	};
+	const answer = async (q: ProjectQuestion) => {
+		const text = (drafts[q.id] ?? "").trim();
+		if (!text) return;
+		try {
+			await api.answerQuestion(projectId, q.id, text);
+			await reload();
+		} catch (e) {
+			await onError(e);
+		}
+	};
+	return (
+		<section className="mt-4 rounded border bg-white p-4">
+			<h2 className="mb-3 text-sm font-semibold">待决定事项</h2>
+			<ul className="divide-y">
+				{questions.map((q) => (
+					<li key={q.id} className="py-3 text-sm">
+						<div className="flex items-center justify-between">
+							<span>
+								<span className="mr-2 font-mono text-xs text-gray-400">{q.id}</span>
+								{q.title}
+								{q.task ? (
+									<span className="ml-2 text-xs text-gray-400">关联 {q.task}</span>
+								) : null}
+							</span>
+							<span
+								className={`rounded px-2 py-0.5 text-xs ${q.status === "Open" ? "bg-amber-100 text-amber-800" : "bg-green-100 text-green-800"}`}
+							>
+								{q.status === "Open" ? "待决定" : "已回答"}
+							</span>
+						</div>
+						{q.detail ? <p className="mt-1 pl-4 text-xs text-gray-500">{q.detail}</p> : null}
+						{q.status === "Answered" ? (
+							<p className="mt-1 pl-4 text-xs">
+								<span className="text-gray-400">回答（{q.answeredBy === "user" ? "用户" : q.answeredBy}）：</span>
+								{q.answer}
+							</p>
+						) : (
+							<div className="mt-2 flex gap-2 pl-4">
+								<input
+									className="flex-1 rounded border px-2 py-1 text-xs"
+									placeholder="输入回答…"
+									value={drafts[q.id] ?? ""}
+									onChange={(e) => setDrafts((d) => ({ ...d, [q.id]: e.target.value }))}
+									onKeyDown={(e) => e.key === "Enter" && answer(q)}
+								/>
+								<button
+									className="rounded bg-blue-600 px-2 py-1 text-xs text-white disabled:opacity-50"
+									disabled={!(drafts[q.id] ?? "").trim()}
+									onClick={() => answer(q)}
+								>
+									回答
+								</button>
+							</div>
+						)}
+					</li>
+				))}
+				{questions.length === 0 && (
+					<li className="py-2 text-sm text-gray-400">
+						暂无待决定事项 —— Agent 需要拍板时会在这里提问
+						{tasks.length === 0 ? "。" : "，也可以关联任务。"}
+					</li>
+				)}
+			</ul>
+			<div className="mt-2 flex gap-2">
+				<input
+					className="flex-1 rounded border px-3 py-1.5 text-sm"
+					placeholder="新问题（通常由 Agent 提出）"
+					value={newQuestion}
+					onChange={(e) => setNewQuestion(e.target.value)}
+					onKeyDown={(e) => e.key === "Enter" && newQuestion.trim() && add()}
+				/>
+				<button
+					className="rounded bg-gray-500 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+					disabled={!newQuestion.trim()}
+					onClick={add}
+				>
+					添加
+				</button>
+			</div>
+		</section>
 	);
 }
+
+/** 项目资料 — user-uploaded original files the agents can list and read. */
+function ResourcesSection({
+	projectId,
+	resources,
+	onError,
+	reload,
+}: {
+	projectId: string;
+	resources: ResourceInfo[];
+	onError: (e: unknown) => Promise<void>;
+	reload: () => Promise<void>;
+}) {
+	const [busy, setBusy] = useState(false);
+	const upload = async (file: File) => {
+		setBusy(true);
+		try {
+			const bytes = new Uint8Array(await file.arrayBuffer());
+			let binary = "";
+			for (const b of bytes) binary += String.fromCharCode(b);
+			await api.uploadResource(projectId, file.name, btoa(binary));
+			await reload();
+		} catch (e) {
+			await onError(e);
+		} finally {
+			setBusy(false);
+		}
+	};
+	return (
+		<section className="mt-4 rounded border bg-white p-4">
+			<h2 className="mb-3 text-sm font-semibold">项目资料</h2>
+			<ul className="mb-3 divide-y">
+				{resources.map((r) => (
+					<li key={r.name} className="flex items-center justify-between py-2 text-sm">
+						<span className="font-mono text-xs">{r.name}</span>
+						<span className="text-xs text-gray-400">
+							{(r.size / 1024).toFixed(1)} KB · {new Date(r.modifiedAt).toLocaleString()}
+						</span>
+					</li>
+				))}
+				{resources.length === 0 && (
+					<li className="py-2 text-sm text-gray-400">暂无资料 —— 上传后 Agent 可用 resource_read 读取</li>
+				)}
+			</ul>
+			<label
+				className={`inline-block rounded px-3 py-1.5 text-sm text-white ${busy ? "bg-gray-400" : "cursor-pointer bg-blue-600"}`}
+			>
+				{busy ? "上传中…" : "上传文件"}
+				<input
+					type="file"
+					className="hidden"
+					disabled={busy}
+					onChange={(e) => {
+						const file = e.target.files?.[0];
+						if (file) upload(file);
+						e.target.value = "";
+					}}
+				/>
+			</label>
+		</section>
+	);
+}
+
+const CONNECTION_LABELS: Record<ClientSlotInfo["connection"], { text: string; cls: string }> = {
+	none: { text: "未配置", cls: "bg-gray-100 text-gray-500" },
+	configured: { text: "已配置，等待客户端接入", cls: "bg-amber-100 text-amber-800" },
+	connected: { text: "已连接", cls: "bg-green-100 text-green-800" },
+};
 
 function SettingsPage({ libraryRoot, reload }: { libraryRoot: string; reload: () => void }) {
 	const [root, setRoot] = useState(libraryRoot);
 	const [clients, setClients] = useState<ClientSlotInfo[]>([]);
 	const [error, setError] = useState<unknown>(null);
 	const [notice, setNotice] = useState("");
+	const [busy, setBusy] = useState<string | null>(null);
 	useEffect(() => setRoot(libraryRoot), [libraryRoot]);
 	useEffect(() => {
 		api.listClients().then(setClients).catch(setError);
@@ -375,12 +555,23 @@ function SettingsPage({ libraryRoot, reload }: { libraryRoot: string; reload: ()
 	const toggle = async (client: ClientSlotInfo, enabled: boolean) => {
 		setError(null);
 		setNotice("");
+		setBusy(client.id);
 		try {
 			const updated = await api.setClient(client.id, enabled);
-			setClients((list) => list.map((c) => (c.id === client.id ? updated : c)));
-			setNotice(enabled ? `${client.label} 已启用` : `${client.label} 已停用 —— 即刻起其请求全部拒绝`);
+			setClients((list) => list.map((c) => (c.id === client.id ? { ...c, ...updated } : c)));
+			setNotice(
+				enabled
+					? `${client.label} 已启用并完成配置 —— 打开 ${client.label} 后其 Memory Master 桥会自动接入`
+					: `${client.label} 已停用 —— 即刻起其请求全部拒绝`,
+			);
+			await api.listClients().then(setClients).catch(() => {});
 		} catch (e) {
+			// A failed enable arrives as a 502 body — refresh the slot so its
+			// installError/retry state shows.
 			setError(e);
+			await api.listClients().then(setClients).catch(() => {});
+		} finally {
+			setBusy(null);
 		}
 	};
 
@@ -409,42 +600,51 @@ function SettingsPage({ libraryRoot, reload }: { libraryRoot: string; reload: ()
 			<section className="mt-4 rounded border bg-white p-4">
 				<h2 className="mb-1 text-sm font-semibold">客户端授权</h2>
 				<p className="mb-3 text-xs text-gray-500">
-					关闭后对应客户端的读、写、列项目请求即刻全部被拒。凭据用于 `memaster connect` 生成的 MCP 配置。
+					启用会自动把 MCP 配置、协作指令和 Skill 写入该客户端的配置文件。连接状态独立于开关：只有客户端真正接入服务后，它才能读写项目。
 				</p>
 				<ul className="divide-y">
-					{clients.map((c) => (
-						<li key={c.id} className="py-3">
-							<div className="flex items-center justify-between">
-								<div>
-									<div className="text-sm font-medium">{c.label}</div>
-									<div className="font-mono text-xs text-gray-400">{c.token ?? "启用后生成凭据"}</div>
-								</div>
-								<button
-									className={`rounded px-3 py-1 text-sm text-white ${c.enabled ? "bg-gray-500" : "bg-blue-600"}`}
-									onClick={() => toggle(c, !c.enabled)}
-								>
-									{c.enabled ? "停用" : "启用"}
-								</button>
-							</div>
-							{c.enabled && c.token && (
-								<div className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs">
-									<p className="mb-1 text-amber-800">
-										已授权 ≠ 已连接：把下面的配置写入 {c.label} 的 MCP 设置后客户端才能真正接入
-										（也可运行 <code>memaster connect {c.id}</code> 获取）。
-									</p>
-									<pre className="overflow-x-auto rounded bg-white p-2 font-mono text-[11px] leading-relaxed">
-										{clientConfigJson(c)}
-									</pre>
+					{clients.map((c) => {
+						const conn = CONNECTION_LABELS[c.connection];
+						return (
+							<li key={c.id} className="py-3">
+								<div className="flex items-center justify-between">
+									<div>
+										<div className="flex items-center gap-2 text-sm font-medium">
+											{c.label}
+											<span className={`rounded px-2 py-0.5 text-xs ${conn.cls}`}>{conn.text}</span>
+										</div>
+										<div className="font-mono text-xs text-gray-400">{c.token ?? "启用后生成凭据"}</div>
+										{c.lastSeenAt ? (
+											<div className="text-xs text-gray-400">
+												最近接入 {new Date(c.lastSeenAt).toLocaleString()}
+											</div>
+										) : null}
+									</div>
 									<button
-										className="mt-1 text-blue-600 underline"
-										onClick={() => navigator.clipboard.writeText(clientConfigJson(c))}
+										className={`rounded px-3 py-1 text-sm text-white disabled:opacity-50 ${c.enabled ? "bg-gray-500" : "bg-blue-600"}`}
+										disabled={busy === c.id}
+										onClick={() => toggle(c, !c.enabled)}
 									>
-										复制配置
+										{busy === c.id ? "配置中…" : c.enabled ? "停用" : "启用"}
 									</button>
 								</div>
-							)}
-						</li>
-					))}
+								{c.installError ? (
+									<div className="mt-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+										<p className="mb-1">自动配置未完成：{c.installError}</p>
+										<button className="text-blue-600 underline" onClick={() => toggle(c, true)}>
+											重试配置
+										</button>
+									</div>
+								) : null}
+								{c.enabled && c.connection === "configured" ? (
+									<div className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">
+										配置文件已写入。打开 {c.label}（新会话）后它会自动接入；若一直停留在此状态，检查该客户端的
+										MCP 服务列表里 memory-master 是否报错。
+									</div>
+								) : null}
+							</li>
+						);
+					})}
 				</ul>
 			</section>
 		</Layout>

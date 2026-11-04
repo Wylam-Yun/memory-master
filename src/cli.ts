@@ -6333,22 +6333,22 @@ program
 				);
 				process.exit(1);
 			}
+			const { bridgeConfig } = await import("./library/client-setup.ts");
 			const config = {
 				mcpServers: {
-					"memory-master": {
-						command: "memaster",
-						args: ["bridge"],
-						env: {
-							MEMORY_MASTER_URL: `http://127.0.0.1:${await settings.getPort()}`,
-							MEMORY_MASTER_TOKEN: slot.token,
-						},
-					},
+					// Same spec the auto-installer writes — an absolute runtime +
+					// script pair, so nothing depends on `memaster` being on PATH.
+					"memory-master": bridgeConfig(`http://127.0.0.1:${await settings.getPort()}`, slot.token),
 				},
 			};
 			console.log(JSON.stringify(config, null, 2));
 			if (!slot.enabled) {
 				console.error(
 					`\nNote: ${LIBRARY_CLIENT_LABELS[client]} is currently disabled — enable it in settings before use.`,
+				);
+			} else {
+				console.error(
+					`\nNote: enabling ${LIBRARY_CLIENT_LABELS[client]} on the settings page already installs this configuration automatically — this output is for manual/foreign setups.`,
 				);
 			}
 		} catch (err) {

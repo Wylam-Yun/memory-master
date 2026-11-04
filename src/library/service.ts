@@ -6,10 +6,14 @@ import type { TaskWriteHooks } from "../core/memaster.ts";
 import libraryIndexHtml from "../library-web/index.html";
 import type { Task } from "../types/index.ts";
 import { getVersion } from "../utils/version.ts";
+import { instructionBlock, SKILL_MD } from "./agent-content.ts";
+import { installClient } from "./client-setup.ts";
 import { type Actor, appendHistory, contentVersion, diffFields, type HistoryEntry, readHistory } from "./history.ts";
 import { initialOverviewContent, overviewFilePath, readOverview, writeOverview } from "./overview.ts";
 import { ProjectStore, type TaskWriteInput } from "./project-store.ts";
+import { answerQuestion, createQuestion, getQuestion, listQuestions, type ProjectQuestion } from "./questions.ts";
 import { createProject, getProjectById, listProjects, resolveProject } from "./registry.ts";
+import { listResources, readResource, saveResource } from "./resources.ts";
 import { AppSettingsStore } from "./settings.ts";
 import { TestHolds } from "./test-holds.ts";
 import {
@@ -566,15 +570,28 @@ export class LibraryService {
 	private async handleListClients(): Promise<Response> {
 		const settings = await this.settings.getSettings();
 		return json(
-			LIBRARY_CLIENT_IDS.map((id) => ({
-				id,
-				label: LIBRARY_CLIENT_LABELS[id],
-				enabled: settings.clients[id].enabled,
-				token: settings.clients[id].token,
-			})),
+			LIBRARY_CLIENT_IDS.map((id) => {
+				const slot = settings.clients[id];
+				return {
+					id,
+					label: LIBRARY_CLIENT_LABELS[id],
+					enabled: slot.enabled,
+					token: slot.token,
+					connection: slot.connection,
+					installError: slot.installError,
+					lastSeenAt: slot.lastSeenAt,
+				};
+			}),
 		);
 	}
 
+	/**
+	 * The one-click setup flow (Phase 4). Enabling a client does more than flip
+	 * the switch: a credential is minted, then MCP config + instruction block +
+	 * skill are installed into the client's real config files. Success marks the
+	 * slot `configured` — it becomes `connected` only when the client's bridge
+	 * actually pings the service. Failure is recorded for the retry affordance.
+	 */
 	private async handlePutClient(req: Request, id: string): Promise<Response> {
 		if (!isLibraryClientId(id)) {
 			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, `Unknown client "${id}".`, 404);
@@ -583,8 +600,247 @@ export class LibraryService {
 		if (typeof body.enabled !== "boolean") {
 			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "enabled must be a boolean.", 400);
 		}
-		const slot = await this.settings.setClientEnabled(id, body.enabled);
-		return json({ id, label: LIBRARY_CLIENT_LABELS[id], enabled: slot.enabled, token: slot.token });
+		if (!body.enabled) {
+			const slot = await this.settings.setClientEnabled(id, false);
+			return json({
+				id,
+				label: LIBRARY_CLIENT_LABELS[id],
+				enabled: slot.enabled,
+				token: slot.token,
+				connection: slot.connection,
+				installError: slot.installError,
+				lastSeenAt: slot.lastSeenAt,
+			});
+		}
+		const token = await this.settings.ensureToken(id);
+		const install = await installClient(id, { serviceUrl: this.baseUrl(), token });
+		if (!install.ok) {
+			const slot = await this.settings.markInstallFailed(id, install.error ?? "Unknown setup failure.");
+			return json(
+				{
+					id,
+					label: LIBRARY_CLIENT_LABELS[id],
+					enabled: slot.enabled,
+					token: slot.token,
+					connection: slot.connection,
+					installError: slot.installError,
+					lastSeenAt: slot.lastSeenAt,
+					installed: install.installed,
+				},
+				502,
+			);
+		}
+		const slot = await this.settings.markConfigured(id);
+		return json({
+			id,
+			label: LIBRARY_CLIENT_LABELS[id],
+			enabled: slot.enabled,
+			token: slot.token,
+			connection: slot.connection,
+			installError: slot.installError,
+			lastSeenAt: slot.lastSeenAt,
+			installed: install.installed,
+		});
+	}
+
+	// --- Question (待决定事项) write unit --------------------------------------
+	// Same discipline as tasks/overview: project write lock → re-auth inside the
+	// lock → record write → history append → rollback on history failure. An
+	// answer is a write-once transition — the conflict check is the record's
+	// own status, which is why it needs no caller-supplied baseVersion.
+
+	private async questionWithVersion(q: ProjectQuestion): Promise<ProjectQuestion & { version?: string }> {
+		const bytes = q.filePath ? await Bun.file(q.filePath).bytes() : new Uint8Array();
+		return { ...q, version: contentVersion(bytes) };
+	}
+
+	private async writeQuestion(
+		identity: { token: string; id: LibraryClientId } | null,
+		projectId: string,
+		input: { title?: string; task?: string; detail?: string },
+	): Promise<ProjectQuestion & { version?: string }> {
+		if (!input.title?.trim()) {
+			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Question title is required.", 400);
+		}
+		const project = await this.projectFor(projectId);
+		const store = this.storeFor(project);
+		const actor = this.actorOf(identity);
+		const token = identity?.token ?? null;
+		const askedBy = actor.type === "user" ? "user" : actor.client;
+
+		return await store.withWriteLock(async () => {
+			const question = await createQuestion(
+				project.dir,
+				input as { title: string; task?: string; detail?: string },
+				askedBy,
+			);
+			await this.holds.waitIfAny();
+			this.assertRunning();
+			if (token !== null) await this.settings.assertAuthorized(token);
+			const version = contentVersion(await Bun.file(question.filePath as string).bytes());
+			try {
+				this.holds.throwIfHistoryFailpoint();
+				await appendHistory(project.dir, {
+					ts: new Date().toISOString(),
+					actor,
+					target: { type: "question", id: question.id, title: question.title },
+					action: "create",
+					changes: diffFields(
+						{},
+						{ title: question.title, status: question.status, ...(question.task ? { task: question.task } : {}) },
+					),
+					version,
+				});
+			} catch (error) {
+				if (question.filePath) {
+					const { unlink } = await import("node:fs/promises");
+					await unlink(question.filePath).catch(() => {});
+				}
+				throw error;
+			}
+			return { ...question, version };
+		});
+	}
+
+	private async writeQuestionAnswer(
+		identity: { token: string; id: LibraryClientId } | null,
+		projectId: string,
+		questionId: string,
+		answer: string | undefined,
+	): Promise<ProjectQuestion & { version?: string }> {
+		if (!answer?.trim()) {
+			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "answer is required.", 400);
+		}
+		const project = await this.projectFor(projectId);
+		const store = this.storeFor(project);
+		const actor = this.actorOf(identity);
+		const token = identity?.token ?? null;
+
+		return await store.withWriteLock(async () => {
+			const before = await getQuestion(project.dir, questionId);
+			if (!before) {
+				throw new LibraryError(LIBRARY_ERROR_CODES.PROJECT_NOT_FOUND, `Question "${questionId}" not found.`, 404);
+			}
+			const beforeBytes = before.filePath ? await Bun.file(before.filePath).bytes() : null;
+			// Answered is a write-once state — a second answer conflicts rather than overwriting.
+			if (before.status !== "Open") {
+				throw new LibraryError(
+					LIBRARY_ERROR_CODES.VERSION_CONFLICT,
+					`Question "${questionId}" is already answered.`,
+					409,
+					{ current: { ...(before as object), version: contentVersion(beforeBytes ?? new Uint8Array()) } },
+				);
+			}
+			await this.holds.waitIfAny();
+			this.assertRunning();
+			if (token !== null) await this.settings.assertAuthorized(token);
+			const after = await answerQuestion(before, answer.trim(), actor);
+			const version = contentVersion(await Bun.file(after.filePath as string).bytes());
+			try {
+				this.holds.throwIfHistoryFailpoint();
+				await appendHistory(project.dir, {
+					ts: new Date().toISOString(),
+					actor,
+					target: { type: "question", id: after.id, title: after.title },
+					action: "update",
+					changes: diffFields(
+						{ status: before.status },
+						{ status: after.status, answer: after.answer ?? "", answered_by: after.answeredBy ?? "" },
+					),
+					version,
+				});
+			} catch (error) {
+				if (before.filePath && beforeBytes) {
+					await Bun.write(before.filePath, beforeBytes).catch(() => {});
+				}
+				throw error;
+			}
+			return { ...after, version };
+		});
+	}
+
+	private async handleListQuestions(projectId: string, req: Request): Promise<Response> {
+		const project = await this.projectFor(projectId);
+		const status = new URL(req.url).searchParams.get("status");
+		const questions = await listQuestions(project.dir, status === "Open" || status === "Answered" ? status : undefined);
+		return json(await Promise.all(questions.map((q) => this.questionWithVersion(q))));
+	}
+
+	private async handleGetQuestion(projectId: string, questionId: string): Promise<Response> {
+		const project = await this.projectFor(projectId);
+		const question = await getQuestion(project.dir, questionId);
+		if (!question) {
+			throw new LibraryError(LIBRARY_ERROR_CODES.PROJECT_NOT_FOUND, `Question "${questionId}" not found.`, 404);
+		}
+		return json(await this.questionWithVersion(question));
+	}
+
+	private async handleCreateQuestion(
+		req: Request,
+		projectId: string,
+		identity: { token: string; id: LibraryClientId } | null,
+	): Promise<Response> {
+		const body = await parseBody(req);
+		return json(
+			await this.writeQuestion(identity, projectId, {
+				...(typeof body.title === "string" ? { title: body.title } : {}),
+				...(typeof body.task === "string" ? { task: body.task } : {}),
+				...(typeof body.detail === "string" ? { detail: body.detail } : {}),
+			}),
+			201,
+		);
+	}
+
+	private async handleAnswerQuestion(
+		req: Request,
+		projectId: string,
+		questionId: string,
+		identity: { token: string; id: LibraryClientId } | null,
+	): Promise<Response> {
+		const body = await parseBody(req);
+		return json(
+			await this.writeQuestionAnswer(
+				identity,
+				projectId,
+				questionId,
+				typeof body.answer === "string" ? body.answer : undefined,
+			),
+		);
+	}
+
+	// --- Resource (项目资料) handlers ------------------------------------------
+
+	private async handleListResources(projectId: string): Promise<Response> {
+		const project = await this.projectFor(projectId);
+		return json(await listResources(project.dir));
+	}
+
+	/** Web upload: JSON {name, base64} — keeps the JSON-only body gate uniform. */
+	private async handleUploadResource(req: Request, projectId: string): Promise<Response> {
+		const project = await this.projectFor(projectId);
+		const body = await parseBody(req);
+		const name = typeof body.name === "string" ? body.name : "";
+		if (typeof body.base64 !== "string") {
+			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "base64 file content is required.", 400);
+		}
+		let bytes: Uint8Array;
+		try {
+			bytes = new Uint8Array(Buffer.from(body.base64, "base64"));
+		} catch {
+			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "base64 content is not decodable.", 400);
+		}
+		const info = await saveResource(project.dir, name, bytes);
+		return json(info, 201);
+	}
+
+	private async handleGetResource(projectId: string, name: string): Promise<Response> {
+		const project = await this.projectFor(projectId);
+		return json(await readResource(project.dir, decodeURIComponent(name)));
+	}
+
+	/** The short instructions + skill agents should operate under — one source. */
+	private async handleAgentInstructions(): Promise<Response> {
+		return json({ instructions: instructionBlock(this.baseUrl()), skill: SKILL_MD });
 	}
 
 	// --- Agent API handlers -----------------------------------------------------
@@ -594,8 +850,14 @@ export class LibraryService {
 		return header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
 	}
 
+	/**
+	 * Probe route — the only endpoint open to a `configured` client. A real
+	 * ping (which the bridge fires on startup) proves the client's MCP config
+	 * reaches this service, so it is what flips `configured` → `connected`.
+	 */
 	private async handleAgentPing(req: Request): Promise<Response> {
-		const client = await this.requireClient(req);
+		const client = await this.settings.assertProbeAuthorized(this.bearerToken(req) || null);
+		await this.settings.markConnected(client);
 		return json({ ok: true, client, libraryRootSet: (await this.settings.getLibraryRoot()) !== null });
 	}
 
@@ -610,6 +872,18 @@ export class LibraryService {
 		const name = optionalString(body.name);
 		if (!name) throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Project name is required.", 400);
 		return json(await resolveProject(await this.requireLibraryRoot(), name));
+	}
+
+	/** Probe wrapper: host check only — the handler itself applies the probe gate. */
+	private async withProbeRoute(req: Request, handler: () => Promise<Response>): Promise<Response> {
+		try {
+			if (!isLoopbackHost(req)) {
+				throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Forbidden host.", 403);
+			}
+			return await handler();
+		} catch (error) {
+			return errorResponse(error);
+		}
 	}
 
 	private async withAgentRoute(
@@ -730,6 +1004,24 @@ export class LibraryService {
 					GET: async (req: Request & { params: { id: string } }) =>
 						this.withRoute(req, () => this.handleListHistory(req.params.id, req)),
 				},
+				"/api/projects/:id/questions": {
+					GET: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handleListQuestions(req.params.id, req)),
+					POST: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handleCreateQuestion(req, req.params.id, null)),
+				},
+				"/api/projects/:id/questions/:questionId": {
+					GET: async (req: Request & { params: { id: string; questionId: string } }) =>
+						this.withRoute(req, () => this.handleGetQuestion(req.params.id, req.params.questionId)),
+					PUT: async (req: Request & { params: { id: string; questionId: string } }) =>
+						this.withRoute(req, () => this.handleAnswerQuestion(req, req.params.id, req.params.questionId, null)),
+				},
+				"/api/projects/:id/resources": {
+					GET: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handleListResources(req.params.id)),
+					POST: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handleUploadResource(req, req.params.id)),
+				},
 				"/api/clients": { GET: async (req: Request) => this.withRoute(req, () => this.handleListClients()) },
 				"/api/clients/:id": {
 					PUT: async (req: Request & { params: { id: string } }) =>
@@ -737,7 +1029,7 @@ export class LibraryService {
 				},
 
 				"/api/agent/ping": {
-					GET: async (req: Request) => this.withAgentRoute(req, () => this.handleAgentPing(req)),
+					GET: async (req: Request) => this.withProbeRoute(req, () => this.handleAgentPing(req)),
 				},
 				"/api/agent/projects": {
 					GET: async (req: Request) => this.withAgentRoute(req, () => this.handleAgentListProjects(req)),
@@ -768,6 +1060,31 @@ export class LibraryService {
 				"/api/agent/projects/:id/history": {
 					GET: async (req: Request & { params: { id: string } }) =>
 						this.withAgentRoute(req, () => this.handleListHistory(req.params.id, req)),
+				},
+				"/api/agent/instructions": {
+					GET: async (req: Request) => this.withAgentRoute(req, () => this.handleAgentInstructions()),
+				},
+				"/api/agent/projects/:id/questions": {
+					GET: async (req: Request & { params: { id: string } }) =>
+						this.withAgentRoute(req, () => this.handleListQuestions(req.params.id, req)),
+					POST: async (req: Request & { params: { id: string } }) =>
+						this.withAgentRoute(req, (identity) => this.handleCreateQuestion(req, req.params.id, identity)),
+				},
+				"/api/agent/projects/:id/questions/:questionId": {
+					GET: async (req: Request & { params: { id: string; questionId: string } }) =>
+						this.withAgentRoute(req, () => this.handleGetQuestion(req.params.id, req.params.questionId)),
+					PUT: async (req: Request & { params: { id: string; questionId: string } }) =>
+						this.withAgentRoute(req, (identity) =>
+							this.handleAnswerQuestion(req, req.params.id, req.params.questionId, identity),
+						),
+				},
+				"/api/agent/projects/:id/resources": {
+					GET: async (req: Request & { params: { id: string } }) =>
+						this.withAgentRoute(req, () => this.handleListResources(req.params.id)),
+				},
+				"/api/agent/projects/:id/resources/:name": {
+					GET: async (req: Request & { params: { id: string; name: string } }) =>
+						this.withAgentRoute(req, () => this.handleGetResource(req.params.id, req.params.name)),
 				},
 
 				"/api/test/holds": {

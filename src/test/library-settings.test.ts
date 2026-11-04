@@ -22,8 +22,20 @@ describe("AppSettingsStore", () => {
 
 		expect(settings.libraryRoot).toBeNull();
 		expect(settings.port).toBe(6420);
-		expect(settings.clients.codex).toEqual({ enabled: false, token: null });
-		expect(settings.clients["claude-code"]).toEqual({ enabled: false, token: null });
+		expect(settings.clients.codex).toEqual({
+			enabled: false,
+			token: null,
+			connection: "none",
+			installError: null,
+			lastSeenAt: null,
+		});
+		expect(settings.clients["claude-code"]).toEqual({
+			enabled: false,
+			token: null,
+			connection: "none",
+			installError: null,
+			lastSeenAt: null,
+		});
 	});
 
 	it("persists library root and port across instances (service restart)", async () => {
@@ -56,8 +68,20 @@ describe("AppSettingsStore", () => {
 		const { token } = await store.setClientEnabled("claude-code", true);
 
 		const restarted = new AppSettingsStore(home);
-		expect(await restarted.getClient("claude-code")).toEqual({ enabled: true, token });
-		expect(await restarted.getClient("codex")).toEqual({ enabled: false, token: null });
+		expect(await restarted.getClient("claude-code")).toEqual({
+			enabled: true,
+			token,
+			connection: "configured",
+			installError: null,
+			lastSeenAt: null,
+		});
+		expect(await restarted.getClient("codex")).toEqual({
+			enabled: false,
+			token: null,
+			connection: "none",
+			installError: null,
+			lastSeenAt: null,
+		});
 	});
 
 	it("resolves tokens to clients and enforces the current enabled state", async () => {
@@ -66,6 +90,9 @@ describe("AppSettingsStore", () => {
 
 		expect(await store.resolveToken(token!)).toBe("codex");
 		expect(await store.resolveToken("mm_codex_wrong")).toBeNull();
+		// Enabled + configured is not yet authorized — the client must connect first.
+		expect(await store.isAuthorized(token)).toBe(false);
+		await store.markConnected("codex");
 		expect(await store.isAuthorized(token)).toBe(true);
 		expect(await store.isAuthorized("mm_codex_wrong")).toBe(false);
 		expect(await store.isAuthorized(null)).toBe(false);
@@ -91,7 +118,13 @@ describe("AppSettingsStore", () => {
 		});
 		expect(await store.assertAuthorized(token).catch((e) => e)).toBeInstanceOf(LibraryError);
 
+		// Re-enabled but not yet connected: the probe gate still applies.
 		await store.setClientEnabled("codex", true);
+		await expect(store.assertAuthorized(token)).rejects.toMatchObject({
+			code: LIBRARY_ERROR_CODES.CONNECTION_PENDING,
+			status: 403,
+		});
+		await store.markConnected("codex");
 		expect(await store.assertAuthorized(token)).toBe("codex");
 	});
 

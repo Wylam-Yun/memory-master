@@ -35,6 +35,9 @@ describe("library service", () => {
 	beforeEach(async () => {
 		home = await mkdtemp(join(tmpdir(), "mm-home-"));
 		library = join(home, "library");
+		// Client installs must never touch the developer's real ~/.claude* or
+		// ~/.codex* — point the installer family at a temp home.
+		process.env.MEMORY_MASTER_CLIENT_HOME = join(home, "client-home");
 		holds = new TestHolds(true);
 		service = new LibraryService({
 			settings: new AppSettingsStore(home),
@@ -46,6 +49,7 @@ describe("library service", () => {
 
 	afterEach(async () => {
 		await service.stop();
+		delete process.env.MEMORY_MASTER_CLIENT_HOME;
 		await rm(home, { recursive: true, force: true });
 	});
 
@@ -58,10 +62,15 @@ describe("library service", () => {
 		expect(res.status).toBe(201);
 		return await json(res);
 	};
+	// Enable runs the real installer (against the temp client home), then the
+	// bridge ping flips configured → connected — mirroring production.
 	const enableClient = async (id: "codex" | "claude-code"): Promise<string> => {
 		const res = await req(`/api/clients/${id}`, { method: "PUT", body: { enabled: true } });
 		expect(res.status).toBe(200);
-		return (await json(res)).token;
+		const token = (await json(res)).token;
+		const ping = await req("/api/agent/ping", { token });
+		expect(ping.status).toBe(200);
+		return token;
 	};
 
 	test("requires a library selection before project operations", async () => {

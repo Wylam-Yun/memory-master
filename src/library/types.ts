@@ -21,11 +21,24 @@ export const LIBRARY_CLIENT_LABELS: Record<LibraryClientId, string> = {
 	"claude-code": "Claude Code",
 };
 
-/** Per-client authorization slot: enable switch + access credential. */
+/**
+ * Client setup state: `none` (never installed) → `configured` (files written,
+ * awaiting the client's first contact) → `connected` (its bridge has reached
+ * the service). Only `connected` opens project read/write; the probe phase
+ * accepts just the ping route.
+ */
+export type ClientConnection = "none" | "configured" | "connected";
+
+/** Per-client authorization slot: enable switch + access credential + setup state. */
 export interface ClientSlot {
 	enabled: boolean;
 	/** Credential identifying this client; kept across disable so re-enable reuses config. */
 	token: string | null;
+	connection: ClientConnection;
+	/** Last failed install attempt's reason — the UI shows it with a retry affordance. */
+	installError: string | null;
+	/** Last successful contact from this client's bridge. */
+	lastSeenAt: string | null;
 }
 
 /** Application settings persisted in <home>/settings.json (independent of project storage). */
@@ -61,6 +74,7 @@ export interface ProjectOverview {
 export const LIBRARY_ERROR_CODES = {
 	UNAUTHORIZED: "UNAUTHORIZED",
 	ACCESS_DISABLED: "ACCESS_DISABLED",
+	CONNECTION_PENDING: "CONNECTION_PENDING",
 	PROJECT_NOT_FOUND: "PROJECT_NOT_FOUND",
 	PROJECT_AMBIGUOUS: "PROJECT_AMBIGUOUS",
 	PROJECT_EXISTS: "PROJECT_EXISTS",
@@ -88,6 +102,15 @@ export class LibraryError extends Error {
 
 export function unauthorizedError(message = "Missing or unknown access token."): LibraryError {
 	return new LibraryError(LIBRARY_ERROR_CODES.UNAUTHORIZED, message, 401);
+}
+
+/** Enabled but its bridge hasn't connected yet — only the probe route is open. */
+export function connectionPendingError(clientId: string): LibraryError {
+	return new LibraryError(
+		LIBRARY_ERROR_CODES.CONNECTION_PENDING,
+		`Client "${clientId}" is configured but has not connected to this service yet. Open ${clientId} so its Memory Master MCP bridge can reach the service.`,
+		403,
+	);
 }
 
 export function accessDisabledError(clientId: string): LibraryError {
