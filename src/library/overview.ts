@@ -59,15 +59,27 @@ function renderOverviewSection(key: OverviewSectionKey, body: string): string {
 	return [`## ${SECTION_HEADINGS[key]}`, "", beginMarker(key), body.trimEnd(), endMarker(key)].join("\n");
 }
 
+/**
+ * Markers bind only as whole lines (same convention as task sections) — an
+ * inline mention inside prose is just text, never a section boundary.
+ */
+function findMarkerLine(lines: string[], marker: string, fromIndex = 0): number {
+	for (let i = fromIndex; i < lines.length; i++) {
+		if (lines[i]!.trim() === marker) return i;
+	}
+	return -1;
+}
+
 function extractSection(content: string, key: OverviewSectionKey): string {
-	const begin = beginMarker(key);
-	const end = endMarker(key);
-	const start = content.indexOf(begin);
+	const lines = content.split("\n");
+	const start = findMarkerLine(lines, beginMarker(key));
 	if (start === -1) return "";
-	const bodyStart = start + begin.length;
-	const stop = content.indexOf(end, bodyStart);
+	const stop = findMarkerLine(lines, endMarker(key), start + 1);
 	if (stop === -1) return "";
-	return content.slice(bodyStart, stop).trim();
+	return lines
+		.slice(start + 1, stop)
+		.join("\n")
+		.trim();
 }
 
 /** Read the three maintained sections; a missing or partial file yields empty strings. */
@@ -91,16 +103,15 @@ export function applyOverviewUpdate(content: string, update: Partial<ProjectOver
 		const field = SECTION_FIELD[key];
 		const value = update[field];
 		if (value === undefined) continue;
-		const begin = beginMarker(key);
-		const end = endMarker(key);
-		const start = next.indexOf(begin);
-		const stop = start === -1 ? -1 : next.indexOf(end, start + begin.length);
+		const lines = next.split("\n");
+		const start = findMarkerLine(lines, beginMarker(key));
+		const stop = start === -1 ? -1 : findMarkerLine(lines, endMarker(key), start + 1);
 		if (stop === -1) {
 			// Section missing entirely: append it in the canonical order at the end.
 			next = `${next.trimEnd()}\n\n${renderOverviewSection(key, value)}\n`;
 			continue;
 		}
-		next = `${next.slice(0, start + begin.length)}\n${value.trimEnd()}\n${next.slice(stop)}`;
+		next = [...lines.slice(0, start + 1), value.trimEnd(), ...lines.slice(stop)].join("\n");
 	}
 	return next;
 }

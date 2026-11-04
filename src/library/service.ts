@@ -5,7 +5,7 @@ import type { TaskWriteHooks } from "../core/memaster.ts";
 import libraryIndexHtml from "../library-web/index.html";
 import type { Task } from "../types/index.ts";
 import { getVersion } from "../utils/version.ts";
-import { overviewFilePath, readOverview, writeOverview } from "./overview.ts";
+import { initialOverviewContent, overviewFilePath, readOverview, writeOverview } from "./overview.ts";
 import { ProjectStore, type TaskWriteInput } from "./project-store.ts";
 import { createProject, getProjectById, listProjects, resolveProject } from "./registry.ts";
 import { AppSettingsStore } from "./settings.ts";
@@ -27,7 +27,9 @@ const SECTION_MARKER_LINE = /^<!-- SECTION:[A-Z][A-Z0-9_]*:(BEGIN|END) -->$/m;
 
 /** The service answers loopback hosts only; anything else is treated as a rebinding attempt. */
 function isLoopbackHost(req: Request): boolean {
-	const host = (req.headers.get("host") ?? "").split(":")[0];
+	const raw = req.headers.get("host") ?? "";
+	// Host forms: "127.0.0.1", "127.0.0.1:6420", "localhost:6420", "[::1]", "[::1]:6420".
+	const host = raw.startsWith("[") ? raw.slice(0, raw.indexOf("]") + 1) : raw.split(":")[0];
 	return host === "127.0.0.1" || host === "localhost" || host === "[::1]";
 }
 
@@ -44,10 +46,20 @@ function errorResponse(error: unknown): Response {
 		return json({ error: error.message, code: error.code, ...(error.details ?? {}) }, error.status);
 	}
 	const message = error instanceof Error ? error.message : String(error);
+	// Lock contention (ELOCKED / lock acquisition failures) is a conflict, not a crash.
+	if (/lock/i.test(message)) {
+		return json({ error: message, code: "CONFLICT" }, 409);
+	}
 	return json({ error: message }, 500);
 }
 
 async function parseBody(req: Request): Promise<Record<string, unknown>> {
+	// Cross-site "simple" requests (form posts) cannot set this content type, so
+	// requiring it closes the CSRF surface on top of the loopback Host allowlist.
+	const contentType = req.headers.get("content-type") ?? "";
+	if (!contentType.includes("application/json")) {
+		throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Requests must use content-type application/json.", 415);
+	}
 	try {
 		const body = await req.json();
 		return typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
@@ -149,6 +161,11 @@ export class LibraryService {
 		const store = this.storeFor(await this.projectFor(projectId));
 		// Validate up front for a 400 (Core would otherwise throw a plain 500 error).
 		const status = input.status !== undefined ? await store.assertValidStatus(input.status) : undefined;
+		if (status?.toLowerCase() === "draft") {
+			// Demotion bypasses updateTaskFromInput's hook seam; library projects have no
+			// draft concept in phase 1, so refuse it outright at the boundary.
+			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, 'Status "Draft" is not supported here.', 400);
+		}
 		const hooks = this.writeHooks(clientToken);
 
 		if (taskId) {
@@ -206,6 +223,12 @@ export class LibraryService {
 				);
 			}
 		}
+		// The lock mechanism stats the target file — recreate a missing overview
+		// first (hand-made project dirs may not have one yet).
+		const path = overviewFilePath(project.dir);
+		if (!(await Bun.file(path).exists())) {
+			await Bun.write(path, initialOverviewContent(project.name));
+		}
 		// Serialize with the same file-lock machinery tasks use, and re-check
 		// authorization inside it so revocation beats a parked write.
 		return await store.filesystem.withTaskLock(
@@ -248,8 +271,15 @@ export class LibraryService {
 			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "libraryRoot is required.", 400);
 		}
 		const { mkdir } = await import("node:fs/promises");
-		const { resolve } = await import("node:path");
+		const { parse, resolve } = await import("node:path");
 		const absolute = resolve(root);
+		if (absolute === parse(absolute).root) {
+			throw new LibraryError(
+				LIBRARY_ERROR_CODES.VALIDATION,
+				"The filesystem root cannot be used as a memory library.",
+				400,
+			);
+		}
 		await mkdir(absolute, { recursive: true });
 		await this.settings.setLibraryRoot(absolute);
 		this.stores.clear(); // project stores are keyed by directory — never let them outlive a root change
@@ -279,9 +309,9 @@ export class LibraryService {
 	private async handlePutOverview(req: Request, projectId: string, clientToken: string | null): Promise<Response> {
 		const body = await parseBody(req);
 		const update = {
-			...(body.description !== undefined ? { description: String(body.description) } : {}),
-			...(body.goal !== undefined ? { goal: String(body.goal) } : {}),
-			...(body.current !== undefined ? { current: String(body.current) } : {}),
+			...(typeof body.description === "string" ? { description: body.description } : {}),
+			...(typeof body.goal === "string" ? { goal: body.goal } : {}),
+			...(typeof body.current === "string" ? { current: body.current } : {}),
 		};
 		return json(await this.writeOverview(clientToken, projectId, update));
 	}
@@ -301,9 +331,9 @@ export class LibraryService {
 
 	private taskInputFrom(body: Record<string, unknown>): TaskWriteInput {
 		return {
-			...(body.title !== undefined ? { title: String(body.title) } : {}),
-			...(body.status !== undefined ? { status: String(body.status) } : {}),
-			...(body.description !== undefined ? { description: String(body.description) } : {}),
+			...(typeof body.title === "string" ? { title: body.title } : {}),
+			...(typeof body.status === "string" ? { status: body.status } : {}),
+			...(typeof body.description === "string" ? { description: body.description } : {}),
 		};
 	}
 

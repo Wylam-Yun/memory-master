@@ -11,6 +11,7 @@ describe("library service", () => {
 	let home: string;
 	let library: string;
 	let service: LibraryService;
+	let holds: TestHolds;
 	let base: string;
 
 	const req = async (
@@ -31,9 +32,10 @@ describe("library service", () => {
 	beforeEach(async () => {
 		home = await mkdtemp(join(tmpdir(), "mm-home-"));
 		library = join(home, "library");
+		holds = new TestHolds(true);
 		service = new LibraryService({
 			settings: new AppSettingsStore(home),
-			holds: new TestHolds(true),
+			holds,
 		});
 		await service.start(0);
 		base = service.baseUrl();
@@ -163,13 +165,15 @@ describe("library service", () => {
 		});
 		const task = await json(created);
 
-		// Park the agent write inside the task lock, revoke, then release.
+		// Park the agent write inside the task lock — proven parked via waitForWaiter —
+		// revoke, then release. The in-lock re-check must reject it.
 		const hold = await json(await req("/api/test/holds", { method: "POST", body: { name: "pre-commit" } }));
 		const writePromise = req(`/api/agent/projects/${project.id}/tasks/${task.id}`, {
 			method: "PUT",
 			token,
 			body: { status: "Done" },
 		});
+		await holds.waitForWaiter();
 		const revoke = await req("/api/clients/codex", { method: "PUT", body: { enabled: false } });
 		expect(revoke.status).toBe(200);
 		await req(`/api/test/holds/${hold.id}`, { method: "DELETE" });

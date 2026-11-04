@@ -114,9 +114,10 @@ export class AppSettingsStore {
 		const tmpPath = `${this.filePath}.tmp-${process.pid}-${randomBytes(4).toString("hex")}`;
 		await Bun.write(tmpPath, `${JSON.stringify(next, null, 2)}\n`);
 		const { chmod, rename } = await import("node:fs/promises");
+		// The file carries client credentials — restrict the temp file before the
+		// rename publishes it, so it is never briefly world-readable.
+		await chmod(tmpPath, 0o600).catch(() => {});
 		await rename(tmpPath, this.filePath);
-		// The file carries client credentials — keep it owner-only.
-		await chmod(this.filePath, 0o600).catch(() => {});
 		this.settings = next;
 	}
 

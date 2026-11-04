@@ -48,7 +48,12 @@ export class LibraryBridge {
 				},
 				...(init.body !== undefined ? { body: JSON.stringify(init.body) } : {}),
 			});
-		} catch {
+		} catch (error) {
+			if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+				throw new Error(
+					"Memory Master service request timed out — the write may still have landed. Check before retrying.",
+				);
+			}
 			throw new Error(`Cannot reach the Memory Master service at ${this.options.serviceUrl}. Is it running?`);
 		}
 		const data = (await response.json().catch(() => ({}))) as {

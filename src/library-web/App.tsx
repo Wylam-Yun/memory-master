@@ -341,25 +341,43 @@ function SettingsPage({ libraryRoot, reload }: { libraryRoot: string; reload: ()
 export default function App() {
 	const [state, setState] = useState<{
 		loaded: boolean;
+		error: string | null;
 		libraryRoot: string | null;
 		defaultLibraryRoot: string;
 		projects: LibraryProject[];
-	}>({ loaded: false, libraryRoot: null, defaultLibraryRoot: "", projects: [] });
+	}>({ loaded: false, error: null, libraryRoot: null, defaultLibraryRoot: "", projects: [] });
 
 	const load = useCallback(async () => {
 		const lib = await api.getLibrary();
 		setState({
 			loaded: true,
+			error: null,
 			libraryRoot: lib.libraryRoot,
 			defaultLibraryRoot: lib.defaultLibraryRoot,
 			projects: lib.projects,
 		});
 	}, []);
 	useEffect(() => {
-		load().catch(() => setState((s) => ({ ...s, loaded: true })));
+		load().catch((e) =>
+			setState((s) => ({
+				...s,
+				loaded: true,
+				error: e instanceof Error ? e.message : String(e),
+			})),
+		);
 	}, [load]);
 
 	if (!state.loaded) return <div className="p-8 text-sm text-gray-500">加载中…</div>;
+	if (state.error) {
+		return (
+			<div className="p-8 text-sm text-red-600">
+				无法连接 Memory Master 服务：{state.error}
+				<button className="ml-3 text-blue-600 underline" onClick={() => load().catch(() => {})}>
+					重试
+				</button>
+			</div>
+		);
+	}
 	if (!state.libraryRoot) {
 		return (
 			<BrowserRouter>

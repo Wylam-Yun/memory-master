@@ -183,5 +183,8 @@ export async function createProject(
 	await Bun.write(overviewFilePath(dir), initialOverviewContent(name));
 	await mkdir(join(dir, RESOURCES_DIR_NAME), { recursive: true });
 
-	return { id, name, dir, workingDir };
+	// Post-create self-check: a concurrent create racing into the same directory
+	// could have overwritten this project's identity — never return a dangling ID.
+	const persisted = await getProjectById(libraryRoot, id);
+	return { id: persisted.id, name: persisted.name, dir, workingDir };
 }
