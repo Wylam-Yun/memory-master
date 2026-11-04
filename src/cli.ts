@@ -6216,6 +6216,138 @@ program
 		}
 	});
 
+// Memory Master service command (V1.0 library + agent API)
+program
+	.command("serve")
+	.description("start the Memory Master local service (memory library web UI + agent API)")
+	.option("-p, --port <port>", "port to run the service on")
+	.option("--no-open", "don't automatically open the library web UI")
+	.action(async (options) => {
+		try {
+			const { LibraryService, defaultLibraryRoot } = await import("./library/service.ts");
+			const { findNextAvailablePort, isPortAvailable } = await import("./server/index.ts");
+			const { AppSettingsStore } = await import("./library/settings.ts");
+
+			const settings = new AppSettingsStore();
+			const service = new LibraryService({ settings });
+
+			let port = Number.parseInt(options.port || String(await settings.getPort()), 10);
+			if (Number.isNaN(port) || port < 1 || port > 65535) {
+				console.error("Invalid port number. Must be between 1 and 65535.");
+				process.exit(1);
+			}
+			if (!(await isPortAvailable(port))) {
+				const nextPort = await findNextAvailablePort(port + 1);
+				if (nextPort === null) {
+					console.error(`No available port found after ${port}. Use --port to specify one.`);
+					process.exit(1);
+				}
+				console.log(`⚠️  Port ${port} is already in use. Using port ${nextPort} instead.`);
+				port = nextPort;
+			}
+
+			await service.start(port);
+			if (port !== (await settings.getPort())) {
+				// Persist a fallback port so `connect` keeps printing the right URL.
+				await settings.setPort(port);
+			}
+			const url = service.baseUrl();
+			console.log(`Memory Master service running at ${url}`);
+			if (!(await settings.getLibraryRoot())) {
+				console.log(`No memory library selected yet — open ${url} to choose one (default: ${defaultLibraryRoot()}).`);
+			}
+			if (options.open !== false) {
+				const { $ } = await import("bun");
+				await $`open ${url}`.quiet().catch(() => {});
+			}
+
+			let shuttingDown = false;
+			const shutdown = async (signal: string) => {
+				if (shuttingDown) return;
+				shuttingDown = true;
+				console.log(`\nReceived ${signal}. Stopping the service...`);
+				try {
+					await Promise.race([service.stop(), new Promise<void>((r) => setTimeout(r, 1500))]);
+				} finally {
+					process.exit(0);
+				}
+			};
+			process.once("SIGINT", () => void shutdown("SIGINT"));
+			process.on("SIGTERM", () => void shutdown("SIGTERM"));
+			process.on("SIGQUIT", () => void shutdown("SIGQUIT"));
+		} catch (err) {
+			reportCommandFailure("Failed to start the Memory Master service", err);
+		}
+	});
+
+// MCP bridge command — what agent client configs invoke over stdio
+program
+	.command("bridge")
+	.description("run the Memory Master MCP bridge on stdio (used by agent client configs)")
+	.option("--url <url>", "service URL (default: MEMORY_MASTER_URL env or http://127.0.0.1:6420)")
+	.option("--token <token>", "client access token (default: MEMORY_MASTER_TOKEN env)")
+	.action(async (options) => {
+		try {
+			const serviceUrl = options.url ?? process.env.MEMORY_MASTER_URL ?? "http://127.0.0.1:6420";
+			const token = options.token ?? process.env.MEMORY_MASTER_TOKEN ?? "";
+			if (!token) {
+				console.error(
+					"No access token configured. Set MEMORY_MASTER_TOKEN or pass --token. " +
+						"Run `memaster connect <client>` to generate a client configuration.",
+				);
+				process.exit(1);
+			}
+			const { startLibraryBridge } = await import("./mcp/library-bridge.ts");
+			await startLibraryBridge({ serviceUrl, token });
+		} catch (err) {
+			reportCommandFailure("Failed to start the MCP bridge", err);
+		}
+	});
+
+// Connect command — prints a ready-to-use MCP client configuration
+program
+	.command("connect <client>")
+	.description("print the MCP client configuration for a client (codex | claude-code)")
+	.action(async (client: string) => {
+		try {
+			const { AppSettingsStore } = await import("./library/settings.ts");
+			const { isLibraryClientId, LIBRARY_CLIENT_LABELS, LIBRARY_CLIENT_IDS } = await import("./library/types.ts");
+			if (!isLibraryClientId(client)) {
+				console.error(`Unknown client "${client}". Expected one of: ${LIBRARY_CLIENT_IDS.join(", ")}`);
+				process.exit(1);
+			}
+			const settings = new AppSettingsStore();
+			const slot = await settings.getClient(client);
+			if (!slot.token) {
+				console.error(
+					`${LIBRARY_CLIENT_LABELS[client]} has no access credential yet. ` +
+						"Enable it in the Memory Master settings page first (memaster serve → /settings).",
+				);
+				process.exit(1);
+			}
+			const config = {
+				mcpServers: {
+					"memory-master": {
+						command: "memaster",
+						args: ["bridge"],
+						env: {
+							MEMORY_MASTER_URL: `http://127.0.0.1:${await settings.getPort()}`,
+							MEMORY_MASTER_TOKEN: slot.token,
+						},
+					},
+				},
+			};
+			console.log(JSON.stringify(config, null, 2));
+			if (!slot.enabled) {
+				console.error(
+					`\nNote: ${LIBRARY_CLIENT_LABELS[client]} is currently disabled — enable it in settings before use.`,
+				);
+			}
+		} catch (err) {
+			reportCommandFailure("Failed to produce the client configuration", err);
+		}
+	});
+
 // Overview command for statistics
 program
 	.command("overview")

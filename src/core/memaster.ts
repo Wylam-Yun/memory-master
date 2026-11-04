@@ -201,6 +201,15 @@ interface TaskReadOptions {
 	refreshCrossBranch?: boolean;
 }
 
+/**
+ * Optional gate invoked inside the entity write lock, immediately before the
+ * record reaches disk. Used by the library service to park test writes and to
+ * re-check client authorization at the last possible moment.
+ */
+export interface TaskWriteHooks {
+	preWrite?: () => Promise<void>;
+}
+
 interface ActiveBranchSnapshot {
 	branchTips: readonly GitBranchTip[];
 	currentBranch: string;
@@ -2199,7 +2208,11 @@ export class Core {
 		return { indexRestored, workingPathRestored };
 	}
 
-	async createTaskFromInput(input: TaskCreateInput, autoCommit?: boolean): Promise<{ task: Task; filePath?: string }> {
+	async createTaskFromInput(
+		input: TaskCreateInput,
+		autoCommit?: boolean,
+		hooks?: TaskWriteHooks,
+	): Promise<{ task: Task; filePath?: string }> {
 		if (!input.title || input.title.trim().length === 0) {
 			throw new Error("Title is required to create a task.");
 		}
@@ -2320,6 +2333,7 @@ export class Core {
 
 			const targetPath = await this.fs.getTaskWritePath(task, isDraft);
 			const previousIndexEntries = autoCommitEnabled ? await this.git.getIndexEntries(targetPath) : undefined;
+			await hooks?.preWrite?.();
 			const filePath = await this.writePreparedTask(task, isDraft);
 			const createdContent = await readFile(filePath);
 			const write: CreatedTaskWrite = {
@@ -3055,6 +3069,7 @@ export class Core {
 		input: TaskUpdateInput,
 		autoCommit?: boolean,
 		options: TaskReadOptions = {},
+		hooks?: TaskWriteHooks,
 	): Promise<Task> {
 		const task = await this.loadTaskForMutation(taskId, options);
 		if (!task) {
@@ -3085,6 +3100,7 @@ export class Core {
 				return current;
 			}
 
+			await hooks?.preWrite?.();
 			await this.updateTask(current, autoCommit);
 			return current;
 		});

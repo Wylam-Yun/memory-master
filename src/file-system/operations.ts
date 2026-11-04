@@ -2405,6 +2405,14 @@ ${description || `Milestone: ${title}`}`,
 				case "memasterDirectory":
 					config.memasterDirectory = value.replace(/['"]/g, "");
 					break;
+				case "project_id":
+				case "projectId":
+					config.projectId = value.replace(/['"]/g, "");
+					break;
+				case "working_dir":
+				case "workingDir":
+					config.workingDir = value.replace(/['"]/g, "");
+					break;
 			}
 		}
 
@@ -2435,6 +2443,8 @@ ${description || `Milestone: ${title}`}`,
 			onStatusChange: config.onStatusChange,
 			prefixes: config.prefixes,
 			memasterDirectory: config.memasterDirectory,
+			projectId: config.projectId,
+			workingDir: config.workingDir,
 		};
 	}
 
@@ -2477,6 +2487,8 @@ ${description || `Milestone: ${title}`}`,
 			...(config.onStatusChange ? [`onStatusChange: '${config.onStatusChange}'`] : []),
 			...(config.prefixes?.task ? [`task_prefix: "${config.prefixes.task}"`] : []),
 			...(config.memasterDirectory ? [`memaster_directory: "${config.memasterDirectory}"`] : []),
+			...(config.projectId ? [`project_id: "${config.projectId}"`] : []),
+			...(config.workingDir ? [`working_dir: "${config.workingDir}"`] : []),
 		];
 
 		return `${lines.join("\n")}\n`;

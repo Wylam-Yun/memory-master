@@ -416,6 +416,10 @@ export interface MemasterConfig {
 	activeBranchDays?: number; // How many days a branch is considered active (default: 30)
 	/** Project-relative memaster folder when config is stored at project root in memaster.config.yml. */
 	memasterDirectory?: string;
+	/** Stable V1.0 library project ID (written as project_id); unset for ordinary repo projects. */
+	projectId?: string;
+	/** Optional associated working directory for V1.0 library projects (written as working_dir). */
+	workingDir?: string;
 	/** Global callback command to run on any task status change. Supports $TASK_ID, $OLD_STATUS, $NEW_STATUS, $TASK_TITLE variables. */
 	onStatusChange?: string;
 	/** ID prefix configuration for tasks and drafts. Defaults to { task: "task", draft: "draft" } */

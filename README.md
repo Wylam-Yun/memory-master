@@ -68,8 +68,18 @@ Memaster itself. The full task ledger lives in this repo's [memaster folder](mem
 
 * 🔒 **Local-first** -- no server, no account, no telemetry; tasks are plain files in your repo, and remote Git operations are optional
 
-* 💻 Cross-platform (macOS, Linux, Windows) · 🆓 MIT-licensed & open-source
+* �️ **Memory library (V1.0 phase 1)** -- `memaster serve` runs a local service that hosts multiple independent projects under one library directory, with a web UI for project management and per-client authorization switches for agent access
 
+* �💻 Cross-platform (macOS, Linux, Windows) · 🆓 MIT-licensed & open-source
+
+### Memory Master service (memory library)
+
+`memaster serve` starts the local service (default port 6420) and opens the library web UI:
+
+* **Choose a memory library** on first launch (default `~/Documents/MemoryMaster`); each project is its own directory with a `memaster/` store and a `资料/` folder.
+* **Create and manage projects** from the web UI — overview sections (what it is / goal / current progress) and tasks.
+* **Authorize agent clients** in `/settings`: Codex and Claude Code have independent switches and credentials, off by default. Revoking takes effect immediately, including writes already in flight.
+* **Connect an agent**: `memaster connect codex` (or `claude-code`) prints a ready-to-paste `mcpServers` config; the agent talks to the service through `memaster bridge` and can open projects by name from any directory.
 
 ---
 
