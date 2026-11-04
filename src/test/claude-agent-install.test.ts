@@ -25,34 +25,34 @@ describe("installClaudeAgent", () => {
 		expect(existsSync(agentDir)).toBe(true);
 	});
 
-	it("writes the project-manager-backlog.md file with correct content", async () => {
+	it("writes the project-manager-memory-master file with correct content", async () => {
 		await installClaudeAgent(TEST_PROJECT);
 
-		const agentPath = join(TEST_PROJECT, ".claude", "agents", "project-manager-backlog.md");
+		const agentPath = join(TEST_PROJECT, ".claude", "agents", "project-manager-memory-master");
 		const content = await Bun.file(agentPath).text();
 
 		expect(content).toContain(CLAUDE_AGENT_CONTENT.trimEnd());
-		expect(content).toContain("name: project-manager-backlog");
+		expect(content).toContain("name: project-manager-memaster");
 		expect(content).toContain(
-			"You are an expert project manager specializing in the backlog.md task management system",
+			"You are an expert project manager specializing in the memory-master task management system",
 		);
 	});
 
 	it("appends a version marker matching package.json (BACK-267)", async () => {
 		await installClaudeAgent(TEST_PROJECT);
 
-		const agentPath = join(TEST_PROJECT, ".claude", "agents", "project-manager-backlog.md");
+		const agentPath = join(TEST_PROJECT, ".claude", "agents", "project-manager-memory-master");
 		const content = await Bun.file(agentPath).text();
 		const { version } = await Bun.file(join(__dirname, "../../package.json")).json();
 
-		expect(content.trimEnd().endsWith(`<!-- backlog.md-instructions-version: ${version} -->`)).toBe(true);
+		expect(content.trimEnd().endsWith(`<!-- memory-master-instructions-version: ${version} -->`)).toBe(true);
 	});
 
 	it("overwrites existing agent file", async () => {
 		const agentDir = join(TEST_PROJECT, ".claude", "agents");
 		await mkdir(agentDir, { recursive: true });
 
-		const agentPath = join(TEST_PROJECT, ".claude", "agents", "project-manager-backlog.md");
+		const agentPath = join(TEST_PROJECT, ".claude", "agents", "project-manager-memory-master");
 		await Bun.write(agentPath, "Old content");
 
 		await installClaudeAgent(TEST_PROJECT);
@@ -68,7 +68,7 @@ describe("installClaudeAgent", () => {
 
 		await installClaudeAgent(subProjectPath);
 
-		const agentPath = join(subProjectPath, ".claude", "agents", "project-manager-backlog.md");
+		const agentPath = join(subProjectPath, ".claude", "agents", "project-manager-memory-master");
 		expect(existsSync(agentPath)).toBe(true);
 	});
 });

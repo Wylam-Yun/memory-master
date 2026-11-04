@@ -3,8 +3,8 @@ import { EventEmitter } from "node:events";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { screen as createBlessedScreen, program as createProgram, list } from "neo-neo-bblessed";
-import { Core } from "../core/backlog.ts";
-import type { BacklogConfig, Task } from "../types/index.ts";
+import { Core } from "../core/memaster.ts";
+import type { MemasterConfig, Task } from "../types/index.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
 /** Stands in for the terminal's keyboard so a real blessed program can pause and resume it. */
@@ -70,7 +70,7 @@ describe("Core.editTaskInTui", () => {
 		if (!config) {
 			throw new Error("Expected config to be initialized");
 		}
-		const updated: BacklogConfig = {
+		const updated: MemasterConfig = {
 			...config,
 			defaultEditor: editorCommand,
 		};

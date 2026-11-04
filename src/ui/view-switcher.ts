@@ -3,7 +3,7 @@
  * with intelligent background loading and state preservation.
  */
 
-import type { Core } from "../core/backlog.ts";
+import type { Core } from "../core/memaster.ts";
 import type { Task } from "../types/index.ts";
 
 export type ViewType = "task-list" | "task-detail" | "kanban";

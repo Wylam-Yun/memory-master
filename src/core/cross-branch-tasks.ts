@@ -52,42 +52,42 @@ export async function getLatestTaskStatesForIds(
 			return taskDirectories;
 		}
 
-		const backlogDir = filesystem.backlogDirName;
+		const memasterDir = filesystem.memasterDirName;
 
-		// Filter branches that actually have backlog changes
-		const branchesWithBacklog: string[] = [];
+		// Filter branches that actually have memaster changes
+		const branchesWithMemaster: string[] = [];
 
-		// Quick check which branches actually have the backlog directory
+		// Quick check which branches actually have the memaster directory
 		for (const branch of branches) {
 			try {
-				// Just check if the backlog directory exists
-				const files = await gitOps.listFilesInTree(branch, backlogDir);
+				// Just check if the memaster directory exists
+				const files = await gitOps.listFilesInTree(branch, memasterDir);
 				if (files.length > 0) {
-					branchesWithBacklog.push(branch);
+					branchesWithMemaster.push(branch);
 				}
 			} catch {
-				// Branch doesn't have backlog directory
+				// Branch doesn't have memaster directory
 			}
 		}
 
 		// Use filtered branches
-		branches = branchesWithBacklog;
+		branches = branchesWithMemaster;
 
 		// Count local vs remote branches for info
 		const localBranches = branches.filter((b) => !b.includes("origin/"));
 		const remoteBranches = branches.filter((b) => b.includes("origin/"));
 
 		const branchMsg = useRecentOnly
-			? `${branches.length} branches with backlog (from ${daysAgo} days, ${localBranches.length} local, ${remoteBranches.length} remote)`
-			: `${branches.length} branches with backlog (${localBranches.length} local, ${remoteBranches.length} remote)`;
+			? `${branches.length} branches with memaster (from ${daysAgo} days, ${localBranches.length} local, ${remoteBranches.length} remote)`
+			: `${branches.length} branches with memaster (${localBranches.length} local, ${remoteBranches.length} remote)`;
 		onProgress?.(`Checking ${taskIds.length} tasks across ${branchMsg}...`);
 
 		// Create all file path combinations we need to check
 		const directoryChecks: Array<{ path: string; type: TaskDirectoryType }> = [
-			{ path: `${backlogDir}/tasks`, type: "task" },
-			{ path: `${backlogDir}/drafts`, type: "draft" },
+			{ path: `${memasterDir}/tasks`, type: "task" },
+			{ path: `${memasterDir}/drafts`, type: "draft" },
 			...ARCHIVED_TASK_DIRECTORIES.map((directory) => ({
-				path: `${backlogDir}/${directory}`,
+				path: `${memasterDir}/${directory}`,
 				type: "archived" as const,
 			})),
 		];

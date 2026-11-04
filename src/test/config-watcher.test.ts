@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { writeFileSync } from "node:fs";
 import { mkdir, rename } from "node:fs/promises";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { FileSystem } from "../file-system/operations.ts";
-import type { BacklogConfig } from "../types/index.ts";
+import type { MemasterConfig } from "../types/index.ts";
 import { watchConfig, watchConfigFile } from "../utils/config-watcher.ts";
 import { createUniqueTestDir, getPlatformTimeout, safeCleanup } from "./test-utils.ts";
 
@@ -12,7 +12,7 @@ let testDir: string;
 let core: Core;
 let watcherChild: Bun.Subprocess<"ignore", "ignore", "pipe"> | undefined;
 
-const initialConfig: BacklogConfig = {
+const initialConfig: MemasterConfig = {
 	projectName: "Config watcher",
 	statuses: ["To Do", "Done"],
 	labels: ["web"],
@@ -50,7 +50,7 @@ describe("config watcher", () => {
 		testDir = createUniqueTestDir("config-watcher");
 		watcherChild = undefined;
 		core = new Core(testDir);
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await core.filesystem.saveConfig(initialConfig);
 	});
 
@@ -140,9 +140,9 @@ describe("config watcher", () => {
 			return originalParseConfig(content);
 		};
 
-		const published: BacklogConfig[] = [];
-		let resolvePublished: (config: BacklogConfig) => void = () => {};
-		const publishedConfig = new Promise<BacklogConfig>((resolve) => {
+		const published: MemasterConfig[] = [];
+		let resolvePublished: (config: MemasterConfig) => void = () => {};
+		const publishedConfig = new Promise<MemasterConfig>((resolve) => {
 			resolvePublished = resolve;
 		});
 		const configWatcher = watchConfig(core, {
@@ -229,10 +229,10 @@ describe("config watcher", () => {
 			return originalParseConfig(content);
 		};
 
-		const published: BacklogConfig[] = [];
-		let resolveNextPublished: (config: BacklogConfig) => void = () => {};
+		const published: MemasterConfig[] = [];
+		let resolveNextPublished: (config: MemasterConfig) => void = () => {};
 		const nextPublished = () =>
-			new Promise<BacklogConfig>((resolve) => {
+			new Promise<MemasterConfig>((resolve) => {
 				resolveNextPublished = resolve;
 			});
 		const configWatcher = watchConfigFile(core.filesystem, {
@@ -269,10 +269,10 @@ describe("config watcher", () => {
 
 	it("publishes root config resolution from the same accepted content", async () => {
 		const rootDir = createUniqueTestDir("config-watcher-root");
-		const rootConfigPath = join(rootDir, "backlog.config.yml");
+		const rootConfigPath = join(rootDir, "memaster.config.yml");
 		const candidateContent = [
 			'project_name: "Candidate"',
-			'backlog_directory: "custom/a"',
+			'memaster_directory: "custom/a"',
 			'statuses: ["To Do", "Done"]',
 			"labels: []",
 			"date_format: YYYY-MM-DD",
@@ -281,7 +281,7 @@ describe("config watcher", () => {
 		].join("\n");
 		const interveningInvalidContent = [
 			'project_name: ""',
-			'backlog_directory: "custom/b"',
+			'memaster_directory: "custom/b"',
 			"check_active_branches: false",
 			"",
 		].join("\n");
@@ -295,7 +295,7 @@ describe("config watcher", () => {
 		].join("\n");
 		const invalidPointerContent = [
 			'project_name: "Broken pointer"',
-			'backlog_directory: "../escape"',
+			'memaster_directory: "../escape"',
 			'statuses: ["To Do", "Done"]',
 			"labels: []",
 			"date_format: YYYY-MM-DD",
@@ -304,7 +304,7 @@ describe("config watcher", () => {
 		].join("\n");
 		const malformedPointerContent = [
 			'project_name: "Malformed pointer"',
-			'backlog_directory "backlog"',
+			'memaster_directory "memaster"',
 			'statuses: ["To Do", "Done"]',
 			"labels: []",
 			"date_format: YYYY-MM-DD",
@@ -313,7 +313,7 @@ describe("config watcher", () => {
 		].join("\n");
 		const nextValidContent = candidateContent
 			.replace('project_name: "Candidate"', 'project_name: "Next valid"')
-			.replace('backlog_directory: "custom/a"', 'backlog_directory: "custom/b"');
+			.replace('memaster_directory: "custom/a"', 'memaster_directory: "custom/b"');
 		await mkdir(join(rootDir, "custom", "a"), { recursive: true });
 		await mkdir(join(rootDir, "custom", "b"), { recursive: true });
 		await Bun.write(rootConfigPath, candidateContent.replace('project_name: "Candidate"', 'project_name: "Initial"'));
@@ -356,7 +356,7 @@ describe("config watcher", () => {
 			}
 			return config;
 		};
-		type RootConfigSnapshot = { config: BacklogConfig; backlogDirName: string; configPath: string };
+		type RootConfigSnapshot = { config: MemasterConfig; memasterDirName: string; configPath: string };
 		let callbackCount = 0;
 		let resolveFirstPublished: (snapshot: RootConfigSnapshot) => void = () => {};
 		let resolveSecondPublished: (snapshot: RootConfigSnapshot) => void = () => {};
@@ -372,7 +372,7 @@ describe("config watcher", () => {
 				callbackCount += 1;
 				const snapshot = {
 					config,
-					backlogDirName: rootFilesystem.backlogDirName,
+					memasterDirName: rootFilesystem.memasterDirName,
 					configPath: rootFilesystem.configFilePath,
 				};
 				if (callbackCount === 1) resolveFirstPublished(snapshot);
@@ -387,28 +387,28 @@ describe("config watcher", () => {
 			const snapshot = await withTimeout(firstPublished, "root config publication");
 			expect(injectedInterveningContent).toBe(true);
 			expect(snapshot.config.projectName).toBe("Candidate");
-			expect(snapshot.config.backlogDirectory).toBe("custom/a");
-			expect(snapshot.backlogDirName).toBe("custom/a");
+			expect(snapshot.config.memasterDirectory).toBe("custom/a");
+			expect(snapshot.memasterDirName).toBe("custom/a");
 			expect(snapshot.configPath).toBe(rootConfigPath);
 			expect((await rootFilesystem.loadConfig())?.projectName).toBe("Candidate");
-			expect(rootFilesystem.backlogDirName).toBe("custom/a");
+			expect(rootFilesystem.memasterDirName).toBe("custom/a");
 
 			await Bun.write(replacementPath, sparseRootContent);
 			await rename(replacementPath, rootConfigPath);
 			await withTimeout(sparseRootAttemptsExhausted, "sparse root config attempts");
 			expect(callbackCount).toBe(1);
 			expect((await rootFilesystem.loadConfig())?.projectName).toBe("Candidate");
-			expect(rootFilesystem.backlogDirName).toBe("custom/a");
+			expect(rootFilesystem.memasterDirName).toBe("custom/a");
 			expect(rootFilesystem.configFilePath).toBe(rootConfigPath);
 
-			await mkdir(join(rootDir, "backlog"), { recursive: true });
+			await mkdir(join(rootDir, "memaster"), { recursive: true });
 			await Bun.write(replacementPath, malformedPointerContent);
 			await rename(replacementPath, rootConfigPath);
 			await withTimeout(malformedPointerAttemptsExhausted, "malformed root pointer attempts");
 			expect(callbackCount).toBe(1);
 			expect((await rootFilesystem.loadConfig())?.projectName).toBe("Candidate");
 			expect((await rootFilesystem.loadConfig())?.checkActiveBranches).toBe(true);
-			expect(rootFilesystem.backlogDirName).toBe("custom/a");
+			expect(rootFilesystem.memasterDirName).toBe("custom/a");
 			expect(rootFilesystem.configFilePath).toBe(rootConfigPath);
 
 			await Bun.write(replacementPath, invalidPointerContent);
@@ -416,15 +416,15 @@ describe("config watcher", () => {
 			await withTimeout(invalidPointerAttemptsExhausted, "invalid root pointer attempts");
 			expect(callbackCount).toBe(1);
 			expect((await rootFilesystem.loadConfig())?.projectName).toBe("Candidate");
-			expect(rootFilesystem.backlogDirName).toBe("custom/a");
+			expect(rootFilesystem.memasterDirName).toBe("custom/a");
 			expect(rootFilesystem.configFilePath).toBe(rootConfigPath);
 
 			await Bun.write(replacementPath, nextValidContent);
 			await rename(replacementPath, rootConfigPath);
 			const nextSnapshot = await withTimeout(secondPublished, "next valid root config publication");
 			expect(nextSnapshot.config.projectName).toBe("Next valid");
-			expect(nextSnapshot.config.backlogDirectory).toBe("custom/b");
-			expect(nextSnapshot.backlogDirName).toBe("custom/b");
+			expect(nextSnapshot.config.memasterDirectory).toBe("custom/b");
+			expect(nextSnapshot.memasterDirName).toBe("custom/b");
 			expect(nextSnapshot.configPath).toBe(rootConfigPath);
 			expect((await rootFilesystem.loadConfig())?.projectName).toBe("Next valid");
 			await Bun.sleep(250);
@@ -439,8 +439,8 @@ describe("config watcher", () => {
 	it("publishes a stable prefix-only edit to the canonical config", async () => {
 		const canonicalContent = await Bun.file(core.filesystem.configFilePath).text();
 		const prefixEdit = canonicalContent.replace('task_prefix: "BACK"', 'task_prefix: "JIRA"');
-		let resolvePublished: (config: BacklogConfig) => void = () => {};
-		const publishedConfig = new Promise<BacklogConfig>((resolve) => {
+		let resolvePublished: (config: MemasterConfig) => void = () => {};
+		const publishedConfig = new Promise<MemasterConfig>((resolve) => {
 			resolvePublished = resolve;
 		});
 		const configWatcher = watchConfig(core, {
@@ -461,8 +461,8 @@ describe("config watcher", () => {
 	});
 
 	it("keeps accepting the sparse config shape supported by the parser", async () => {
-		let resolvePublished: (config: BacklogConfig) => void = () => {};
-		const publishedConfig = new Promise<BacklogConfig>((resolve) => {
+		let resolvePublished: (config: MemasterConfig) => void = () => {};
+		const publishedConfig = new Promise<MemasterConfig>((resolve) => {
 			resolvePublished = resolve;
 		});
 		const configWatcher = watchConfig(core, {
@@ -493,8 +493,8 @@ describe("config watcher", () => {
 		await Bun.write(core.filesystem.configFilePath, changedBeforeStartup);
 
 		let callbackCount = 0;
-		let resolvePublished: (config: BacklogConfig) => void = () => {};
-		const publishedConfig = new Promise<BacklogConfig>((resolve) => {
+		let resolvePublished: (config: MemasterConfig) => void = () => {};
+		const publishedConfig = new Promise<MemasterConfig>((resolve) => {
 			resolvePublished = resolve;
 		});
 		const configWatcher = watchConfig(core, {

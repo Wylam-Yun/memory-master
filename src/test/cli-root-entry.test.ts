@@ -12,7 +12,7 @@ const CLI_PATH = getTestCliPath();
 
 describe("CLI root entry (bare run)", () => {
 	beforeEach(async () => {
-		TEST_DIR = await mkdtemp(join(tmpdir(), "backlog-root-entry-"));
+		TEST_DIR = await mkdtemp(join(tmpdir(), "memaster-root-entry-"));
 		await mkdir(TEST_DIR, { recursive: true });
 	});
 
@@ -24,7 +24,7 @@ describe("CLI root entry (bare run)", () => {
 		const out = formatRootEntry({ version: "1.2.3", initialized: true, color: true });
 
 		expect(out).toContain("\u001B[1;36m██████╗");
-		expect(out).toContain("\u001B[1mBacklog.md\u001B[0m v1.2.3");
+		expect(out).toContain("\u001B[1mMemaster\u001B[0m v1.2.3");
 		expect(out).toContain("\u001B[1;33mCommon workflow:\u001B[0m");
 		expect(out).toContain("\u001B[0m");
 	});
@@ -47,7 +47,7 @@ describe("CLI root entry (bare run)", () => {
 			Object.defineProperty(process.stdout, "isTTY", { configurable: true, value: originalIsTTY });
 		}
 
-		expect(output).toContain("Backlog.md v1.2.3");
+		expect(output).toContain("Memaster v1.2.3");
 		expect(output).not.toContain("\u001B[");
 		expect(output).not.toContain("\u001B]");
 	});
@@ -57,15 +57,15 @@ describe("CLI root entry (bare run)", () => {
 		const out = result.stdout.toString();
 		expect(result.exitCode).toBe(0);
 		expect(out).toContain("██████╗");
-		expect(out).toContain("Backlog.md v");
-		expect(out).toContain("This directory is not initialized for Backlog.md.");
+		expect(out).toContain("Memaster v");
+		expect(out).toContain("This directory is not initialized for Memaster.");
 		expect(out).toContain("Project setup:");
-		expect(out).toContain("backlog init");
+		expect(out).toContain("memaster init");
 		expect(out).toContain("Local instructions:");
-		expect(out).toContain("backlog instructions");
-		expect(out).toContain("backlog instructions overview");
-		expect(out).toContain("backlog <command> --help");
-		expect(out).toContain("Docs: https://backlog.md");
+		expect(out).toContain("memaster instructions");
+		expect(out).toContain("memaster instructions overview");
+		expect(out).toContain("memaster <command> --help");
+		expect(out).toContain("Docs: https://github.com/Wylam-Yun/memory-master");
 		expect(out).not.toContain("\u001B[");
 		expect(out).not.toContain("\u001B]");
 	});
@@ -80,16 +80,16 @@ describe("CLI root entry (bare run)", () => {
 		expect(result.exitCode).toBe(0);
 		expect(out).toContain("██████╗");
 		expect(out).toContain("Common workflow:");
-		expect(out).toContain("backlog task view TASK-123 --plain");
-		expect(out).toContain("backlog task create");
-		expect(out).toContain("backlog board");
+		expect(out).toContain("memaster task view TASK-123 --plain");
+		expect(out).toContain("memaster task create");
+		expect(out).toContain("memaster board");
 		expect(out).toContain("Open the TUI Kanban board");
-		expect(out).toContain("backlog browser");
+		expect(out).toContain("memaster browser");
 		expect(out).toContain("Open the Web UI Kanban board");
 		expect(out).toContain("Local instructions:");
-		expect(out).toContain("backlog instructions task-execution");
-		expect(out).not.toContain("backlog init");
-		expect(out).toContain("Docs: https://backlog.md");
+		expect(out).toContain("memaster instructions task-execution");
+		expect(out).not.toContain("memaster init");
+		expect(out).toContain("Docs: https://github.com/Wylam-Yun/memory-master");
 		expect(out).not.toContain("\u001B[");
 		expect(out).not.toContain("\u001B]");
 	});
@@ -98,7 +98,7 @@ describe("CLI root entry (bare run)", () => {
 		const result = await $`bun ${CLI_PATH} --help`.cwd(TEST_DIR).quiet();
 		const out = result.stdout.toString();
 		expect(result.exitCode).toBe(0);
-		expect(out).toMatch(/Usage: .*backlog/);
+		expect(out).toMatch(/Usage: .*memaster/);
 		expect(out).not.toContain("Local instructions:");
 	});
 });

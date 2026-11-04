@@ -7,13 +7,13 @@ type PackageJson = {
 };
 
 const packageJson = (await Bun.file("package.json").json()) as PackageJson;
-const outfile = process.env.BACKLOG_BUILD_OUTFILE ?? "dist/backlog";
-const outdir = process.env.BACKLOG_BUILD_OUTDIR;
-const version = process.env.BACKLOG_BUILD_VERSION ?? packageJson.version;
-const target = process.env.BACKLOG_BUILD_TARGET;
-const executablePath = process.env.BACKLOG_BUILD_EXECUTABLE_PATH;
+const outfile = process.env.MEMASTER_BUILD_OUTFILE ?? "dist/memaster";
+const outdir = process.env.MEMASTER_BUILD_OUTDIR;
+const version = process.env.MEMASTER_BUILD_VERSION ?? packageJson.version;
+const target = process.env.MEMASTER_BUILD_TARGET;
+const executablePath = process.env.MEMASTER_BUILD_EXECUTABLE_PATH;
 if (!outdir && target && !executablePath) {
-	throw new Error("Cross-target builds require a checksum-verified BACKLOG_BUILD_EXECUTABLE_PATH");
+	throw new Error("Cross-target builds require a checksum-verified MEMASTER_BUILD_EXECUTABLE_PATH");
 }
 const outputDirectory = outdir ?? dirname(outfile);
 

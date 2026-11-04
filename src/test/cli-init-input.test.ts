@@ -3,7 +3,7 @@ import { mkdtemp, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { $ } from "bun";
-import { BACKLOG_CWD_ENV } from "../utils/runtime-cwd.ts";
+import { MEMASTER_CWD_ENV } from "../utils/runtime-cwd.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { safeCleanup, withTimeout } from "./test-utils.ts";
 
@@ -13,7 +13,7 @@ let testDir: string;
 async function initWithClosedInput(args: string[]) {
 	const child = Bun.spawn([process.execPath, CLI_PATH, "init", ...args], {
 		cwd: testDir,
-		env: { ...process.env, [BACKLOG_CWD_ENV]: undefined },
+		env: { ...process.env, [MEMASTER_CWD_ENV]: undefined },
 		stdin: "ignore",
 		stdout: "pipe",
 		stderr: "pipe",
@@ -50,8 +50,8 @@ describe("CLI init with closed stdin", () => {
 
 			expect(result.exitCode).toBe(1);
 			expect(result.output).toContain("Project name is required");
-			expect(result.output).toContain('backlog init "My Project"');
-			expect(result.output).not.toContain("Initialized backlog project");
+			expect(result.output).toContain('memaster init "My Project"');
+			expect(result.output).not.toContain("Initialized memaster project");
 			expect(await readdir(testDir)).toEqual(before);
 		});
 
@@ -63,8 +63,8 @@ describe("CLI init with closed stdin", () => {
 			const result = await initWithClosedInput(args);
 
 			expect(result.exitCode).toBe(0);
-			expect(result.output).toContain("Initialized backlog project: Input Test");
-			expect(await Bun.file(join(testDir, "backlog", "config.yml")).text()).toContain('project_name: "Input Test"');
+			expect(result.output).toContain("Initialized memaster project: Input Test");
+			expect(await Bun.file(join(testDir, "memaster", "config.yml")).text()).toContain('project_name: "Input Test"');
 			expect((await readdir(testDir)).includes(".git")).toBe(git);
 		});
 	}

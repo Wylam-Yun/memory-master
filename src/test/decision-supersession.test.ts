@@ -3,8 +3,8 @@ import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
-import { BacklogServer } from "../server/index.ts";
+import { Core } from "../core/memaster.ts";
+import { MemasterServer } from "../server/index.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { initializeTestProject } from "./test-utils.ts";
 
@@ -13,7 +13,7 @@ describe("decision supersession", () => {
 	let root: string;
 	let core: Core;
 	let file: string;
-	let server: BacklogServer | undefined;
+	let server: MemasterServer | undefined;
 	beforeEach(async () => {
 		root = await mkdtemp(join(tmpdir(), "decision-supersession-"));
 		core = new Core(root);
@@ -54,7 +54,7 @@ describe("decision supersession", () => {
 		expect(json.decisions.find((decision: { id: string }) => decision.id === "decision-1").supersededBy).toBe(
 			"decision-2",
 		);
-		server = new BacklogServer(root);
+		server = new MemasterServer(root);
 		await server.start(0, false);
 		const response = await fetch(`http://127.0.0.1:${server.getPort()}/api/decisions/1`, {
 			method: "PUT",

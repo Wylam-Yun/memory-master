@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { isTaskLockError, taskLockErrorMessage } from "../file-system/operations.ts";
 import { McpServer } from "../mcp/server.ts";
 import { TaskHandlers } from "../mcp/tools/tasks/handlers.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Task } from "../types/index.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, retry, safeCleanup, withTimeout } from "./test-utils.ts";
@@ -223,7 +223,7 @@ describe("atomic task editing", () => {
 		const lockEntered = createDeferred<void>();
 		const releaseLock = createDeferred<void>();
 
-		// The lock lives on the filesystem, so a completely separate backlog process sees it.
+		// The lock lives on the filesystem, so a completely separate memaster process sees it.
 		const heldLock = setup.fs.withTaskLock(task, async () => {
 			lockEntered.resolve();
 			await releaseLock.promise;
@@ -281,7 +281,7 @@ describe("atomic task editing", () => {
 
 	it("returns HTTP 409 from the web update endpoint on contention", async () => {
 		const task = await createContendedTask();
-		const server = new BacklogServer(testDir);
+		const server = new MemasterServer(testDir);
 		await server.start(0, false);
 		const port = server.getPort() ?? 0;
 		expect(port).toBeGreaterThan(0);
@@ -317,7 +317,7 @@ describe("atomic task editing", () => {
 
 	it("returns HTTP 409 from the web demotion endpoint on contention", async () => {
 		const task = await createContendedTask();
-		const server = new BacklogServer(testDir);
+		const server = new MemasterServer(testDir);
 		await server.start(0, false);
 		const port = server.getPort() ?? 0;
 		expect(port).toBeGreaterThan(0);

@@ -3,7 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
 import { CLI_AGENT_NUDGE } from "../index.ts";
-import { BACKLOG_CWD_ENV } from "../utils/runtime-cwd.ts";
+import { MEMASTER_CWD_ENV } from "../utils/runtime-cwd.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, safeCleanup } from "./test-utils.ts";
 
@@ -28,23 +28,25 @@ describe("CLI Integration", () => {
 			const output = result.stdout.toString() + result.stderr.toString();
 
 			expect(result.exitCode).toBe(0);
-			expect(output).toContain("Backlog.md v");
+			expect(output).toContain("Memaster v");
 			expect(output).toContain("Local instructions:");
-			expect(output).toContain("backlog instructions overview");
+			expect(output).toContain("memaster instructions overview");
 			expect(output).not.toContain("unknown option '--plain'");
 			expect(output).not.toContain("\u001B[");
 			expect(output).not.toContain("\u001B]");
 		});
 	});
 
-	describe("backlog instructions command", () => {
+	describe("memaster instructions command", () => {
 		it("prints the guide index by default", async () => {
 			const output = await $`bun ${CLI_PATH} instructions`.cwd(TEST_DIR).text();
 
-			expect(output).toContain("Backlog.md instructions");
+			expect(output).toContain("Memaster instructions");
 			expect(output).toContain("Start here:");
-			expect(output).toMatch(/'backlog instructions overview'\s+Required first read before answering any user request/);
-			expect(output).not.toMatch(/^\s+'backlog instructions'\s+List workflow guides/m);
+			expect(output).toMatch(
+				/'memaster instructions overview'\s+Required first read before answering any user request/,
+			);
+			expect(output).not.toMatch(/^\s+'memaster instructions'\s+List workflow guides/m);
 			expect(output).toContain("task-creation");
 			expect(output).toContain("task-execution");
 			expect(output).toContain("task-finalization");
@@ -55,7 +57,7 @@ describe("CLI Integration", () => {
 			expect(output).not.toContain("\u001B[");
 			expect(output).not.toContain("MCP Tools Quick Reference");
 			expect(output).not.toContain("task_search");
-			expect(output).not.toContain("backlog://workflow/");
+			expect(output).not.toContain("memaster://workflow/");
 			expect(output).not.toContain("Always operate through MCP tools");
 		});
 
@@ -80,33 +82,33 @@ describe("CLI Integration", () => {
 			);
 			const initRequired = normalizeCliOutput(await $`bun ${CLI_PATH} instructions init-required`.cwd(TEST_DIR).text());
 
-			expect(overview).toContain("## Backlog.md Overview (CLI)");
+			expect(overview).toContain("## Memaster Overview (CLI)");
 			expect(overview).toContain("### Find and Read Work");
 			expect(overview).not.toContain("The detailed guides contain the procedure");
-			expect(overview).toContain('backlog search "query" --plain');
-			expect(overview).toContain('backlog task list --search "login" --labels frontend,bug --limit 20 --plain');
-			expect(overview).toContain("backlog task view BACK-123 --plain");
+			expect(overview).toContain('memaster search "query" --plain');
+			expect(overview).toContain('memaster task list --search "login" --labels frontend,bug --limit 20 --plain');
+			expect(overview).toContain("memaster task view TASK-123 --plain");
 			expect(overview).toContain(
 				"Read the matching guide before taking these actions; this overview does not replace it:",
 			);
-			expect(overview).toContain("`backlog instructions task-creation` — before creating or splitting tasks");
+			expect(overview).toContain("`memaster instructions task-creation` — before creating or splitting tasks");
 			expect(overview).toContain(
-				"`backlog instructions task-execution` — before planning, changing status or assignee, adding notes, or implementing",
+				"`memaster instructions task-execution` — before planning, changing status or assignee, adding notes, or implementing",
 			);
 			expect(overview).toContain(
-				"`backlog instructions task-finalization` — before checking acceptance criteria, writing final summaries, or marking work finished",
+				"`memaster instructions task-finalization` — before checking acceptance criteria, writing final summaries, or marking work finished",
 			);
-			expect(overview).not.toContain('backlog task create "Title"');
-			expect(overview).not.toContain("backlog task edit BACK-123 --plan");
-			expect(overview).not.toContain("backlog task edit BACK-123 --check-ac 1");
-			expect(overview).not.toContain("backlog task edit BACK-123 -s Done");
+			expect(overview).not.toContain('memaster task create "Title"');
+			expect(overview).not.toContain("memaster task edit TASK-123 --plan");
+			expect(overview).not.toContain("memaster task edit TASK-123 --check-ac 1");
+			expect(overview).not.toContain("memaster task edit TASK-123 -s Done");
 			expect(overview).toContain(
 				"Never edit task, draft, document, decision, or milestone markdown files directly; commands preserve metadata, relationships, and history.",
 			);
 			expect(overview).not.toContain("MCP Tools Quick Reference");
-			expect(overview).not.toContain("backlog://workflow/");
+			expect(overview).not.toContain("memaster://workflow/");
 			expect(taskCreation).toContain("## Task Creation Guide");
-			expect(taskCreation).toContain('backlog task create "Add project search"');
+			expect(taskCreation).toContain('memaster task create "Add project search"');
 			expect(taskCreation).toContain(
 				"- A description that captures why the task exists: the problem, trigger, or user need behind it, plus any context a future agent cannot recover from the code. The acceptance criteria already state what will be true when the work is done — do not restate them here.",
 			);
@@ -116,22 +118,22 @@ describe("CLI Integration", () => {
 			expect(taskCreation).toContain(
 				'Too thin: `-d "Users can search tasks, docs, and decisions from one CLI command."` states the change but not the need,\nso a future agent cannot weigh scope or alternatives.',
 			);
-			expect(taskCreation).toContain('backlog search "desktop app" --plain');
+			expect(taskCreation).toContain('memaster search "desktop app" --plain');
 			expect(taskCreation).toContain(
-				'backlog task list --search "desktop app" --labels frontend,bug --limit 20 --plain',
+				'memaster task list --search "desktop app" --labels frontend,bug --limit 20 --plain',
 			);
-			expect(taskCreation).toContain('backlog task list --status "<active status>" --plain');
-			expect(taskCreation).toContain('backlog task list --exclude-status "<terminal status>" --plain');
+			expect(taskCreation).toContain('memaster task list --status "<active status>" --plain');
+			expect(taskCreation).toContain('memaster task list --exclude-status "<terminal status>" --plain');
 			expect(taskCreation).toContain(
 				"Repeat `--exclude-status` or pass comma-separated configured statuses to exclude multiple states.",
 			);
 			expect(taskCreation).toContain("omitting it applies the project's configured `defaultAssignee` when one is set");
-			expect(taskCreation).not.toContain('backlog task list --status "In Progress" --plain');
+			expect(taskCreation).not.toContain('memaster task list --status "In Progress" --plain');
 			expect(taskCreation).toContain(
 				"Do not pass milestone IDs such as `m-0` to `--parent`; assign a task to a milestone with `--milestone`/`-m`.",
 			);
 			expect(taskCreation).toContain(
-				"If you will continue from task creation into implementation in the same session, stop and read `backlog instructions task-execution` before viewing, assigning, planning, editing, or implementing a task.",
+				"If you will continue from task creation into implementation in the same session, stop and read `memaster instructions task-execution` before viewing, assigning, planning, editing, or implementing a task.",
 			);
 			expect(taskCreation).toContain(
 				"For future work, do **not** add an implementation plan or speculative code approach",
@@ -140,24 +142,24 @@ describe("CLI Integration", () => {
 				"The narrow exception is already-started work being created directly in a configured active status",
 			);
 			expect(taskExecution).toContain(
-				'backlog task list --status "<active status>" --assignee @your-name --labels backend --search "auth" --limit 20 --plain',
+				'memaster task list --status "<active status>" --assignee @your-name --labels backend --search "auth" --limit 20 --plain',
 			);
-			expect(taskExecution).toContain('backlog task edit BACK-123 -s "<active status>" -a @your-name');
-			expect(taskExecution).not.toContain('backlog task edit BACK-123 -s "In Progress" -a @your-name');
+			expect(taskExecution).toContain('memaster task edit TASK-123 -s "<active status>" -a @your-name');
+			expect(taskExecution).not.toContain('memaster task edit TASK-123 -s "In Progress" -a @your-name');
 			expect(taskExecution).toContain(
 				"Research the current system, including relevant code, tests, conventions, and recent changes",
 			);
 			expect(taskExecution).toContain("Record the current plan in the task before implementation");
 			expect(taskExecution).toContain("or more repeatable `--append-plan` values");
 			expect(taskExecution).toContain(
-				'backlog task edit BACK-123 --plan "1. Revised approach" --append-plan "2. Verify it"',
+				'memaster task edit TASK-123 --plan "1. Revised approach" --append-plan "2. Verify it"',
 			);
 			expect(taskExecution).toContain(
 				"If the plan contains a material product, architecture, or workflow decision, or the project or user requires plan",
 			);
-			const viewIndex = taskExecution.indexOf("backlog task view BACK-123 --plain");
+			const viewIndex = taskExecution.indexOf("memaster task view TASK-123 --plain");
 			const eligibilityIndex = taskExecution.indexOf("Review its current status");
-			const activateIndex = taskExecution.indexOf('backlog task edit BACK-123 -s "<active status>" -a @your-name');
+			const activateIndex = taskExecution.indexOf('memaster task edit TASK-123 -s "<active status>" -a @your-name');
 			const researchIndex = taskExecution.indexOf("Research the current system");
 			const planIndex = taskExecution.indexOf("Record the current plan in the task");
 			const conditionalReviewIndex = taskExecution.indexOf(
@@ -176,9 +178,9 @@ describe("CLI Integration", () => {
 			);
 			expect(taskExecution).toContain("verify each acceptance criterion with objective evidence before checking it");
 			expect(taskFinalization).toContain("configured final status");
-			expect(taskFinalization).toContain("Check accepted statuses with `backlog task edit --help`");
-			expect(taskFinalization).toContain('backlog task edit BACK-123 -s "<terminal status>"');
-			expect(taskFinalization).not.toContain("backlog task edit BACK-123 -s Done");
+			expect(taskFinalization).toContain("Check accepted statuses with `memaster task edit --help`");
+			expect(taskFinalization).toContain('memaster task edit TASK-123 -s "<terminal status>"');
+			expect(taskFinalization).not.toContain("memaster task edit TASK-123 -s Done");
 			expect(taskFinalization).toContain("Check only proven items");
 			expect(taskFinalization).toContain(
 				"For UI or interactive work, exercise the behavior through a browser, DOM script, test runner, or documented manual interaction.",
@@ -189,18 +191,18 @@ describe("CLI Integration", () => {
 			expect(taskCreation).not.toContain("task_create");
 			expect(taskCreation).not.toContain("task_search");
 			expect(taskCreation).toContain("### Shell Quoting for Literal Backticks");
-			expect(taskCreation).toContain("backlog task create 'Document `backlog init` setup'");
+			expect(taskCreation).toContain("memaster task create 'Document `memaster init` setup'");
 			expect(taskCreation).toContain(
-				"Backlog.md cannot recover the original text after the shell has already executed it",
+				"Memaster cannot recover the original text after the shell has already executed it",
 			);
-			expect(initRequired).toContain("This directory does not have Backlog.md initialized.");
-			expect(initRequired).toContain("backlog init --defaults");
+			expect(initRequired).toContain("This directory does not have Memaster initialized.");
+			expect(initRequired).toContain("memaster init --defaults");
 		}, 15_000);
 
 		it("renders task ID examples with the configured task prefix", async () => {
-			await mkdir(join(TEST_DIR, "backlog"), { recursive: true });
+			await mkdir(join(TEST_DIR, "memaster"), { recursive: true });
 			await Bun.write(
-				join(TEST_DIR, "backlog", "config.yml"),
+				join(TEST_DIR, "memaster", "config.yml"),
 				[
 					'project_name: "Prefix Project"',
 					'statuses: ["To Do", "In Progress", "Done"]',
@@ -217,23 +219,23 @@ describe("CLI Integration", () => {
 			const listHelp = await $`bun ${CLI_PATH} task list --help`.cwd(TEST_DIR).text();
 			const editHelp = await $`bun ${CLI_PATH} task edit --help`.cwd(TEST_DIR).text();
 
-			expect(overview).toContain("backlog task view FEAT-123 --plain");
-			expect(taskCreation).toContain('backlog task create -p FEAT-10 "Set up shell"');
-			expect(taskCreation).toContain('backlog task create "Add bulk update UI" --dep FEAT-21');
-			expect(createHelp).toContain('backlog task create -p FEAT-1 "Add tests"');
+			expect(overview).toContain("memaster task view FEAT-123 --plain");
+			expect(taskCreation).toContain('memaster task create -p FEAT-10 "Set up shell"');
+			expect(taskCreation).toContain('memaster task create "Add bulk update UI" --dep FEAT-21');
+			expect(createHelp).toContain('memaster task create -p FEAT-1 "Add tests"');
 			expect(createHelp).toContain("specify existing parent task ID, not a");
 			expect(createHelp).toContain("milestone ID");
-			expect(listHelp).toContain("backlog task list --parent FEAT-1");
-			expect(editHelp).toContain('backlog task edit FEAT-1 --status "<active status>" -a @sara');
+			expect(listHelp).toContain("memaster task list --parent FEAT-1");
+			expect(editHelp).toContain('memaster task edit FEAT-1 --status "<active status>" -a @sara');
 			for (const output of [overview, taskCreation, createHelp, listHelp, editHelp]) {
 				expect(output).not.toContain("BACK-");
 			}
 		}, 15_000);
 
-		it("renders help and instruction examples from BACKLOG_CWD", async () => {
-			await mkdir(join(TEST_DIR, "backlog"), { recursive: true });
+		it("renders help and instruction examples from MEMASTER_CWD", async () => {
+			await mkdir(join(TEST_DIR, "memaster"), { recursive: true });
 			await Bun.write(
-				join(TEST_DIR, "backlog", "config.yml"),
+				join(TEST_DIR, "memaster", "config.yml"),
 				[
 					'project_name: "Runtime Cwd Schema Project"',
 					'statuses: ["Ready", "Review", "Closed"]',
@@ -245,17 +247,17 @@ describe("CLI Integration", () => {
 			);
 			const outsideDir = join(TEST_DIR, "outside");
 			await mkdir(outsideDir, { recursive: true });
-			const env = { ...process.env, [BACKLOG_CWD_ENV]: TEST_DIR };
+			const env = { ...process.env, [MEMASTER_CWD_ENV]: TEST_DIR };
 
 			const overview = await $`bun ${CLI_PATH} instructions overview`.cwd(outsideDir).env(env).text();
 			const createHelp = await $`bun ${CLI_PATH} task create --help`.cwd(outsideDir).env(env).text();
 			const editHelp = await $`bun ${CLI_PATH} task edit --help`.cwd(outsideDir).env(env).text();
 
-			expect(overview).toContain("backlog task view FEAT-123 --plain");
+			expect(overview).toContain("memaster task view FEAT-123 --plain");
 			expect(createHelp).toContain("status: one of configured statuses: Draft, Ready, Review, Closed");
-			expect(createHelp).toContain('backlog task create -p FEAT-1 "Add tests"');
+			expect(createHelp).toContain('memaster task create -p FEAT-1 "Add tests"');
 			expect(editHelp).toContain("status: one of configured statuses: Ready, Review, Closed");
-			expect(editHelp).toContain('backlog task edit FEAT-1 --status "<active status>" -a @sara');
+			expect(editHelp).toContain('memaster task edit FEAT-1 --status "<active status>" -a @sara');
 			for (const output of [overview, createHelp, editHelp]) {
 				expect(output).not.toContain("BACK-");
 			}
@@ -265,18 +267,18 @@ describe("CLI Integration", () => {
 			for (const name of ["overview", "task-finalization"]) {
 				const guide = await $`bun ${CLI_PATH} instructions ${name}`.cwd(TEST_DIR).text();
 				expect(guide).toContain("periodic cleanup");
-				expect(guide).toContain("backlog task archive");
+				expect(guide).toContain("memaster task archive");
 				expect(guide).toContain("canceled, duplicate, or invalid work");
 				expect(guide).toContain("read-only");
 				expect(guide).toMatch(/keep(s|ing) (its|their) ID/);
 				// Deleting is described as archive first, then delete.
-				expect(guide).toMatch(/archive it(,| and) then (run|delete it with) `backlog task delete/);
+				expect(guide).toMatch(/archive it(,| and) then (run|delete it with) `memaster task delete/);
 				expect(guide).toMatch(/other tasks and drafts hold to (it|the task)/);
 				expect(guide).not.toContain("held by drafts");
 				// The ID is not free while another branch or worktree still has the task.
 				expect(guide).toMatch(/releases (its|the) ID once no other branch or worktree still holds the task/);
 				// Archived work comes back with restore, which is also the way to change it.
-				expect(guide).toContain("backlog task restore");
+				expect(guide).toContain("memaster task restore");
 				expect(guide).toMatch(/keeps its ID and status|same ID and the status it had/);
 				expect(guide).not.toContain("task complete");
 			}
@@ -292,7 +294,7 @@ describe("CLI Integration", () => {
 			expect(result.exitCode).toBe(1);
 			expect(output).toContain("Unknown instruction guide: does-not-exist");
 			expect(output).toContain("Valid guides:");
-			expect(output).toContain("backlog instructions");
+			expect(output).toContain("memaster instructions");
 		});
 	});
 
@@ -306,8 +308,8 @@ describe("CLI Integration", () => {
 			expect(initHelp).toContain("--integration-mode: one of: cli, mcp, none");
 			expect(initHelp).toContain("(default: cli)");
 			expect(initHelp).toContain("CLI instructions are recommended");
-			expect(initHelp).toContain('backlog init "My Project" --defaults --integration-mode cli');
-			expect(initHelp).not.toContain("backlog init --integration-mode mcp");
+			expect(initHelp).toContain('memaster init "My Project" --defaults --integration-mode cli');
+			expect(initHelp).not.toContain("memaster init --integration-mode mcp");
 			expect(initHelp).toContain("Writes:");
 			expect(instructionsHelp).toContain(
 				"guide: one of: overview, task-creation, task-execution, task-finalization, init-required",
@@ -351,7 +353,7 @@ describe("CLI Integration", () => {
 			expect(listHelp).toContain("search: String");
 			expect(listHelp).toContain("limit: Positive integer");
 			expect(listHelp).toContain("sort: one of: priority, id, ordinal");
-			expect(listHelp).toContain('backlog task list --labels frontend,bug --search "login" --limit 10 --plain');
+			expect(listHelp).toContain('memaster task list --labels frontend,bug --search "login" --limit 10 --plain');
 			expect(editHelp).toContain("taskIds: Task IDs");
 			expect(editHelp).toContain("status: one of configured statuses: To Do, In Progress, Done");
 			expect(editHelp).not.toContain("status: one of configured statuses: Draft, To Do, In Progress, Done");
@@ -389,7 +391,7 @@ describe("CLI Integration", () => {
 			const deleteHelp = await $`bun ${CLI_PATH} task delete --help`.cwd(TEST_DIR).text();
 			expect(deleteHelp).toContain("taskId: Task ID - Archived task to delete");
 			expect(deleteHelp).toContain("Its ID is released once no other branch or worktree still holds the task.");
-			expect(deleteHelp).toContain("A task must be archived first (backlog task archive)");
+			expect(deleteHelp).toContain("A task must be archived first (memaster task archive)");
 			expect(deleteHelp).toContain("a task whose subtasks still exist, as tasks or as drafts, is not deleted.");
 			expect(deleteHelp).toContain("There is no prompt.");
 			expect(deleteHelp).toContain("Dependencies and references that other tasks and drafts hold to it are removed.");
@@ -455,9 +457,9 @@ describe("CLI Integration", () => {
 		}, 15_000);
 
 		it("shows configured status values in task help", async () => {
-			await mkdir(join(TEST_DIR, "backlog"), { recursive: true });
+			await mkdir(join(TEST_DIR, "memaster"), { recursive: true });
 			await Bun.write(
-				join(TEST_DIR, "backlog", "config.yml"),
+				join(TEST_DIR, "memaster", "config.yml"),
 				[
 					'project_name: "Schema Project"',
 					'statuses: ["Ready", "Review", "Closed"]',

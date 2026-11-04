@@ -2,11 +2,11 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { AcceptanceCriteriaManager, DefinitionOfDoneManager } from "../markdown/structured-sections.ts";
 import { McpServer } from "../mcp/server.ts";
 import { TaskHandlers } from "../mcp/tools/tasks/handlers.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } from "./test-utils.ts";
 
@@ -183,7 +183,7 @@ describe("malformed checklist edits preserve task bytes", () => {
 	}
 
 	it("browser AC replacement and DoD indexed payloads reject malformed rows", async () => {
-		const server = new BacklogServer(testDir);
+		const server = new MemasterServer(testDir);
 		const handler = server as unknown as {
 			handleUpdateTask(request: Request, taskId: string): Promise<Response>;
 		};

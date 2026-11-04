@@ -3,14 +3,14 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GitOperations } from "../git/operations.ts";
-import type { BacklogConfig } from "../types/index.ts";
+import type { MemasterConfig } from "../types/index.ts";
 
 describe("Offline Mode Configuration", () => {
 	let tempDir: string;
 	let gitOps: GitOperations;
 
 	beforeEach(async () => {
-		tempDir = await mkdtemp(join(tmpdir(), "backlog-offline-test-"));
+		tempDir = await mkdtemp(join(tmpdir(), "memaster-offline-test-"));
 		gitOps = new GitOperations(tempDir);
 	});
 
@@ -22,7 +22,7 @@ describe("Offline Mode Configuration", () => {
 
 	describe("GitOperations.fetch()", () => {
 		it("should skip fetch when remoteOperations is false", async () => {
-			const config: BacklogConfig = {
+			const config: MemasterConfig = {
 				projectName: "Test",
 				statuses: ["To Do", "Done"],
 				labels: [],
@@ -51,12 +51,13 @@ describe("Offline Mode Configuration", () => {
 			expect(warnMessages).toContain("Remote operations are disabled in config. Skipping fetch.");
 
 			// Restore
-			process.env.DEBUG = originalDebug;
+			if (originalDebug === undefined) delete process.env.DEBUG;
+			else process.env.DEBUG = originalDebug;
 			console.warn = originalWarn;
 		});
 
 		it("should proceed with fetch when remoteOperations is true", async () => {
-			const config: BacklogConfig = {
+			const config: MemasterConfig = {
 				projectName: "Test",
 				statuses: ["To Do", "Done"],
 				labels: [],
@@ -90,7 +91,7 @@ describe("Offline Mode Configuration", () => {
 		});
 
 		it("should handle network errors gracefully", async () => {
-			const config: BacklogConfig = {
+			const config: MemasterConfig = {
 				projectName: "Test",
 				statuses: ["To Do", "Done"],
 				labels: [],
@@ -131,7 +132,7 @@ describe("Offline Mode Configuration", () => {
 
 	describe("Network Error Detection", () => {
 		it("should detect various network error patterns", () => {
-			const config: BacklogConfig = {
+			const config: MemasterConfig = {
 				projectName: "Test",
 				statuses: ["To Do", "Done"],
 				labels: [],
@@ -173,7 +174,7 @@ describe("Offline Mode Configuration", () => {
 
 	describe("Config Management", () => {
 		it("should handle missing remoteOperations field as default true", () => {
-			const configWithoutRemoteOps: Partial<BacklogConfig> = {
+			const configWithoutRemoteOps: Partial<MemasterConfig> = {
 				projectName: "Test",
 				statuses: ["To Do", "Done"],
 				labels: [],
@@ -182,7 +183,7 @@ describe("Offline Mode Configuration", () => {
 				// remoteOperations field is missing
 			};
 
-			gitOps.setConfig(configWithoutRemoteOps as BacklogConfig);
+			gitOps.setConfig(configWithoutRemoteOps as MemasterConfig);
 
 			// Should default to allowing remote operations when field is missing
 			// This tests backward compatibility

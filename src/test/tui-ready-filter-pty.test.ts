@@ -2,8 +2,8 @@ import { describe, expect, it } from "bun:test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
-import type { BacklogConfig } from "../types/index.ts";
+import { Core } from "../core/memaster.ts";
+import type { MemasterConfig } from "../types/index.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
@@ -57,7 +57,7 @@ describe("interactive task list --ready", () => {
 
 				const config = await core.filesystem.loadConfig();
 				if (!config) throw new Error("Failed to load config");
-				const updatedConfig: BacklogConfig = { ...config, remoteOperations: false, checkActiveBranches: false };
+				const updatedConfig: MemasterConfig = { ...config, remoteOperations: false, checkActiveBranches: false };
 				await core.filesystem.saveConfig(updatedConfig);
 
 				const baseTask = {

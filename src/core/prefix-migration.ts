@@ -10,14 +10,14 @@ import { unlink } from "node:fs/promises";
 import { join } from "node:path";
 import type { FileSystem } from "../file-system/operations.ts";
 import { parseTask } from "../markdown/parser.ts";
-import type { BacklogConfig, Task } from "../types/index.ts";
+import type { MemasterConfig, Task } from "../types/index.ts";
 import { generateNextId } from "../utils/prefix-config.ts";
 
 /**
  * Check if the config needs draft prefix migration.
  * Migration is needed when the prefixes section is missing.
  */
-export function needsDraftPrefixMigration(config: BacklogConfig | null): boolean {
+export function needsDraftPrefixMigration(config: MemasterConfig | null): boolean {
 	if (!config) return false;
 	return config.prefixes === undefined;
 }
@@ -96,7 +96,7 @@ export async function migrateDraftPrefixes(fs: FileSystem): Promise<void> {
 			[
 				"The draft prefix migration could not convert every file in the drafts folder. Left as they were:",
 				...failures.map((failure) => `  - ${failure}`),
-				"The migration runs again the next time Backlog starts.",
+				"The migration runs again the next time Memaster starts.",
 			].join("\n"),
 		);
 	}
@@ -113,7 +113,7 @@ async function addPrefixesToConfig(fs: FileSystem): Promise<void> {
 	if (!config) return;
 
 	// Add default prefixes section (draft prefix is not configurable)
-	const updatedConfig: BacklogConfig = {
+	const updatedConfig: MemasterConfig = {
 		...config,
 		prefixes: {
 			task: "task",

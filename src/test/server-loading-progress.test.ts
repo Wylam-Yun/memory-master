@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { FileSystem } from "../file-system/operations.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Task } from "../types/index.ts";
 import { createUniqueTestDir, retry, safeCleanup, withTimeout } from "./test-utils.ts";
 
 let testDir: string;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 const sockets: WebSocket[] = [];
 
 type ServerInternals = {
@@ -24,7 +24,7 @@ type LoadingState =
 	| { type: "loaded" }
 	| { type: "error"; message: string };
 
-const internals = (instance: BacklogServer): ServerInternals => instance as unknown as ServerInternals;
+const internals = (instance: MemasterServer): ServerInternals => instance as unknown as ServerInternals;
 
 const openSocket = async (port: number): Promise<{ socket: WebSocket; states: LoadingState[] }> => {
 	const states: LoadingState[] = [];
@@ -57,7 +57,7 @@ const waitForState = async (states: LoadingState[], expected: LoadingState): Pro
 beforeEach(async () => {
 	testDir = createUniqueTestDir("server-loading-progress");
 	const filesystem = new FileSystem(testDir);
-	await filesystem.ensureBacklogStructure();
+	await filesystem.ensureMemasterStructure();
 	await filesystem.saveConfig({
 		projectName: "Server loading progress",
 		statuses: ["To Do", "In Progress", "Done"],
@@ -89,7 +89,7 @@ describe("browser corpus loading progress", () => {
 		});
 		const phase = "Loading tasks from 7 local branches...";
 
-		server = new BacklogServer(testDir);
+		server = new MemasterServer(testDir);
 		internals(server).core.loadTasks = async (progressCallback) => {
 			loadCalls += 1;
 			await phaseReady;
@@ -134,7 +134,7 @@ describe("browser corpus loading progress", () => {
 		const heldFailure = new Promise<void>((resolve) => {
 			releaseFirstFailure = resolve;
 		});
-		server = new BacklogServer(testDir);
+		server = new MemasterServer(testDir);
 		internals(server).core.loadTasks = async (progressCallback) => {
 			loadCalls += 1;
 			if (failFirstLoad) {

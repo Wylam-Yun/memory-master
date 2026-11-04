@@ -1,6 +1,6 @@
-import type { BacklogConfig } from "../types/index.ts";
+import type { MemasterConfig } from "../types/index.ts";
 
-type ProjectConfig = Pick<BacklogConfig, "projects"> | readonly string[] | null | undefined;
+type ProjectConfig = Pick<MemasterConfig, "projects"> | readonly string[] | null | undefined;
 
 function normalizeProjectValue(value: string | null | undefined): string | undefined {
 	const normalized = String(value ?? "")
@@ -17,7 +17,7 @@ function normalizeProjectValue(value: string | null | undefined): string | undef
 export function getProjectValues(configOrProjects?: ProjectConfig): string[] {
 	const configuredProjects: readonly string[] = Array.isArray(configOrProjects)
 		? configOrProjects
-		: ((configOrProjects as Pick<BacklogConfig, "projects"> | null | undefined)?.projects ?? []);
+		: ((configOrProjects as Pick<MemasterConfig, "projects"> | null | undefined)?.projects ?? []);
 	const values: string[] = [];
 	const seen = new Set<string>();
 

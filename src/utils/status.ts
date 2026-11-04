@@ -1,5 +1,5 @@
 import { DEFAULT_STATUSES } from "../constants/index.ts";
-import { type Core, createRuntimeCore } from "../core/backlog.ts";
+import { type Core, createRuntimeCore } from "../core/memaster.ts";
 
 type StatusConfigReader = Pick<Core, "filesystem">;
 

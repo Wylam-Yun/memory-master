@@ -1,5 +1,5 @@
-import type { Core } from "../core/backlog.ts";
-import type { BacklogConfig } from "../types/index.ts";
+import type { Core } from "../core/memaster.ts";
+import type { MemasterConfig } from "../types/index.ts";
 import {
 	type EditorAvailabilityChecker,
 	type PromptRunner,
@@ -15,10 +15,10 @@ interface ConfigureAdvancedOptions {
 export async function configureAdvancedSettings(
 	core: Core,
 	{ promptImpl, isEditorAvailable, cancelMessage = "Aborting configuration." }: ConfigureAdvancedOptions = {},
-): Promise<{ mergedConfig: BacklogConfig; installClaudeAgent: boolean; installShellCompletions: boolean }> {
+): Promise<{ mergedConfig: MemasterConfig; installClaudeAgent: boolean; installShellCompletions: boolean }> {
 	const existingConfig = await core.filesystem.loadConfig();
 	if (!existingConfig) {
-		throw new Error("No backlog project found. Initialize one first with: backlog init");
+		throw new Error("No memaster project found. Initialize one first with: memaster init");
 	}
 
 	const wizardResult = await runAdvancedConfigWizard({
@@ -29,7 +29,7 @@ export async function configureAdvancedSettings(
 		isEditorAvailable,
 	});
 
-	const mergedConfig: BacklogConfig = { ...existingConfig, ...wizardResult.config };
+	const mergedConfig: MemasterConfig = { ...existingConfig, ...wizardResult.config };
 	await core.filesystem.saveConfig(mergedConfig);
 
 	return {

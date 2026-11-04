@@ -15,7 +15,7 @@ describe("MCP Server Fallback Mode", () => {
 	let tempDir: string;
 
 	beforeEach(() => {
-		// Create a temporary directory without backlog initialization
+		// Create a temporary directory without memaster initialization
 		tempDir = mkdtempSync(join(tmpdir(), "mcp-fallback-test-"));
 	});
 
@@ -24,25 +24,25 @@ describe("MCP Server Fallback Mode", () => {
 		rmSync(tempDir, { recursive: true, force: true });
 	});
 
-	test("should provide backlog://init-required resource in fallback mode", async () => {
+	test("should provide memaster://init-required resource in fallback mode", async () => {
 		const server = await createMcpServer(tempDir, { debug: false });
 
 		const resources = await server.testInterface.listResources();
 
 		expect(resources.resources).toHaveLength(1);
-		expect(resources.resources[0]?.uri).toBe("backlog://init-required");
-		expect(resources.resources[0]?.name).toBe(`Backlog.md Not Initialized [${tempDir}]`);
+		expect(resources.resources[0]?.uri).toBe("memaster://init-required");
+		expect(resources.resources[0]?.name).toBe(`Memaster Not Initialized [${tempDir}]`);
 	});
 
-	test("should be able to read backlog://init-required resource", async () => {
+	test("should be able to read memaster://init-required resource", async () => {
 		const server = await createMcpServer(tempDir, { debug: false });
 
 		const result = await server.testInterface.readResource({
-			params: { uri: "backlog://init-required" },
+			params: { uri: "memaster://init-required" },
 		});
 
 		expect(result.contents).toHaveLength(1);
-		expect(result.contents[0]?.uri).toBe("backlog://init-required");
+		expect(result.contents[0]?.uri).toBe("memaster://init-required");
 		expect(getContentsText(result.contents)).toStartWith(MCP_INIT_REQUIRED_GUIDE);
 	});
 

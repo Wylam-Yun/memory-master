@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import type { Decision, Document, Task } from "../types";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } from "./test-utils.ts";

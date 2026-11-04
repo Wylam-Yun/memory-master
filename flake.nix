@@ -1,5 +1,5 @@
 {
-  description = "Backlog.md - A markdown-based task management CLI tool";
+  description = "Memaster - A markdown-based task management CLI tool";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -145,7 +145,7 @@
               runHook postInstallCheck
             '';
           };
-          trustedCA = pkgs.runCommand "backlog-trusted-ca" {
+          trustedCA = pkgs.runCommand "memaster-trusted-ca" {
             nativeBuildInputs = [ nodeRuntime ];
           } ''
             node -e 'require("node:fs").writeFileSync("node-roots.pem", require("node:tls").rootCertificates.join("\n"))'
@@ -153,7 +153,7 @@
           '';
           # Git has no proxy CApath setting. A path beneath this regular file cannot
           # load, blocking HTTPS proxies before HTTP/auth; empty CAfiles can fall back.
-          blockedProxyCA = pkgs.writeText "backlog-unsupported-https-proxy-ca.pem" "";
+          blockedProxyCA = pkgs.writeText "memaster-unsupported-https-proxy-ca.pem" "";
           buildTrust = {
             SSL_CERT_FILE = "${trustedCA}/ca-bundle.crt";
             SSL_CERT_DIR = "${trustedCA}/empty";
@@ -167,8 +167,8 @@
             NPM_CONFIG_CAFILE = "${trustedCA}/ca-bundle.crt";
             NIX_SSL_CERT_FILE = "${trustedCA}/ca-bundle.crt";
           };
-          backlog-md = pkgs.bun2nix.mkDerivation {
-            pname = "backlog";
+          memaster-md = pkgs.bun2nix.mkDerivation {
+            pname = "memaster";
             inherit (packageJson) version;
             src = ./.;
 
@@ -190,8 +190,8 @@
             buildPhase = ''
               runHook preBuild
 
-              BACKLOG_BUILD_VERSION="$version" \
-                BACKLOG_BUILD_OUTDIR=dist/nix \
+              MEMASTER_BUILD_VERSION="$version" \
+                MEMASTER_BUILD_OUTDIR=dist/nix \
                 ${bunRuntime}/bin/bun scripts/build.ts
 
               runHook postBuild
@@ -200,11 +200,11 @@
             installPhase = ''
               runHook preInstall
 
-              mkdir -p "$out/lib/backlog"
-              cp -R dist/nix/. "$out/lib/backlog/"
-              makeWrapper ${bunRuntime}/bin/bun "$out/bin/backlog" \
-                --add-flags "$out/lib/backlog/cli.js" \
-                --set BACKLOG_BUNDLE_ASSET_DIR "$out/lib/backlog"
+              mkdir -p "$out/lib/memaster"
+              cp -R dist/nix/. "$out/lib/memaster/"
+              makeWrapper ${bunRuntime}/bin/bun "$out/bin/memaster" \
+                --add-flags "$out/lib/memaster/cli.js" \
+                --set MEMASTER_BUNDLE_ASSET_DIR "$out/lib/memaster"
 
               runHook postInstall
             '';
@@ -219,7 +219,7 @@
             installCheckPhase = ''
               runHook preInstallCheck
 
-              ${bunRuntime}/bin/bun scripts/smoke-compiled-build.ts "$out/bin/backlog" "$version"
+              ${bunRuntime}/bin/bun scripts/smoke-compiled-build.ts "$out/bin/memaster" "$version"
 
               ${pkgs.lib.optionalString (system == "x86_64-linux") ''
                 mkdir -p "$TMPDIR/avx2-bun"
@@ -236,9 +236,9 @@
                   exit 1
                 fi
 
-                test "$(BUN_JSC_useJIT=false qemu-x86_64 -cpu IvyBridge ${bunRuntime}/bin/bun "$out/lib/backlog/cli.js" --version)" = "$version"
+                test "$(BUN_JSC_useJIT=false qemu-x86_64 -cpu IvyBridge ${bunRuntime}/bin/bun "$out/lib/memaster/cli.js" --version)" = "$version"
                 BUN_JSC_useJIT=false qemu-x86_64 -cpu IvyBridge \
-                  ${bunRuntime}/bin/bun "$out/lib/backlog/cli.js" --help >/dev/null
+                  ${bunRuntime}/bin/bun "$out/lib/memaster/cli.js" --help >/dev/null
               ''}
 
               runHook postInstallCheck
@@ -246,20 +246,20 @@
 
             meta = {
               description = "A markdown-based task management CLI tool with Kanban board";
-              homepage = "https://backlog.md";
-              changelog = "https://github.com/MrLesk/Backlog.md/releases";
+              homepage = "https://github.com/Wylam-Yun/memory-master";
+              changelog = "https://github.com/Wylam-Yun/memory-master/releases";
               license = pkgs.lib.licenses.mit;
-              mainProgram = "backlog";
+              mainProgram = "memaster";
             };
           };
         in
         {
           packages = {
-            default = backlog-md;
-            backlog-md = backlog-md;
+            default = memaster-md;
+            memaster-md = memaster-md;
           };
 
-          checks.development-tools = pkgs.runCommand "backlog-development-tools" (buildTrust // {
+          checks.development-tools = pkgs.runCommand "memaster-development-tools" (buildTrust // {
             nativeBuildInputs = [ nodeRuntime curlRuntime gitRuntime ];
           }) ''
             node -e 'const assert = require("node:assert/strict"); assert.equal(process.version, "v26.12.1"); assert.equal(process.versions.ares, "1.34.9"); assert.equal(typeof require("node:zlib").constants.BROTLI_DECODER_ERROR_FORMAT_BLOCK_SWITCH, "number");'
@@ -274,8 +274,8 @@
           '';
 
           apps.default = flake-utils.lib.mkApp {
-            drv = backlog-md;
-            name = "backlog";
+            drv = memaster-md;
+            name = "memaster";
           };
 
           devShells.default = pkgs.mkShell {

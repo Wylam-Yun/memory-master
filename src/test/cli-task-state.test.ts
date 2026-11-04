@@ -21,7 +21,7 @@ describe("CLI Integration", () => {
 
 	describe("task archive and state transition commands", () => {
 		beforeEach(async () => {
-			// Set up a git repository and initialize backlog
+			// Set up a git repository and initialize memaster
 
 			const core = new Core(TEST_DIR);
 			await initializeFilesystemTestProject(core, "Archive Test Project");
@@ -54,7 +54,7 @@ describe("CLI Integration", () => {
 
 			// Verify task exists in archive
 			const { readdir } = await import("node:fs/promises");
-			const archiveFiles = await readdir(join(TEST_DIR, "backlog", "archive", "tasks"));
+			const archiveFiles = await readdir(join(TEST_DIR, "memaster", "archive", "tasks"));
 			expect(archiveFiles.some((f) => f.startsWith("task-1"))).toBe(true);
 		});
 
@@ -93,7 +93,7 @@ describe("CLI Integration", () => {
 
 			const view = await $`bun ${CLI_PATH} task view task-5 --plain`.cwd(TEST_DIR).nothrow().quiet();
 			expect(view.exitCode).toBe(0);
-			expect(view.stdout.toString()).toContain(join("backlog", "archive", "tasks"));
+			expect(view.stdout.toString()).toContain(join("memaster", "archive", "tasks"));
 			expect(view.stdout.toString()).toContain("Status: ✔ Done (archived)");
 
 			const created = await $`bun ${CLI_PATH} task create "After archive" --plain`.cwd(TEST_DIR).nothrow().quiet();
@@ -124,7 +124,7 @@ describe("CLI Integration", () => {
 				const result = await $`bun ${[CLI_PATH, "task", "complete", ...args]}`.cwd(TEST_DIR).nothrow().quiet();
 
 				expect(result.exitCode).toBe(1);
-				expect(result.stderr.toString()).toBe("backlog task complete was removed. Use backlog task archive <id>.\n");
+				expect(result.stderr.toString()).toBe("memaster task complete was removed. Use memaster task archive <id>.\n");
 				expect(result.stdout.toString()).toBe("");
 			}
 			const task = await core.filesystem.loadTask("task-3");
@@ -201,7 +201,7 @@ describe("CLI Integration", () => {
 
 			// Verify demoted draft has new draft- ID
 			const { readdir } = await import("node:fs/promises");
-			const draftsFiles = await readdir(join(TEST_DIR, "backlog", "drafts"));
+			const draftsFiles = await readdir(join(TEST_DIR, "memaster", "drafts"));
 			expect(draftsFiles.some((f) => f.startsWith("draft-"))).toBe(true);
 
 			// Verify draft can be loaded with draft- ID
@@ -233,7 +233,7 @@ describe("CLI Integration", () => {
 
 			// Verify promoted task has new task- ID
 			const { readdir } = await import("node:fs/promises");
-			const tasksFiles = await readdir(join(TEST_DIR, "backlog", "tasks"));
+			const tasksFiles = await readdir(join(TEST_DIR, "memaster", "tasks"));
 			expect(tasksFiles.some((f) => f.startsWith("task-"))).toBe(true);
 
 			// Verify task can be loaded with task- ID
@@ -265,7 +265,7 @@ describe("CLI Integration", () => {
 
 			// Verify draft exists in archive
 			const { readdir } = await import("node:fs/promises");
-			const archiveFiles = await readdir(join(TEST_DIR, "backlog", "archive", "drafts"));
+			const archiveFiles = await readdir(join(TEST_DIR, "memaster", "archive", "drafts"));
 			expect(archiveFiles.some((f) => f.startsWith(draft.id.toLowerCase()))).toBe(true);
 		});
 

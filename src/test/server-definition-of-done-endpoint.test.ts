@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { readFile } from "node:fs/promises";
-import { Core } from "../core/backlog.ts";
-import { BacklogServer } from "../server/index.ts";
+import { Core } from "../core/memaster.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Task } from "../types/index.ts";
 import { createUniqueTestDir, retry, safeCleanup } from "./test-utils.ts";
 
@@ -11,10 +11,10 @@ const operations = [
 	["definitionOfDoneRemove", 1],
 ] as const;
 
-describe("BacklogServer Definition of Done index updates", () => {
+describe("MemasterServer Definition of Done index updates", () => {
 	let testDir: string;
 	let core: Core;
-	let server: BacklogServer | null = null;
+	let server: MemasterServer | null = null;
 	let taskId: string;
 	let taskPath: string;
 	let taskUrl: string;
@@ -22,7 +22,7 @@ describe("BacklogServer Definition of Done index updates", () => {
 	beforeEach(async () => {
 		testDir = createUniqueTestDir("server-definition-of-done");
 		core = new Core(testDir);
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await core.filesystem.saveConfig({
 			projectName: "Server Definition of Done",
 			statuses: ["To Do", "In Progress", "Done"],
@@ -43,7 +43,7 @@ describe("BacklogServer Definition of Done index updates", () => {
 		if (!saved?.filePath) throw new Error("Expected task file path");
 		taskPath = saved.filePath;
 
-		server = new BacklogServer(testDir);
+		server = new MemasterServer(testDir);
 		await server.start(0, false);
 		const baseUrl = `http://127.0.0.1:${server.getPort()}`;
 		taskUrl = `${baseUrl}/api/tasks/${taskId}`;

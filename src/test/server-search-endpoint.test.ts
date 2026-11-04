@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { join } from "node:path";
 import { DEFAULT_STATUSES } from "../constants/index.ts";
-import type { Core } from "../core/backlog.ts";
+import type { Core } from "../core/memaster.ts";
 import { FileSystem } from "../file-system/operations.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Decision, Document, Milestone, Task } from "../types/index.ts";
 import { createUniqueTestDir, retry, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 let filesystem: FileSystem;
 let serverPort = 0;
 
@@ -77,11 +77,11 @@ const customPriorityTask: Task = {
 	modifiedFiles: ["src/server/index.ts"],
 };
 
-describe("BacklogServer search endpoint", () => {
+describe("MemasterServer search endpoint", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("server-search");
 		filesystem = new FileSystem(TEST_DIR);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		await filesystem.saveConfig({
 			projectName: "Server Search",
 			statuses: ["To Do", "In Progress", "Done"],
@@ -99,7 +99,7 @@ describe("BacklogServer search endpoint", () => {
 		await filesystem.saveDocument(baseDoc);
 		await filesystem.saveDecision(baseDecision);
 
-		server = new BacklogServer(TEST_DIR);
+		server = new MemasterServer(TEST_DIR);
 		await server.start(0, false);
 		const port = server.getPort();
 		expect(port).not.toBeNull();
@@ -255,7 +255,7 @@ describe("BacklogServer search endpoint", () => {
 		}
 		await filesystem.saveConfig({ ...config, statuses: [] });
 
-		server = new BacklogServer(TEST_DIR);
+		server = new MemasterServer(TEST_DIR);
 		await server.start(0, false);
 		const port = server.getPort();
 		expect(port).not.toBeNull();

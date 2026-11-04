@@ -1,4 +1,4 @@
-import { ARCHIVED_DOCUMENT_NOTICE } from "../../core/backlog.ts";
+import { ARCHIVED_DOCUMENT_NOTICE } from "../../core/memaster.ts";
 import type { Document } from "../../types/index.ts";
 import { formatUtcDateForDisplay } from "../../utils/utc-date-display.ts";
 import type { CallToolResult } from "../types.ts";

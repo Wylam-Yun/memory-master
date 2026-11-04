@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { GitOperations } from "../git/operations.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
@@ -36,7 +36,7 @@ describe("CLI Auto-Commit Behavior with autoCommit: false", () => {
 			config.autoCommit = false;
 			await core.filesystem.saveConfig(config);
 			// Commit the config change to have a clean state for tests
-			const configPath = join(TEST_DIR, "backlog", "config.yml");
+			const configPath = join(TEST_DIR, "memaster", "config.yml");
 			await git.addFile(configPath);
 			// Only commit if there are actual changes staged, to avoid errors on empty commits.
 			const diffProc = await $`git diff --staged --quiet`.cwd(TEST_DIR).nothrow().quiet();
@@ -108,7 +108,7 @@ describe("CLI Auto-Commit Behavior with autoCommit: true", () => {
 		if (config) {
 			config.autoCommit = true; // Enable auto-commit for this test suite
 			await core.filesystem.saveConfig(config);
-			const configPath = join(TEST_DIR, "backlog", "config.yml");
+			const configPath = join(TEST_DIR, "memaster", "config.yml");
 			await git.addFile(configPath);
 			// Only commit if there are actual changes staged, to avoid errors on empty commits.
 			const diffProc = await $`git diff --staged --quiet`.cwd(TEST_DIR).nothrow().quiet();

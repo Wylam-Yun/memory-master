@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { FileSystem } from "../file-system/operations.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Task } from "../types/index.ts";
 import { createUniqueTestDir, retry, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 let filesystem: FileSystem;
 let serverPort = 0;
 
@@ -52,11 +52,11 @@ async function fetchJson<T>(path: string): Promise<T> {
 	return (await response.json()) as T;
 }
 
-describe("BacklogServer search endpoint project filtering", () => {
+describe("MemasterServer search endpoint project filtering", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("server-search-project");
 		filesystem = new FileSystem(TEST_DIR);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		await filesystem.saveConfig({
 			projectName: "Server Search Project Filter",
 			statuses: ["To Do", "In Progress", "Done"],
@@ -70,7 +70,7 @@ describe("BacklogServer search endpoint project filtering", () => {
 		await filesystem.saveTask(apiTask);
 		await filesystem.saveTask(unprojectedTask);
 
-		server = new BacklogServer(TEST_DIR);
+		server = new MemasterServer(TEST_DIR);
 		await server.start(0, false);
 		const port = server.getPort();
 		expect(port).not.toBeNull();

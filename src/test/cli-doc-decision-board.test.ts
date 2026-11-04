@@ -50,7 +50,7 @@ describe("CLI Integration", () => {
 			expect(result.exitCode).toBe(0);
 			const stdout = result.stdout.toString();
 			expect(stdout).toContain("Created document doc-1");
-			expect(stdout).toContain("Path: backlog/docs/guides/setup/doc-1 - Setup-Guide.md");
+			expect(stdout).toContain("Path: memaster/docs/guides/setup/doc-1 - Setup-Guide.md");
 
 			const core = new Core(TEST_DIR);
 			const docs = await core.filesystem.listDocuments();
@@ -63,7 +63,7 @@ describe("CLI Integration", () => {
 			expect(result.stderr.toString()).not.toContain("unknown option");
 			const stdout = result.stdout.toString();
 			expect(stdout).toContain("Created document doc-1");
-			expect(stdout).toContain("Path: backlog/docs/doc-1 - Setup-Guide.md");
+			expect(stdout).toContain("Path: memaster/docs/doc-1 - Setup-Guide.md");
 		});
 
 		it("should reject unsafe document paths", async () => {
@@ -94,7 +94,7 @@ describe("CLI Integration", () => {
 					.quiet();
 			expect(result.exitCode).toBe(0);
 			expect(result.stdout.toString()).toContain("Updated document doc-1");
-			expect(result.stdout.toString()).toContain("Path: backlog/docs/runbooks/doc-1 - Install-Runbook.md");
+			expect(result.stdout.toString()).toContain("Path: memaster/docs/runbooks/doc-1 - Install-Runbook.md");
 
 			const docs = await core.filesystem.listDocuments();
 			const updated = docs.find((doc) => doc.id === "doc-1");
@@ -466,7 +466,7 @@ describe("CLI Integration", () => {
 
 			for (const branch of branches) {
 				const ref = `origin/${branch}`;
-				const files = await core.gitOps.listFilesInTree(ref, "backlog/tasks");
+				const files = await core.gitOps.listFilesInTree(ref, "memaster/tasks");
 				for (const file of files) {
 					const content = await core.gitOps.showFile(ref, file);
 					const remoteTask = parseTask(content);
@@ -537,7 +537,7 @@ describe("CLI Integration", () => {
 			expect(content).toContain("To Do");
 			expect(content).toContain("TASK-1");
 			expect(content).toContain("Export Test Task");
-			expect(content).toContain("# Kanban Board Export (powered by Backlog.md)");
+			expect(content).toContain("# Kanban Board Export (powered by Memaster)");
 			expect(content).toContain("Project: TestProject");
 
 			// Test overwrite behavior

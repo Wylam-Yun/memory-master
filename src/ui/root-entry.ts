@@ -37,37 +37,37 @@ function sectionTitle(value: string, color: boolean): string {
 
 export function formatRootEntry({ version, initialized, color = false }: RootEntryOptions): string {
 	const logoLines = LOGO_LINES.map((line) => colorize(line, ANSI.logo, color));
-	const lines: string[] = [...logoLines, "", `${colorize("Backlog.md", ANSI.title, color)} v${version}`, ""];
+	const lines: string[] = [...logoLines, "", `${colorize("Memaster", ANSI.title, color)} v${version}`, ""];
 
 	if (!initialized) {
-		lines.push("This directory is not initialized for Backlog.md.", "");
+		lines.push("This directory is not initialized for Memaster.", "");
 		lines.push(sectionTitle("Project setup:", color));
-		lines.push(commandLine("backlog init", "Initialize Backlog.md interactively"));
-		lines.push(commandLine("backlog init --defaults", "Initialize with default settings"));
-		lines.push(commandLine("backlog init --no-git", "Initialize without Git integration"));
+		lines.push(commandLine("memaster init", "Initialize Memaster interactively"));
+		lines.push(commandLine("memaster init --defaults", "Initialize with default settings"));
+		lines.push(commandLine("memaster init --no-git", "Initialize without Git integration"));
 		lines.push("");
 	} else {
 		lines.push(sectionTitle("Common workflow:", color));
-		lines.push(commandLine('backlog search "query" --plain', "Search tasks, docs, and decisions"));
-		lines.push(commandLine("backlog task list --plain", "List tasks"));
-		lines.push(commandLine(renderConfiguredTaskIds("backlog task view {{TASK_ID:123}} --plain"), "Read task context"));
-		lines.push(commandLine('backlog task create "Title" -d "Description"', "Create a task"));
-		lines.push(commandLine("backlog board", "Open the TUI Kanban board"));
-		lines.push(commandLine("backlog browser", "Open the Web UI Kanban board"));
+		lines.push(commandLine('memaster search "query" --plain', "Search tasks, docs, and decisions"));
+		lines.push(commandLine("memaster task list --plain", "List tasks"));
+		lines.push(commandLine(renderConfiguredTaskIds("memaster task view {{TASK_ID:123}} --plain"), "Read task context"));
+		lines.push(commandLine('memaster task create "Title" -d "Description"', "Create a task"));
+		lines.push(commandLine("memaster board", "Open the TUI Kanban board"));
+		lines.push(commandLine("memaster browser", "Open the Web UI Kanban board"));
 		lines.push("");
 	}
 
 	lines.push(sectionTitle("Local instructions:", color));
-	lines.push(commandLine("backlog instructions", "List workflow guides"));
+	lines.push(commandLine("memaster instructions", "List workflow guides"));
 	for (const guide of INSTRUCTION_GUIDES) {
-		lines.push(commandLine(`backlog instructions ${guide.key}`, guide.description));
+		lines.push(commandLine(`memaster instructions ${guide.key}`, guide.description));
 	}
 	lines.push("");
 
 	lines.push(sectionTitle("Command help:", color));
-	lines.push(commandLine("backlog <command> --help", "Show options, fields, and examples"));
+	lines.push(commandLine("memaster <command> --help", "Show options, fields, and examples"));
 	lines.push("");
-	lines.push("Docs: https://backlog.md");
+	lines.push("Docs: https://github.com/Wylam-Yun/memory-master");
 	lines.push("");
 
 	return `${lines.join("\n")}\n`;

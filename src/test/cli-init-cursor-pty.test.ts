@@ -71,7 +71,7 @@ exit $exit_code
 			expect(await Bun.file(join(testDir, "AGENTS.md")).exists()).toBe(true);
 			expect(await Bun.file(editorMarkerPath).exists()).toBe(false);
 			expect(await Bun.file(join(testDir, ".cursorrules")).exists()).toBe(false);
-			expect(await Bun.file(join(testDir, ".cursor", "rules", "backlog.mdc")).exists()).toBe(false);
+			expect(await Bun.file(join(testDir, ".cursor", "rules", "memory-masterc")).exists()).toBe(false);
 		} finally {
 			await safeCleanup(testDir);
 		}

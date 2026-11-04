@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { lstat, mkdtemp, readdir, readFile, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { initializeTestProject, isWindows } from "./test-utils.ts";
 
 describe("decision write preflight", () => {
@@ -24,7 +24,7 @@ describe("decision write preflight", () => {
 	it.each(["create", "update"])("refuses %s before writing when config is invalid", async (operation) => {
 		const path = join(core.fs.decisionsDir, "decision-1 - Example.md");
 		const original = await readFile(path, "utf8");
-		const configPath = join(core.fs.backlogDir, "config.yml");
+		const configPath = join(core.fs.memasterDir, "config.yml");
 		await Bun.write(configPath, 'project_name: "Preflight"\nstatuses: ["To Do]\n');
 		core.fs.invalidateConfigCache();
 		const result =
@@ -46,7 +46,7 @@ describe("decision write preflight", () => {
 			await rm(path);
 			await symlink(target, path);
 			await expect(core.updateDecisionFromInput("decision-1", { context: "Changed" }, true)).rejects.toThrow(
-				"backlog config set autoCommit false",
+				"memaster config set autoCommit false",
 			);
 			expect(await readFile(target, "utf8")).toBe(original);
 			expect((await lstat(path)).isSymbolicLink()).toBe(true);

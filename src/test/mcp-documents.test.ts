@@ -21,7 +21,7 @@ let mcpServer: McpServer;
 async function loadConfig(server: McpServer) {
 	const config = await server.filesystem.loadConfig();
 	if (!config) {
-		throw new Error("Failed to load backlog configuration for tests");
+		throw new Error("Failed to load memaster configuration for tests");
 	}
 	return config;
 }
@@ -39,7 +39,7 @@ describe("MCP document tools", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("mcp-documents");
 		mcpServer = new McpServer(TEST_DIR, "Test instructions");
-		await mcpServer.filesystem.ensureBacklogStructure();
+		await mcpServer.filesystem.ensureMemasterStructure();
 
 		await initializeFilesystemTestProject(mcpServer, "Docs Project");
 		const config = await loadConfig(mcpServer);
@@ -302,14 +302,14 @@ describe("MCP document tools", () => {
 		await $`git add .`.cwd(TEST_DIR).quiet();
 		await $`git commit -m "baseline"`.cwd(TEST_DIR).quiet();
 
-		// A deletion staged moments earlier by an unrelated operation, outside the backlog dir.
+		// A deletion staged moments earlier by an unrelated operation, outside the memaster dir.
 		await Bun.write(join(TEST_DIR, "UNRELATED.txt"), "keep me\n");
 		await $`git add UNRELATED.txt`.cwd(TEST_DIR).quiet();
 		await $`git commit -m "add unrelated file"`.cwd(TEST_DIR).quiet();
 		await $`git rm --quiet UNRELATED.txt`.cwd(TEST_DIR).quiet();
 
-		// A peer's untracked, unreviewed file sitting inside the backlog directory.
-		const peerPlanPath = join(mcpServer.filesystem.backlogDir, "plans", "peer-plan.md");
+		// A peer's untracked, unreviewed file sitting inside the memaster directory.
+		const peerPlanPath = join(mcpServer.filesystem.memasterDir, "plans", "peer-plan.md");
 		await Bun.write(peerPlanPath, "# Peer's in-progress plan\n");
 
 		const createResult = await mcpServer.testInterface.callTool({
@@ -321,7 +321,7 @@ describe("MCP document tools", () => {
 		expect(getText(createResult.content)).toContain("Document created successfully.");
 
 		const lastCommit = await mcpServer.git.getLastCommitMessage();
-		expect(lastCommit).toContain("backlog: Add document doc-1");
+		expect(lastCommit).toContain("memaster: Add document doc-1");
 
 		const { stdout: committedFilesRaw } = await $`git show --name-only --pretty=format:`.cwd(TEST_DIR).quiet();
 		const committedFiles = committedFilesRaw.toString();
@@ -330,7 +330,7 @@ describe("MCP document tools", () => {
 
 		const status = await mcpServer.git.getStatus();
 		expect(status).toContain("D  UNRELATED.txt");
-		expect(status).toContain("?? backlog/plans/");
+		expect(status).toContain("?? memaster/plans/");
 	});
 
 	it("does not sweep unrelated staged or dirty files into document update auto-commits", async () => {
@@ -355,7 +355,7 @@ describe("MCP document tools", () => {
 		await $`git commit -m "add unrelated file"`.cwd(TEST_DIR).quiet();
 		await $`git rm --quiet UNRELATED.txt`.cwd(TEST_DIR).quiet();
 
-		const peerPlanPath = join(mcpServer.filesystem.backlogDir, "plans", "peer-plan.md");
+		const peerPlanPath = join(mcpServer.filesystem.memasterDir, "plans", "peer-plan.md");
 		await Bun.write(peerPlanPath, "# Peer's in-progress plan\n");
 
 		const updateResult = await mcpServer.testInterface.callTool({
@@ -372,19 +372,19 @@ describe("MCP document tools", () => {
 		expect(getText(updateResult.content)).toContain("Document updated successfully.");
 
 		const lastCommit = await mcpServer.git.getLastCommitMessage();
-		expect(lastCommit).toContain("backlog: Add document doc-1");
+		expect(lastCommit).toContain("memaster: Add document doc-1");
 
 		const { stdout: committedFilesRaw } = await $`git show --name-only --pretty=format:`.cwd(TEST_DIR).quiet();
 		const committedFiles = committedFilesRaw.toString();
 		expect(committedFiles).not.toContain("UNRELATED.txt");
 		expect(committedFiles).not.toContain("peer-plan.md");
 		// The old (pre-rename) path and the new path should both be part of this commit.
-		expect(committedFiles).toContain("backlog/docs/doc-1 - Incident-Response.md");
-		expect(committedFiles).toContain("backlog/docs/runbooks/doc-1 - Incident-Response-Handbook.md");
+		expect(committedFiles).toContain("memaster/docs/doc-1 - Incident-Response.md");
+		expect(committedFiles).toContain("memaster/docs/runbooks/doc-1 - Incident-Response-Handbook.md");
 
 		const status = await mcpServer.git.getStatus();
 		expect(status).toContain("D  UNRELATED.txt");
-		expect(status).toContain("?? backlog/plans/");
+		expect(status).toContain("?? memaster/plans/");
 	});
 
 	it("refuses to update a document whose ID matches more than one file", async () => {
@@ -436,10 +436,10 @@ describe("MCP document tools", () => {
 		expect(message).toContain("Document ID doc-1 is ambiguous");
 		expect(message).toContain("doc-1 - Primary-document.md");
 		expect(message).toContain("duplicates/doc-01 - ZZZ-Duplicate.md");
-		expect(message).toContain("backlog doctor");
+		expect(message).toContain("memaster doctor");
 
 		expect(await Bun.file(primaryPath).text()).toBe(primaryBefore);
 		expect(await Bun.file(duplicatePath).text()).toBe(duplicateBefore);
-		expect(await $`git status --short`.cwd(TEST_DIR).text()).not.toContain("backlog/docs/");
+		expect(await $`git status --short`.cwd(TEST_DIR).text()).not.toContain("memaster/docs/");
 	});
 });

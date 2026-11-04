@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
 import { ContentStore } from "../core/content-store.ts";
+import { Core } from "../core/memaster.ts";
 import { createTaskSearchIndex } from "../utils/task-search.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } from "./test-utils.ts";
@@ -162,14 +162,14 @@ describe("task type filtering", () => {
 		const searchHelp = await $`bun ${cliPath} search --help`.cwd(testDir).text();
 		expect(listHelp).toContain("--type <type>");
 		expect(listHelp).toContain("type: one or more of configured task types: Bug, Epic");
-		expect(listHelp).toContain('backlog task list --type "Bug" --plain');
+		expect(listHelp).toContain('memaster task list --type "Bug" --plain');
 		expect(searchHelp).toContain("--type <type>");
 		expect(searchHelp).toContain("--task-type <type>");
 		expect(searchHelp).toContain("task-type: one or more of configured task types: Bug, Epic");
-		expect(searchHelp).toContain('backlog search "crash" --task-type "Bug" --plain');
+		expect(searchHelp).toContain('memaster search "crash" --task-type "Bug" --plain');
 
 		const taskCreationGuide = await $`bun ${cliPath} instructions task-creation`.cwd(testDir).text();
-		expect(taskCreationGuide).toContain('backlog task list --type "Bug" --plain');
+		expect(taskCreationGuide).toContain('memaster task list --type "Bug" --plain');
 		expect(taskCreationGuide).not.toContain("--type bug,spike");
 
 		const advertisedList = await $`bun ${cliPath} task list --type Bug --plain`.cwd(testDir).quiet();
@@ -177,14 +177,14 @@ describe("task type filtering", () => {
 		expect(advertisedList.exitCode).toBe(0);
 		expect(advertisedSearch.exitCode).toBe(0);
 
-		for (const completionLine of ["backlog task list --type ", "backlog search --task-type "]) {
+		for (const completionLine of ["memaster task list --type ", "memaster search --task-type "]) {
 			const completion =
 				await $`bun ${cliPath} completion __complete ${completionLine} ${String(completionLine.length)}`
 					.cwd(testDir)
 					.quiet();
 			expect(completion.stdout.toString().trim().split("\n")).toEqual(["Bug", "Epic"]);
 		}
-		for (const unsupportedLine of ["backlog task create --task-type ", "backlog task list --task-type "]) {
+		for (const unsupportedLine of ["memaster task create --task-type ", "memaster task list --task-type "]) {
 			const completion =
 				await $`bun ${cliPath} completion __complete ${unsupportedLine} ${String(unsupportedLine.length)}`
 					.cwd(testDir)

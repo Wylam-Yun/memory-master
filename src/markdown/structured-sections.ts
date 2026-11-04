@@ -1294,7 +1294,7 @@ function formatCommentBlock(comment: TaskComment): string {
 		.replace(/\r\n/g, "\n")
 		.trim();
 	if (containsCommentMarker(body)) {
-		throw new Error("Comment body cannot contain Backlog comment markers.");
+		throw new Error("Comment body cannot contain Memaster comment markers.");
 	}
 	if (containsCommentDelimiter(body)) {
 		throw new Error("Comment body cannot contain standalone '---' delimiter lines.");
@@ -1303,7 +1303,7 @@ function formatCommentBlock(comment: TaskComment): string {
 	const author = normalizeCommentMetadata(comment.author);
 	if (author) {
 		if (containsCommentMarker(author)) {
-			throw new Error("Comment author cannot contain Backlog comment markers.");
+			throw new Error("Comment author cannot contain Memaster comment markers.");
 		}
 		if (containsCommentDelimiter(author)) {
 			throw new Error("Comment author cannot contain standalone '---' delimiter lines.");
@@ -1312,7 +1312,7 @@ function formatCommentBlock(comment: TaskComment): string {
 	}
 	const createdDate = String(comment.createdDate ?? "").trim();
 	if (containsCommentMarker(createdDate)) {
-		throw new Error("Comment created date cannot contain Backlog comment markers.");
+		throw new Error("Comment created date cannot contain Memaster comment markers.");
 	}
 	if (containsCommentDelimiter(createdDate)) {
 		throw new Error("Comment created date cannot contain standalone '---' delimiter lines.");

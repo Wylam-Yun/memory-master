@@ -1,17 +1,17 @@
 
 <CRITICAL_INSTRUCTION>
 
-## BACKLOG WORKFLOW INSTRUCTIONS
+## MEMASTER WORKFLOW INSTRUCTIONS
 
-This project uses Backlog.md MCP for all task and project management activities.
+This project uses Memaster MCP for all task and project management activities.
 
 **CRITICAL GUIDANCE**
 
-- If your client supports MCP resources, read `backlog://workflow/overview` to understand when and how to use Backlog for this project.
-- If your client only supports tools or the above request fails, call `backlog.get_backlog_instructions()` to load the tool-oriented overview. Use the `instruction` selector when you need `task-creation`, `task-execution`, or `task-finalization`.
+- If your client supports MCP resources, read `memaster://workflow/overview` to understand when and how to use Memaster for this project.
+- If your client only supports tools or the above request fails, call `memaster.get_memaster_instructions()` to load the tool-oriented overview. Use the `instruction` selector when you need `task-creation`, `task-execution`, or `task-finalization`.
 
 - **First time working here?** Read the overview resource IMMEDIATELY to learn the workflow
-- **Already familiar?** You should have the overview cached ("## Backlog.md Overview (MCP)")
+- **Already familiar?** You should have the overview cached ("## Memaster Overview (MCP)")
 - **When to read it**: BEFORE creating tasks, or when you're unsure whether to track work
 
 These guides cover:

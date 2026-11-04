@@ -3,14 +3,14 @@ import { EventEmitter } from "node:events";
 import * as nodeFs from "node:fs";
 import { rename, stat, unlink } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
-import { Core } from "../core/backlog.ts";
 import { ContentStore, type ContentStoreEvent, type TaskCorpusSnapshot } from "../core/content-store.ts";
+import { Core } from "../core/memaster.ts";
 import { SearchService } from "../core/search-service.ts";
 import { TaskIdentityIndex, type TaskIdentityRecord } from "../core/task-identity-index.ts";
 import { FileSystem } from "../file-system/operations.ts";
 import { parseTask } from "../markdown/parser.ts";
 import { serializeDocument, serializeTask } from "../markdown/serializer.ts";
-import type { BacklogConfig, Decision, Document, Task } from "../types/index.ts";
+import type { Decision, Document, MemasterConfig, Task } from "../types/index.ts";
 import { normalizeTaskIdentity } from "../utils/task-path.ts";
 import {
 	createUniqueTestDir,
@@ -99,7 +99,7 @@ describe("ContentStore", () => {
 			];
 			const identityIndex = new TaskIdentityIndex(
 				records,
-				{ repositoryRoot: null, projectRoot: TEST_DIR, backlogDirectory: "backlog" },
+				{ repositoryRoot: null, projectRoot: TEST_DIR, memasterDirectory: "memaster" },
 				["To Do", "In Progress", "Done"],
 				"most_progressed",
 			);
@@ -115,7 +115,7 @@ describe("ContentStore", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("test-content-store");
 		filesystem = new FileSystem(TEST_DIR);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		store = new ContentStore(filesystem);
 	});
 
@@ -154,8 +154,8 @@ describe("ContentStore", () => {
 		store.dispose();
 		const rootA = fixtureFilesystem(TEST_DIR, "root-a");
 		const rootB = fixtureFilesystem(TEST_DIR, "root-b");
-		await rootA.ensureBacklogStructure();
-		await rootB.ensureBacklogStructure();
+		await rootA.ensureMemasterStructure();
+		await rootB.ensureMemasterStructure();
 		await rootA.saveTask({ ...sampleTask, title: "Root A" });
 		await rootB.saveTask({ ...sampleTask, id: "TASK-2", title: "Root B" });
 
@@ -178,7 +178,7 @@ describe("ContentStore", () => {
 
 		const initialization = store.ensureInitialized();
 		await withTimeout(heldInitialLoad.started, "held initial root A snapshot");
-		filesystem.setBacklogDirectory("root-b");
+		filesystem.setMemasterDirectory("root-b");
 		heldInitialLoad.release();
 		const firstSnapshot = await withTimeout(initialization, "root-changing initialization");
 
@@ -192,8 +192,8 @@ describe("ContentStore", () => {
 		store.dispose();
 		const rootA = fixtureFilesystem(TEST_DIR, "root-a");
 		const rootB = fixtureFilesystem(TEST_DIR, "root-b");
-		await rootA.ensureBacklogStructure();
-		await rootB.ensureBacklogStructure();
+		await rootA.ensureMemasterStructure();
+		await rootB.ensureMemasterStructure();
 		await rootA.saveTask({ ...sampleTask, title: "Root A" });
 		await rootB.saveTask({ ...sampleTask, id: "TASK-2", title: "Root B" });
 
@@ -204,7 +204,7 @@ describe("ContentStore", () => {
 			const tasks = await filesystem.listTasks();
 			taskLoads += 1;
 			if (churnRoots) {
-				filesystem.setBacklogDirectory(filesystem.backlogDirName === "root-a" ? "root-b" : "root-a");
+				filesystem.setMemasterDirectory(filesystem.memasterDirName === "root-a" ? "root-b" : "root-a");
 			}
 			return tasks;
 		});
@@ -244,10 +244,10 @@ describe("ContentStore", () => {
 		filesystem = fixtureFilesystem(TEST_DIR, "root-a");
 		const rootB = fixtureFilesystem(TEST_DIR, "root-b");
 		const heldStructureSetup = createDeferredGate();
-		const ensureBacklogStructure = filesystem.ensureBacklogStructure.bind(filesystem);
+		const ensureMemasterStructure = filesystem.ensureMemasterStructure.bind(filesystem);
 		let structureSetups = 0;
-		filesystem.ensureBacklogStructure = async () => {
-			await ensureBacklogStructure();
+		filesystem.ensureMemasterStructure = async () => {
+			await ensureMemasterStructure();
 			structureSetups += 1;
 			if (structureSetups === 1) {
 				heldStructureSetup.markStarted();
@@ -258,7 +258,7 @@ describe("ContentStore", () => {
 
 		const initialization = store.ensureInitialized();
 		await withTimeout(heldStructureSetup.started, "held root A structure setup");
-		filesystem.setBacklogDirectory("root-b");
+		filesystem.setMemasterDirectory("root-b");
 		heldStructureSetup.release();
 		await withTimeout(initialization, "root-changing structure setup");
 
@@ -271,8 +271,8 @@ describe("ContentStore", () => {
 		store.dispose();
 		const rootA = fixtureFilesystem(TEST_DIR, "root-a");
 		const rootB = fixtureFilesystem(TEST_DIR, "root-b");
-		await rootA.ensureBacklogStructure();
-		await rootB.ensureBacklogStructure();
+		await rootA.ensureMemasterStructure();
+		await rootB.ensureMemasterStructure();
 		await rootA.saveTask({ ...sampleTask, title: "Root A" });
 		await rootB.saveTask({ ...sampleTask, id: "TASK-2", title: "Root B" });
 
@@ -292,7 +292,7 @@ describe("ContentStore", () => {
 			const loaded = await loadCurrentContent(epoch, publish);
 			if (loaded && switchAfterLoad) {
 				switchAfterLoad = false;
-				filesystem.setBacklogDirectory("root-b");
+				filesystem.setMemasterDirectory("root-b");
 			}
 			return loaded;
 		};
@@ -301,7 +301,7 @@ describe("ContentStore", () => {
 
 		expect(loads).toBe(2);
 		expect(snapshot.tasks.map((task) => task.id)).toEqual(["TASK-2"]);
-		expect(initializationInternals.publishedRoot).toBe(rootB.backlogDir);
+		expect(initializationInternals.publishedRoot).toBe(rootB.memasterDir);
 		expect(initializationInternals.hasCurrentRootWatchers()).toBe(true);
 	});
 
@@ -309,8 +309,8 @@ describe("ContentStore", () => {
 		store.dispose();
 		const rootA = fixtureFilesystem(TEST_DIR, "root-a");
 		const rootB = fixtureFilesystem(TEST_DIR, "root-b");
-		await rootA.ensureBacklogStructure();
-		await rootB.ensureBacklogStructure();
+		await rootA.ensureMemasterStructure();
+		await rootB.ensureMemasterStructure();
 		await rootA.saveTask({ ...sampleTask, title: "Root A" });
 		await rootB.saveTask({ ...sampleTask, id: "TASK-2", title: "Root B" });
 
@@ -327,7 +327,7 @@ describe("ContentStore", () => {
 			await bindRootWatchers(epoch);
 			watcherBindings += 1;
 			if (watcherBindings === 1) {
-				filesystem.setBacklogDirectory("root-b");
+				filesystem.setMemasterDirectory("root-b");
 			}
 		};
 
@@ -335,7 +335,7 @@ describe("ContentStore", () => {
 
 		expect(watcherBindings).toBe(2);
 		expect(snapshot.tasks.map((task) => task.id)).toEqual(["TASK-2"]);
-		expect(initializationInternals.publishedRoot).toBe(rootB.backlogDir);
+		expect(initializationInternals.publishedRoot).toBe(rootB.memasterDir);
 		expect(initializationInternals.hasCurrentRootWatchers()).toBe(true);
 	});
 
@@ -343,8 +343,8 @@ describe("ContentStore", () => {
 		store.dispose();
 		const rootA = fixtureFilesystem(TEST_DIR, "root-a");
 		const rootB = fixtureFilesystem(TEST_DIR, "root-b");
-		await rootA.ensureBacklogStructure();
-		await rootB.ensureBacklogStructure();
+		await rootA.ensureMemasterStructure();
+		await rootB.ensureMemasterStructure();
 		await rootA.saveTask({ ...sampleTask, title: "Root A stale" });
 		await rootB.saveTask({ ...sampleTask, title: "Root B authoritative" });
 		const rootATask = await rootA.loadTask(sampleTask.id);
@@ -403,7 +403,7 @@ describe("ContentStore", () => {
 					initializationInternals.cachedTasks = [rootATask];
 					initializationInternals.notify("tasks");
 				});
-				filesystem.setBacklogDirectory("root-b");
+				filesystem.setMemasterDirectory("root-b");
 			}
 		};
 
@@ -421,14 +421,14 @@ describe("ContentStore", () => {
 		expect(loads).toBe(2);
 		expect(watcherBindings).toBe(2);
 		expect(snapshot.tasks[0]?.title).toBe("Root B authoritative");
-		expect(initializationInternals.publishedRoot).toBe(rootB.backlogDir);
+		expect(initializationInternals.publishedRoot).toBe(rootB.memasterDir);
 		expect(initializationInternals.hasCurrentRootWatchers()).toBe(true);
 	});
 
 	it("keeps a persisted Core task update that completes during initialization", async () => {
 		store.dispose();
 		const core = new Core(TEST_DIR);
-		await core.fs.ensureBacklogStructure();
+		await core.fs.ensureMemasterStructure();
 		const filePath = await core.fs.saveTask({ ...sampleTask, type: "bug" });
 
 		const heldInitialLoad = createDeferredGate();
@@ -570,7 +570,7 @@ describe("ContentStore", () => {
 	it("refreshes completed identity state when the completed corpus changes", async () => {
 		store.dispose();
 		const core = new Core(TEST_DIR, { enableWatchers: true });
-		await core.fs.ensureBacklogStructure();
+		await core.fs.ensureMemasterStructure();
 		await core.fs.saveTask(sampleTask);
 		store = await core.getContentStore();
 
@@ -634,7 +634,7 @@ describe("ContentStore", () => {
 
 	it("publishes watched distinct-path local creation with the refreshed branch collision identity", async () => {
 		store.dispose();
-		store = new ContentStore(filesystem, branchSnapshotLoader("backlog/tasks/task-1 - Branch-only.md"), true);
+		store = new ContentStore(filesystem, branchSnapshotLoader("memaster/tasks/task-1 - Branch-only.md"), true);
 		await store.ensureInitialized();
 		expect(store.resolveTaskForRead("TASK-1").status).toBe("found");
 
@@ -656,7 +656,7 @@ describe("ContentStore", () => {
 	it("publishes watched same-path local creation as one branch-version identity", async () => {
 		store.dispose();
 		const filename = "task-1 - Same-path.md";
-		store = new ContentStore(filesystem, branchSnapshotLoader(`backlog/tasks/${filename}`), true);
+		store = new ContentStore(filesystem, branchSnapshotLoader(`memaster/tasks/${filename}`), true);
 		await store.ensureInitialized();
 
 		const observedResolutions: string[] = [];
@@ -681,7 +681,7 @@ describe("ContentStore", () => {
 		const filename = "task-1 - Same-path.md";
 		const localPath = join(filesystem.tasksDir, filename);
 		await Bun.write(localPath, serializeTask({ ...sampleTask, id: "TASK-1", title: "Current worktree" }));
-		store = new ContentStore(filesystem, branchSnapshotLoader(`backlog/tasks/${filename}`), true);
+		store = new ContentStore(filesystem, branchSnapshotLoader(`memaster/tasks/${filename}`), true);
 		await store.ensureInitialized();
 
 		const observedTitles: string[] = [];
@@ -705,7 +705,7 @@ describe("ContentStore", () => {
 		await Bun.write(localPath, serializeTask({ ...sampleTask, id: "TASK-1", title: "Current worktree" }));
 		store = new ContentStore(
 			filesystem,
-			branchSnapshotLoader([`backlog/tasks/${filename}`, "backlog/tasks/task-1 - Distinct-branch-path.md"]),
+			branchSnapshotLoader([`memaster/tasks/${filename}`, "memaster/tasks/task-1 - Distinct-branch-path.md"]),
 			true,
 		);
 		await store.ensureInitialized();
@@ -906,7 +906,7 @@ describe("ContentStore", () => {
 						workingCopy: true,
 					},
 				],
-				{ repositoryRoot: null, projectRoot: TEST_DIR, backlogDirectory: "backlog" },
+				{ repositoryRoot: null, projectRoot: TEST_DIR, memasterDirectory: "memaster" },
 				["To Do", "In Progress", "Done"],
 				"most_progressed",
 			);
@@ -990,7 +990,7 @@ describe("ContentStore", () => {
 		for (let depth = 0; depth < 5; depth += 1) {
 			upsert = upsert.then(() => {});
 		}
-		upsert = upsert.then(() => store.upsertTask(taskWithTitle("new"), { root: filesystem.backlogDir }));
+		upsert = upsert.then(() => store.upsertTask(taskWithTitle("new"), { root: filesystem.memasterDir }));
 		heldRefresh.release();
 		await Promise.all([refresh, upsert]);
 
@@ -1015,8 +1015,8 @@ describe("ContentStore", () => {
 
 		const refresh = store.refreshTasks();
 		await withTimeout(heldRefresh.started, "held ABA task refresh");
-		store.upsertTask(taskWithTitle("intermediate newer"), { root: filesystem.backlogDir });
-		store.upsertTask(taskWithTitle("base"), { root: filesystem.backlogDir });
+		store.upsertTask(taskWithTitle("intermediate newer"), { root: filesystem.memasterDir });
+		store.upsertTask(taskWithTitle("base"), { root: filesystem.memasterDir });
 		heldRefresh.release();
 		await refresh;
 
@@ -1032,7 +1032,7 @@ describe("ContentStore", () => {
 			loadCount += 1;
 			if (invalidateLoads) {
 				for (let update = 1; update <= 20; update += 1) {
-					store.upsertTask({ ...secondTask, title: `Task 2 upsert ${update}` }, { root: filesystem.backlogDir });
+					store.upsertTask({ ...secondTask, title: `Task 2 upsert ${update}` }, { root: filesystem.memasterDir });
 				}
 				return [
 					{ ...sampleTask, title: "Task 1 external new" },
@@ -1155,7 +1155,7 @@ describe("ContentStore", () => {
 		store.dispose();
 		const saveTaskToDisk = filesystem.saveTask.bind(filesystem);
 		const filePath = await saveTaskToDisk({ ...sampleTask, type: "bug" });
-		const config: BacklogConfig = {
+		const config: MemasterConfig = {
 			projectName: "Content generation fixture",
 			statuses: ["To Do", "Done"],
 			labels: [],
@@ -1185,7 +1185,7 @@ describe("ContentStore", () => {
 		const heldConfigLoad = createDeferredGate();
 		nextTaskLoadGate = heldConfigLoad;
 		const configRefresh = (
-			store as unknown as { handleConfigChanged: (nextConfig: BacklogConfig) => Promise<void> }
+			store as unknown as { handleConfigChanged: (nextConfig: MemasterConfig) => Promise<void> }
 		).handleConfigChanged(config);
 		await withTimeout(heldConfigLoad.started, "same-root config task snapshot");
 
@@ -2561,8 +2561,8 @@ describe("ContentStore", () => {
 		store.dispose();
 		const rootA = fixtureFilesystem(TEST_DIR, "root-a");
 		const rootB = fixtureFilesystem(TEST_DIR, "root-b");
-		await rootA.ensureBacklogStructure();
-		await rootB.ensureBacklogStructure();
+		await rootA.ensureMemasterStructure();
+		await rootB.ensureMemasterStructure();
 		await rootA.saveTask({ ...sampleTask, title: "Root A" });
 		await rootB.saveTask({ ...sampleTask, id: "TASK-2", title: "Root B" });
 
@@ -2586,10 +2586,10 @@ describe("ContentStore", () => {
 
 		const heldRootBLoad = createDeferredGate();
 		nextTaskLoad = heldRootBLoad;
-		filesystem.setBacklogDirectory("root-b");
-		const rootBConfig: BacklogConfig = {
+		filesystem.setMemasterDirectory("root-b");
+		const rootBConfig: MemasterConfig = {
 			projectName: "Root B",
-			backlogDirectory: "root-b",
+			memasterDirectory: "root-b",
 			statuses: ["To Do", "Done"],
 			labels: [],
 			dateFormat: "YYYY-MM-DD",
@@ -2597,7 +2597,7 @@ describe("ContentStore", () => {
 			prefixes: { task: "TASK" },
 		};
 		const switchingRoots = (
-			store as unknown as { handleConfigChanged: (config: BacklogConfig) => Promise<void> }
+			store as unknown as { handleConfigChanged: (config: MemasterConfig) => Promise<void> }
 		).handleConfigChanged(rootBConfig);
 		await withTimeout(heldRootBLoad.started, "held root B snapshot");
 
@@ -2616,8 +2616,8 @@ describe("ContentStore", () => {
 		store.dispose();
 		const rootA = fixtureFilesystem(TEST_DIR, "root-a");
 		const rootB = fixtureFilesystem(TEST_DIR, "root-b");
-		await rootA.ensureBacklogStructure();
-		await rootB.ensureBacklogStructure();
+		await rootA.ensureMemasterStructure();
+		await rootB.ensureMemasterStructure();
 		await rootA.saveTask({ ...sampleTask, title: "Root A" });
 		const rootBTaskPath = await rootB.saveTask({ ...sampleTask, title: "Root B old" });
 
@@ -2641,10 +2641,10 @@ describe("ContentStore", () => {
 
 		const heldRootBLoad = createDeferredGate();
 		nextTaskLoad = heldRootBLoad;
-		filesystem.setBacklogDirectory("root-b");
-		const rootBConfig: BacklogConfig = {
+		filesystem.setMemasterDirectory("root-b");
+		const rootBConfig: MemasterConfig = {
 			projectName: "Root B",
-			backlogDirectory: "root-b",
+			memasterDirectory: "root-b",
 			statuses: ["To Do", "Done"],
 			labels: [],
 			dateFormat: "YYYY-MM-DD",
@@ -2652,7 +2652,7 @@ describe("ContentStore", () => {
 			prefixes: { task: "TASK" },
 		};
 		const switchingRoots = (
-			store as unknown as { handleConfigChanged: (config: BacklogConfig) => Promise<void> }
+			store as unknown as { handleConfigChanged: (config: MemasterConfig) => Promise<void> }
 		).handleConfigChanged(rootBConfig);
 		await withTimeout(heldRootBLoad.started, "held target-root snapshot");
 		(store as unknown as { stopRootWatchers: () => void }).stopRootWatchers();
@@ -2674,8 +2674,8 @@ describe("ContentStore", () => {
 		store.dispose();
 		const rootA = fixtureFilesystem(TEST_DIR, "root-a");
 		const rootB = fixtureFilesystem(TEST_DIR, "root-b");
-		await rootA.ensureBacklogStructure();
-		await rootB.ensureBacklogStructure();
+		await rootA.ensureMemasterStructure();
+		await rootB.ensureMemasterStructure();
 		await rootA.saveTask({ ...sampleTask, title: "Root A late result" });
 		await rootB.saveTask({ ...sampleTask, title: "Root B authoritative" });
 
@@ -2687,17 +2687,17 @@ describe("ContentStore", () => {
 			throw new Error("Expected the late old-root task");
 		}
 
-		filesystem.setBacklogDirectory("root-b");
-		const rootBConfig: BacklogConfig = {
+		filesystem.setMemasterDirectory("root-b");
+		const rootBConfig: MemasterConfig = {
 			projectName: "Root B",
-			backlogDirectory: "root-b",
+			memasterDirectory: "root-b",
 			statuses: ["To Do", "Done"],
 			labels: [],
 			dateFormat: "YYYY-MM-DD",
 			checkActiveBranches: false,
 			prefixes: { task: "TASK" },
 		};
-		await (store as unknown as { handleConfigChanged: (config: BacklogConfig) => Promise<void> }).handleConfigChanged(
+		await (store as unknown as { handleConfigChanged: (config: MemasterConfig) => Promise<void> }).handleConfigChanged(
 			rootBConfig,
 		);
 		store.upsertTask(lateRootATask);
@@ -2710,8 +2710,8 @@ describe("ContentStore", () => {
 		store.dispose();
 		const rootA = fixtureFilesystem(TEST_DIR, "root-a");
 		const rootB = fixtureFilesystem(TEST_DIR, "root-b");
-		await rootA.ensureBacklogStructure();
-		await rootB.ensureBacklogStructure();
+		await rootA.ensureMemasterStructure();
+		await rootB.ensureMemasterStructure();
 		await rootA.saveTask({ ...sampleTask, title: "Root A", type: "feature" });
 		await rootB.saveTask({ ...sampleTask, title: "Root B", type: "bug" });
 
@@ -2729,10 +2729,10 @@ describe("ContentStore", () => {
 			throw new Error("Expected the root A task in the content store");
 		}
 
-		filesystem.setBacklogDirectory("root-b");
-		await (store as unknown as { handleConfigChanged: (config: BacklogConfig) => Promise<void> }).handleConfigChanged({
+		filesystem.setMemasterDirectory("root-b");
+		await (store as unknown as { handleConfigChanged: (config: MemasterConfig) => Promise<void> }).handleConfigChanged({
 			projectName: "Root B",
-			backlogDirectory: "root-b",
+			memasterDirectory: "root-b",
 			statuses: ["To Do", "Done"],
 			labels: [],
 			dateFormat: "YYYY-MM-DD",
@@ -2751,8 +2751,8 @@ describe("ContentStore", () => {
 		store.dispose();
 		const rootA = fixtureFilesystem(TEST_DIR, "root-a");
 		const rootB = fixtureFilesystem(TEST_DIR, "root-b");
-		await rootA.ensureBacklogStructure();
-		await rootB.ensureBacklogStructure();
+		await rootA.ensureMemasterStructure();
+		await rootB.ensureMemasterStructure();
 		await rootA.saveTask({ ...sampleTask, title: "Root A" });
 		await rootB.saveTask({ ...sampleTask, id: "TASK-2", title: "Root B" });
 
@@ -2779,7 +2779,7 @@ describe("ContentStore", () => {
 			if (event.type === "config") {
 				configEvents.push({
 					name: event.config.projectName,
-					root: filesystem.backlogDirName,
+					root: filesystem.memasterDirName,
 					taskIds: event.snapshot.tasks.map((task) => task.id),
 				});
 			}
@@ -2787,24 +2787,24 @@ describe("ContentStore", () => {
 
 		const refresh = store.refreshTasks();
 		await withTimeout(heldRefresh.started, "held root A refresh");
-		filesystem.setBacklogDirectory("root-b");
+		filesystem.setMemasterDirectory("root-b");
 		const transitionToB = (
-			store as unknown as { handleConfigChanged: (config: BacklogConfig) => Promise<void> }
+			store as unknown as { handleConfigChanged: (config: MemasterConfig) => Promise<void> }
 		).handleConfigChanged({
 			projectName: "Root B",
-			backlogDirectory: "root-b",
+			memasterDirectory: "root-b",
 			statuses: ["To Do", "Done"],
 			labels: [],
 			dateFormat: "YYYY-MM-DD",
 			checkActiveBranches: false,
 			prefixes: { task: "TASK" },
 		});
-		filesystem.setBacklogDirectory("root-a");
+		filesystem.setMemasterDirectory("root-a");
 		const transitionBackToA = (
-			store as unknown as { handleConfigChanged: (config: BacklogConfig) => Promise<void> }
+			store as unknown as { handleConfigChanged: (config: MemasterConfig) => Promise<void> }
 		).handleConfigChanged({
 			projectName: "Root A returned",
-			backlogDirectory: "root-a",
+			memasterDirectory: "root-a",
 			statuses: ["To Do", "Done"],
 			labels: [],
 			dateFormat: "YYYY-MM-DD",
@@ -2821,11 +2821,11 @@ describe("ContentStore", () => {
 
 	it("reconciles stopped current-root watchers after a root transition is superseded", async () => {
 		store.dispose();
-		await Bun.write(join(TEST_DIR, "backlog.config.yml"), rootConfig("Root A", "root-a"));
+		await Bun.write(join(TEST_DIR, "memaster.config.yml"), rootConfig("Root A", "root-a"));
 		const rootA = fixtureFilesystem(TEST_DIR, "root-a");
 		const rootB = fixtureFilesystem(TEST_DIR, "root-b");
-		await rootA.ensureBacklogStructure();
-		await rootB.ensureBacklogStructure();
+		await rootA.ensureMemasterStructure();
+		await rootB.ensureMemasterStructure();
 		await rootA.saveTask({ ...sampleTask, title: "Root A" });
 		await rootB.saveTask({ ...sampleTask, id: "TASK-2", title: "Root B" });
 
@@ -2849,30 +2849,30 @@ describe("ContentStore", () => {
 
 		const refresh = store.refreshTasks();
 		await withTimeout(heldRefresh.started, "held root A refresh before watcher recovery", getPlatformTimeout(2000));
-		filesystem.setBacklogDirectory("root-b");
+		filesystem.setMemasterDirectory("root-b");
 		const transitionToB = (
-			store as unknown as { handleConfigChanged: (config: BacklogConfig) => Promise<void> }
+			store as unknown as { handleConfigChanged: (config: MemasterConfig) => Promise<void> }
 		).handleConfigChanged({
 			projectName: "Root B",
-			backlogDirectory: "root-b",
+			memasterDirectory: "root-b",
 			statuses: ["To Do", "Done"],
 			labels: [],
 			dateFormat: "YYYY-MM-DD",
 			checkActiveBranches: false,
 			prefixes: { task: "TASK" },
 		});
-		filesystem.setBacklogDirectory("root-a");
+		filesystem.setMemasterDirectory("root-a");
 		const reconcileRootA = store.ensureConfigWatcher();
 		heldRefresh.release();
 		await Promise.all([refresh, transitionToB, reconcileRootA]);
 
 		const watcherState = store as unknown as {
-			boundBacklogDir: string | null;
+			boundMemasterDir: string | null;
 			rootWatchers: unknown[];
 			rootWatchersInitialized: boolean;
 		};
 		expect(watcherState.rootWatchersInitialized).toBe(true);
-		expect(watcherState.boundBacklogDir && resolve(watcherState.boundBacklogDir)).toBe(resolve(rootA.backlogDir));
+		expect(watcherState.boundMemasterDir && resolve(watcherState.boundMemasterDir)).toBe(resolve(rootA.memasterDir));
 		expect(watcherState.rootWatchers).toHaveLength(3);
 	});
 
@@ -2937,8 +2937,8 @@ describe("ContentStore", () => {
 		store.dispose();
 		const rootA = fixtureFilesystem(TEST_DIR, "root-a");
 		const rootB = fixtureFilesystem(TEST_DIR, "root-b");
-		await rootA.ensureBacklogStructure();
-		await rootB.ensureBacklogStructure();
+		await rootA.ensureMemasterStructure();
+		await rootB.ensureMemasterStructure();
 		await rootA.saveTask({ ...sampleTask, title: "Root A" });
 		await rootB.saveTask({ ...sampleTask, id: "TASK-2", title: "Root B" });
 
@@ -2947,7 +2947,7 @@ describe("ContentStore", () => {
 		await store.ensureInitialized();
 		const watcherInternals = store as unknown as {
 			bindRootWatchers: (epoch: number) => Promise<void>;
-			handleConfigChanged: (config: BacklogConfig) => Promise<void>;
+			handleConfigChanged: (config: MemasterConfig) => Promise<void>;
 			rootWatchersInitialized: boolean;
 		};
 		const bindRootWatchers = watcherInternals.bindRootWatchers.bind(store);
@@ -2959,9 +2959,9 @@ describe("ContentStore", () => {
 			}
 			await bindRootWatchers(epoch);
 		};
-		const rootBConfig: BacklogConfig = {
+		const rootBConfig: MemasterConfig = {
 			projectName: "Root B",
-			backlogDirectory: "root-b",
+			memasterDirectory: "root-b",
 			statuses: ["To Do", "Done"],
 			labels: [],
 			dateFormat: "YYYY-MM-DD",
@@ -2969,7 +2969,7 @@ describe("ContentStore", () => {
 			prefixes: { task: "TASK" },
 		};
 
-		filesystem.setBacklogDirectory("root-b");
+		filesystem.setMemasterDirectory("root-b");
 		await expect(watcherInternals.handleConfigChanged(rootBConfig)).rejects.toThrow(
 			"Transient transition bind failure",
 		);
@@ -2983,12 +2983,12 @@ describe("ContentStore", () => {
 
 	it("retries public root reconciliation when content loading fails after watchers bind", async () => {
 		store.dispose();
-		const configPath = join(TEST_DIR, "backlog.config.yml");
+		const configPath = join(TEST_DIR, "memaster.config.yml");
 		await Bun.write(configPath, rootConfig("Root A", "root-a"));
 		const rootA = fixtureFilesystem(TEST_DIR, "root-a");
 		const rootB = fixtureFilesystem(TEST_DIR, "root-b");
-		await rootA.ensureBacklogStructure();
-		await rootB.ensureBacklogStructure();
+		await rootA.ensureMemasterStructure();
+		await rootB.ensureMemasterStructure();
 		await rootA.saveTask({ ...sampleTask, title: "Root A" });
 		await rootB.saveTask({ ...sampleTask, id: "TASK-2", title: "Root B" });
 
@@ -3014,19 +3014,19 @@ describe("ContentStore", () => {
 		};
 		watcherInternals.stopConfigWatcher();
 		watcherInternals.createConfigWatcher = () => null;
-		filesystem.setBacklogDirectory("root-b");
+		filesystem.setMemasterDirectory("root-b");
 		await Bun.write(configPath, rootConfig("Root B", "root-b"));
 
 		await expect(store.ensureConfigWatcher()).rejects.toThrow("Transient root content load failure");
 		expect(watcherInternals.hasCurrentRootWatchers()).toBe(true);
-		expect(watcherInternals.publishedRoot).toBe(rootA.backlogDir);
+		expect(watcherInternals.publishedRoot).toBe(rootA.memasterDir);
 		expect(store.getTasks().map((task) => task.id)).toEqual(["TASK-1"]);
 
 		await store.ensureConfigWatcher();
 
 		expect(taskLoads).toBe(3);
 		expect(store.getTasks().map((task) => task.id)).toEqual(["TASK-2"]);
-		expect(watcherInternals.publishedRoot).toBe(rootB.backlogDir);
+		expect(watcherInternals.publishedRoot).toBe(rootB.memasterDir);
 	});
 
 	it("publishes coherent A to B to A snapshots and rebinds every root watcher", async () => {
@@ -3035,7 +3035,7 @@ describe("ContentStore", () => {
 		const lifecycleEventTimeout = getPlatformTimeout(8000);
 		const rootA = "custom/a";
 		const rootB = "custom/b";
-		const configPath = join(TEST_DIR, "backlog.config.yml");
+		const configPath = join(TEST_DIR, "memaster.config.yml");
 		await Bun.write(configPath, rootConfig("Root A", rootA));
 
 		filesystem = new FileSystem(TEST_DIR);
@@ -3086,7 +3086,7 @@ describe("ContentStore", () => {
 				"root B config publication",
 			);
 			await replaceRootConfig(configPath, rootConfig("Root B", rootB));
-			await waitUntil(() => filesystem.backlogDirName === rootB, "root B publication");
+			await waitUntil(() => filesystem.memasterDirName === rootB, "root B publication");
 
 			// This write happens after the old handles are closed while old queued work is still held.
 			await writeFixture(fixtureA, "103", "a-3");
@@ -3185,13 +3185,13 @@ describe("ContentStore", () => {
 			expect(store.getDocuments().some((document) => document.id === "doc-a-6")).toBe(true);
 			expect(store.getDecisions().some((decision) => decision.id === "decision-a-6")).toBe(true);
 			const restartedWatcherState = store as unknown as {
-				boundBacklogDir: string | null;
+				boundMemasterDir: string | null;
 				rootWatchers: unknown[];
 				rootWatchersInitialized: boolean;
 			};
 			expect(restartedWatcherState.rootWatchersInitialized).toBe(true);
-			expect(restartedWatcherState.boundBacklogDir && resolve(restartedWatcherState.boundBacklogDir)).toBe(
-				resolve(fixtureA.backlogDir),
+			expect(restartedWatcherState.boundMemasterDir && resolve(restartedWatcherState.boundMemasterDir)).toBe(
+				resolve(fixtureA.memasterDir),
 			);
 			expect(restartedWatcherState.rootWatchers).toHaveLength(3);
 		} finally {
@@ -3206,15 +3206,15 @@ describe("ContentStore", () => {
 		store = new ContentStore(filesystem, undefined, true);
 		await store.ensureInitialized();
 
-		const customRoot = "planning/custom-backlog";
+		const customRoot = "planning/custom-memaster";
 		const fixture = fixtureFilesystem(TEST_DIR, customRoot);
 		await writeFixture(fixture, "301", "custom-1");
-		filesystem.setBacklogDirectory(customRoot);
+		filesystem.setMemasterDirectory(customRoot);
 		filesystem.setConfigLocation("root");
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		await filesystem.saveConfig({
 			projectName: "Initialized custom root",
-			backlogDirectory: customRoot,
+			memasterDirectory: customRoot,
 			statuses: ["To Do", "Done"],
 			labels: [],
 			dateFormat: "YYYY-MM-DD",
@@ -3238,7 +3238,7 @@ describe("ContentStore", () => {
 			(event) => event.type === "config" && event.config.projectName === "Rebound config watcher",
 			getPlatformTimeout(15000),
 		);
-		await replaceRootConfig(join(TEST_DIR, "backlog.config.yml"), rootConfig("Rebound config watcher", customRoot));
+		await replaceRootConfig(join(TEST_DIR, "memaster.config.yml"), rootConfig("Rebound config watcher", customRoot));
 		const reboundEvent = await reboundConfig;
 		expect(reboundEvent.snapshot.tasks.map((task) => task.id)).toEqual(["TASK-301"]);
 		expect(reboundEvent.snapshot.documents.map((document) => document.id)).toEqual(["doc-custom-1"]);
@@ -3330,10 +3330,10 @@ function createDeferredGate(): DeferredGate {
 	return { started, markStarted, waitForRelease, release };
 }
 
-function rootConfig(projectName: string, backlogDirectory: string): string {
+function rootConfig(projectName: string, memasterDirectory: string): string {
 	return [
 		`project_name: "${projectName}"`,
-		`backlog_directory: "${backlogDirectory}"`,
+		`memaster_directory: "${memasterDirectory}"`,
 		'statuses: ["To Do", "Done"]',
 		"labels: []",
 		"date_format: YYYY-MM-DD",
@@ -3343,9 +3343,9 @@ function rootConfig(projectName: string, backlogDirectory: string): string {
 	].join("\n");
 }
 
-function fixtureFilesystem(projectRoot: string, backlogDirectory: string): FileSystem {
+function fixtureFilesystem(projectRoot: string, memasterDirectory: string): FileSystem {
 	const fixture = new FileSystem(projectRoot);
-	fixture.setBacklogDirectory(backlogDirectory);
+	fixture.setMemasterDirectory(memasterDirectory);
 	return fixture;
 }
 
@@ -3363,7 +3363,7 @@ function makeTask(idSuffix: string, title: string): Task {
 }
 
 async function writeFixture(filesystem: FileSystem, taskId: string, namespace: string): Promise<void> {
-	await filesystem.ensureBacklogStructure();
+	await filesystem.ensureMemasterStructure();
 	await Promise.all([
 		filesystem.saveTask(makeTask(taskId, `Task ${namespace}`)),
 		filesystem.saveDocument({

@@ -20,7 +20,7 @@ import {
 	type DecisionSearchResult,
 	type Document,
 	type DocumentSearchResult,
-	type BacklogConfig,
+	type MemasterConfig,
 	type Milestone,
 	type SearchResult,
 	type Task,
@@ -240,7 +240,7 @@ function AppContent() {
   const [statuses, setStatuses] = useState<string[]>([]);
   const [availableLabels, setAvailableLabels] = useState<string[]>([]);
   const [projectName, setProjectName] = useState<string>('');
-  const [config, setConfig] = useState<BacklogConfig | null>(null);
+  const [config, setConfig] = useState<MemasterConfig | null>(null);
   const availableTypes = React.useMemo(() => getTaskTypeValues(config), [config]);
   const availableProjects = React.useMemo(() => getProjectValues(config), [config]);
   const [milestones, setMilestones] = useState<string[]>([]);
@@ -305,7 +305,7 @@ function AppContent() {
   React.useEffect(() => {
     getWebVersion().then(version => {
       if (version) {
-        document.body.setAttribute('data-version', `Backlog.md - v${version}`);
+        document.body.setAttribute('data-version', `Memaster - v${version}`);
       }
     });
   }, []);

@@ -7,7 +7,7 @@ import {
 	ContentRecordNotArchivedError,
 	Core,
 	RecordRefusedError,
-} from "../core/backlog.ts";
+} from "../core/memaster.ts";
 import { EntityType } from "../types/index.ts";
 import { AmbiguousIdError } from "../utils/entity-id.ts";
 import { documentationEntryNamesFile, formatDocumentationReferencesMessage } from "../utils/task-links.ts";
@@ -19,7 +19,7 @@ import {
 } from "./test-utils.ts";
 
 describe("documentationEntryNamesFile", () => {
-	const path = "backlog/docs/guides/doc-3 - API-Guidelines.md";
+	const path = "memaster/docs/guides/doc-3 - API-Guidelines.md";
 
 	it.each([
 		["the path from the project root", path],
@@ -41,17 +41,17 @@ describe("documentationEntryNamesFile", () => {
 		["the path with ../ in front", `../${path}`],
 		["the path with ./ twice in front", `././${path}`],
 		["the path in another letter case", path.toUpperCase()],
-		["the archive path of the same file", "backlog/archive/docs/guides/doc-3 - API-Guidelines.md"],
+		["the archive path of the same file", "memaster/archive/docs/guides/doc-3 - API-Guidelines.md"],
 		["an empty entry", ""],
 	])("does not match %s", (_label, entry) => {
 		expect(documentationEntryNamesFile(entry, path)).toBe(false);
 	});
 
 	it("takes the fragment after the whole path when the file name contains #", () => {
-		const named = "backlog/docs/doc-4 - C#-Notes.md";
+		const named = "memaster/docs/doc-4 - C#-Notes.md";
 		expect(documentationEntryNamesFile(named, named)).toBe(true);
 		expect(documentationEntryNamesFile(`${named}#intro`, named)).toBe(true);
-		expect(documentationEntryNamesFile("backlog/docs/doc-4 - C", named)).toBe(false);
+		expect(documentationEntryNamesFile("memaster/docs/doc-4 - C", named)).toBe(false);
 	});
 });
 
@@ -68,8 +68,8 @@ describe("archived documents in core and storage", () => {
 	let TEST_DIR: string;
 	let core: Core;
 
-	const docsPath = (...segments: string[]) => join(TEST_DIR, "backlog", "docs", ...segments);
-	const archivePath = (...segments: string[]) => join(TEST_DIR, "backlog", "archive", "docs", ...segments);
+	const docsPath = (...segments: string[]) => join(TEST_DIR, "memaster", "docs", ...segments);
+	const archivePath = (...segments: string[]) => join(TEST_DIR, "memaster", "archive", "docs", ...segments);
 
 	async function createDocument(title: string, subPath?: string): Promise<string> {
 		const document = await core.createDocumentFromInput({ title, path: subPath, content: `Body of ${title}` });
@@ -90,7 +90,7 @@ describe("archived documents in core and storage", () => {
 
 	it("archives through one core function that reports what it did and refuses with typed errors", async () => {
 		const path = await createDocument("API Guidelines", "guides");
-		await core.createTaskFromInput({ title: "Names the file", documentation: [`backlog/docs/${path}`] });
+		await core.createTaskFromInput({ title: "Names the file", documentation: [`memaster/docs/${path}`] });
 
 		expect(await core.archiveContentRecord("document", "9")).toBeNull();
 		expect(await core.archiveContentRecord("document", "doc-001")).toEqual({
@@ -176,8 +176,8 @@ describe("archived documents in core and storage", () => {
 
 	it("restores and deletes through one core function each, refusing with typed errors", async () => {
 		const path = await createDocument("API Guidelines", "guides");
-		await core.createTaskFromInput({ title: "Names the old path", documentation: [`backlog/docs/${path}`] });
-		await core.createTaskFromInput({ title: "Names the archive", documentation: [`backlog/archive/docs/${path}`] });
+		await core.createTaskFromInput({ title: "Names the old path", documentation: [`memaster/docs/${path}`] });
+		await core.createTaskFromInput({ title: "Names the archive", documentation: [`memaster/archive/docs/${path}`] });
 
 		for (const operation of ["restore", "delete"] as const) {
 			const run = () =>
@@ -259,13 +259,13 @@ describe("archived documents in core and storage", () => {
 
 			const refused = core.filesystem.removeArchivedContentRecordFile("document", archived);
 
-			await expect(refused).rejects.toThrow(`backlog/archive/docs/${path} is the file of doc-4.`);
+			await expect(refused).rejects.toThrow(`memaster/archive/docs/${path} is the file of doc-4.`);
 			expect(await readFile(archivePath(path), "utf8")).toBe(replacement);
 		});
 
 		it("refuses a path that climbs out of the archive folder", async () => {
 			await createDocument("Kept");
-			const outside = join(TEST_DIR, "backlog", "archive", "escape.md");
+			const outside = join(TEST_DIR, "memaster", "archive", "escape.md");
 			await writeFile(outside, "not a document");
 
 			const refused = core.filesystem.removeArchivedContentRecordFile("document", {
@@ -335,7 +335,7 @@ describe("archived documents in core and storage", () => {
 			const [listed] = documents;
 			if (!listed) throw new Error("Expected the document to be listed");
 			// The path a task's `documentation` entry and the archive destination are built from.
-			expect(core.filesystem.contentRecordProjectPath("document", listed)).toBe(`backlog/docs/${path}`);
+			expect(core.filesystem.contentRecordProjectPath("document", listed)).toBe(`memaster/docs/${path}`);
 		},
 	);
 
@@ -417,7 +417,7 @@ describe("archived documents in core and storage", () => {
 
 			expect(documents.map((document) => document.id)).toEqual(["doc-1"]);
 			expect(unreadable).toEqual(["private"]);
-			expect((await core.diagnoseContentIdentity()).documents.unreadable).toEqual(["backlog/docs/private"]);
+			expect((await core.diagnoseContentIdentity()).documents.unreadable).toEqual(["memaster/docs/private"]);
 		} finally {
 			await chmod(docsPath("private"), 0o755);
 		}

@@ -3,7 +3,7 @@ import { JSDOM } from "jsdom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
-import type { Decision as BacklogDecision, Document as BacklogDocument } from "../types/index.ts";
+import type { Decision as MemasterDecision, Document as MemasterDocument } from "../types/index.ts";
 import DecisionDetail from "../web/components/DecisionDetail.tsx";
 import DocumentationDetail from "../web/components/DocumentationDetail.tsx";
 import { ThemeProvider } from "../web/contexts/ThemeContext.tsx";
@@ -15,14 +15,14 @@ const AMBIGUOUS_DOCUMENT_MESSAGE = [
 	"Document ID doc-1 is ambiguous; 2 files match:",
 	"  - doc-1 - Alpha.md",
 	"  - nested/doc-01 - Beta.md",
-	"Run 'backlog doctor' to review the conflicting files.",
+	"Run 'memaster doctor' to review the conflicting files.",
 ].join("\n");
 
 const AMBIGUOUS_DECISION_MESSAGE = [
 	"Decision ID decision-1 is ambiguous; 2 files match:",
 	"  - decision-01 - Beta.md",
 	"  - decision-1 - Alpha.md",
-	"Run 'backlog doctor' to review the conflicting files.",
+	"Run 'memaster doctor' to review the conflicting files.",
 ].join("\n");
 
 function setupDom(): HTMLElement {
@@ -121,7 +121,7 @@ afterEach(() => {
 describe("web ambiguous ID handling", () => {
 	it("shows the ambiguity instead of the cached document entry", async () => {
 		respondWithConflict(AMBIGUOUS_DOCUMENT_MESSAGE);
-		const cached: BacklogDocument = {
+		const cached: MemasterDocument = {
 			id: "doc-1",
 			title: "Cached Alpha",
 			type: "other",
@@ -138,14 +138,14 @@ describe("web ambiguous ID handling", () => {
 
 		expect(container.textContent).toContain("This ID matches more than one file");
 		expect(container.textContent).toContain("nested/doc-01 - Beta.md");
-		expect(container.textContent).toContain("backlog doctor");
+		expect(container.textContent).toContain("memaster doctor");
 		expect(container.textContent).not.toContain("Cached body that must not be shown");
 		expect(container.textContent).not.toContain("Cached Alpha");
 	});
 
 	it("shows the ambiguity instead of the cached decision entry", async () => {
 		respondWithConflict(AMBIGUOUS_DECISION_MESSAGE);
-		const cached: BacklogDecision = {
+		const cached: MemasterDecision = {
 			id: "decision-1",
 			title: "Cached Alpha",
 			date: "2026-01-01 00:00",
@@ -164,7 +164,7 @@ describe("web ambiguous ID handling", () => {
 
 		expect(container.textContent).toContain("This ID matches more than one file");
 		expect(container.textContent).toContain("decision-01 - Beta.md");
-		expect(container.textContent).toContain("backlog doctor");
+		expect(container.textContent).toContain("memaster doctor");
 		expect(container.textContent).not.toContain("Cached body that must not be shown");
 		expect(container.textContent).not.toContain("Cached Alpha");
 	});
@@ -173,7 +173,7 @@ describe("web ambiguous ID handling", () => {
 describe("create route after an ambiguity error", () => {
 	it("renders the document create editor instead of the stale notice", async () => {
 		respondWithConflict(AMBIGUOUS_DOCUMENT_MESSAGE);
-		const cached: BacklogDocument = {
+		const cached: MemasterDocument = {
 			id: "doc-1",
 			title: "Cached Alpha",
 			type: "other",
@@ -198,7 +198,7 @@ describe("create route after an ambiguity error", () => {
 
 	it("renders the decision create editor instead of the stale notice", async () => {
 		respondWithConflict(AMBIGUOUS_DECISION_MESSAGE);
-		const cached: BacklogDecision = {
+		const cached: MemasterDecision = {
 			id: "decision-1",
 			title: "Cached Alpha",
 			date: "2026-01-01 00:00",

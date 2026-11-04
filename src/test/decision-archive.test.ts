@@ -7,7 +7,7 @@ import {
 	ContentRecordNotArchivedError,
 	Core,
 	RecordRefusedError,
-} from "../core/backlog.ts";
+} from "../core/memaster.ts";
 import { EntityType } from "../types/index.ts";
 import { AmbiguousIdError } from "../utils/entity-id.ts";
 import {
@@ -26,8 +26,8 @@ describe("archived decisions in core and storage", () => {
 	let TEST_DIR: string;
 	let core: Core;
 
-	const decisionsPath = (...segments: string[]) => join(TEST_DIR, "backlog", "decisions", ...segments);
-	const archivePath = (...segments: string[]) => join(TEST_DIR, "backlog", "archive", "decisions", ...segments);
+	const decisionsPath = (...segments: string[]) => join(TEST_DIR, "memaster", "decisions", ...segments);
+	const archivePath = (...segments: string[]) => join(TEST_DIR, "memaster", "archive", "decisions", ...segments);
 
 	beforeEach(async () => {
 		TEST_DIR = await createTestDirOutsideRepository("test-decision-archive");
@@ -45,7 +45,7 @@ describe("archived decisions in core and storage", () => {
 		await core.createDecisionFromInput({ title: "Use Bun" });
 		await core.createTaskFromInput({
 			title: "Names the file",
-			documentation: ["backlog/decisions/decision-1 - Use-Bun.md"],
+			documentation: ["memaster/decisions/decision-1 - Use-Bun.md"],
 		});
 
 		expect(await core.archiveContentRecord("decision", "9")).toBeNull();
@@ -104,8 +104,8 @@ describe("archived decisions in core and storage", () => {
 		const ambiguous = await core.getDecision("decision-2").catch((error: unknown) => error);
 		expect(ambiguous).toBeInstanceOf(AmbiguousIdError);
 		expect((ambiguous as AmbiguousIdError).candidates).toEqual([
-			"backlog/archive/decisions/decision-2 - Goes-to-the-archive.md",
-			"backlog/decisions/decision-2 - Goes-to-the-archive.md",
+			"memaster/archive/decisions/decision-2 - Goes-to-the-archive.md",
+			"memaster/decisions/decision-2 - Goes-to-the-archive.md",
 		]);
 	});
 
@@ -124,7 +124,7 @@ describe("archived decisions in core and storage", () => {
 
 		expect(update).toBeInstanceOf(ContentRecordArchivedError);
 		expect((update as Error).message).toBe(
-			"Decision decision-1 is archived. Archived decisions are read-only. Restore it first: backlog decision restore decision-1",
+			"Decision decision-1 is archived. Archived decisions are read-only. Restore it first: memaster decision restore decision-1",
 		);
 		expect((save as Error).message).toContain("Cannot save decision decision-1: it is archived");
 		expect(await readFile(archivedFile, "utf8")).toBe(before);
@@ -184,7 +184,7 @@ describe("archived decisions in core and storage", () => {
 			const refused = core.filesystem.removeArchivedContentRecordFile("decision", archived);
 
 			await expect(refused).rejects.toThrow(
-				"backlog/archive/decisions/decision-1 - Listed-first.md is the file of decision-4.",
+				"memaster/archive/decisions/decision-1 - Listed-first.md is the file of decision-4.",
 			);
 			expect(await readFile(path, "utf8")).toBe(replacement);
 		});

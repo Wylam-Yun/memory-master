@@ -3,7 +3,7 @@
 import { stdout as output } from "node:process";
 import type { BoxInterface, LineInterface, ScreenInterface, ScrollableTextInterface } from "neo-neo-bblessed";
 import { box, line, scrollabletext } from "neo-neo-bblessed";
-import { type Core, createRuntimeCore } from "../core/backlog.ts";
+import { type Core, createRuntimeCore } from "../core/memaster.ts";
 import {
 	loadTaskDetail,
 	type TaskCorpus,
@@ -877,7 +877,7 @@ export async function viewTaskEnhanced(
 				listPaneMessage = `{bold}No matching tasks{/bold}\n\n${activeFilters.map((f) => ` • ${f}`).join("\n")}`;
 			} else {
 				noResultsMessage =
-					"{bold}No tasks available{/bold}\n{gray-fg}Create a task with {cyan-fg}backlog task create{/cyan-fg}.{/}";
+					"{bold}No tasks available{/bold}\n{gray-fg}Create a task with {cyan-fg}memaster task create{/cyan-fg}.{/}";
 				listPaneMessage = "{bold}No tasks available{/bold}";
 			}
 			showListEmptyState(listPaneMessage);

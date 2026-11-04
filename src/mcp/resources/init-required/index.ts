@@ -4,9 +4,9 @@ import type { McpResourceHandler } from "../../types.ts";
 
 function createInitRequiredResource(server: McpServer, projectRoot: string): McpResourceHandler {
 	return {
-		uri: "backlog://init-required",
-		name: `Backlog.md Not Initialized [${projectRoot}]`,
-		description: "Instructions for initializing Backlog.md in this project",
+		uri: "memaster://init-required",
+		name: `Memaster Not Initialized [${projectRoot}]`,
+		description: "Instructions for initializing Memaster in this project",
 		mimeType: "text/markdown",
 		handler: async () => {
 			let text = MCP_INIT_REQUIRED_GUIDE;
@@ -18,7 +18,7 @@ function createInitRequiredResource(server: McpServer, projectRoot: string): Mcp
 			return {
 				contents: [
 					{
-						uri: "backlog://init-required",
+						uri: "memaster://init-required",
 						mimeType: "text/markdown",
 						text,
 					},

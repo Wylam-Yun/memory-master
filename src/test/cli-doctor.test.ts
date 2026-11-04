@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { chmod, mkdir, readdir, realpath, symlink, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { serializeDecision, serializeDocument, serializeTask } from "../markdown/serializer.ts";
 import type { Task } from "../types/index.ts";
 import { getTestCliPath } from "./test-cli.ts";
@@ -69,7 +69,7 @@ beforeEach(async () => {
 	testDir = createUniqueTestDir("cli-doctor");
 	await mkdir(testDir, { recursive: true });
 	core = new Core(testDir);
-	await core.filesystem.ensureBacklogStructure();
+	await core.filesystem.ensureMemasterStructure();
 	await core.filesystem.saveConfig({
 		projectName: "CLI doctor",
 		statuses: ["To Do", "In Progress", "Done"],
@@ -89,14 +89,14 @@ afterEach(async () => {
 	await safeCleanup(testDir);
 });
 
-describe("backlog doctor", () => {
+describe("memaster doctor", () => {
 	it("prints a path-qualified human repair preview without agent instructions", async () => {
 		const result = await $`bun ${cliPath} doctor`.cwd(testDir).quiet().nothrow();
 		const output = `${result.stdout}${result.stderr}`;
 		expect(result.exitCode).toBe(1);
 		expect(output).toContain("Repair preview (no files changed)");
-		expect(output).toContain("backlog/tasks/task-01 - Beta.md");
-		expect(output).toContain("backlog/archive/tasks/task-001 - Gamma.md");
+		expect(output).toContain("memaster/tasks/task-01 - Beta.md");
+		expect(output).toContain("memaster/archive/tasks/task-001 - Gamma.md");
 		expect(output).toContain("References requiring human review");
 		expect(output.toLowerCase()).not.toContain("copy repair instructions");
 		expect(output.toLowerCase()).not.toContain("agent");
@@ -164,7 +164,7 @@ describe("backlog doctor", () => {
 			expect(result.exitCode).toBe(1);
 			expect(output).not.toContain("No duplicate IDs, self-referential dependencies, or dependency cycles found.");
 			expect(output).toContain("Unreadable draft files or directories");
-			expect(output).toContain("backlog/drafts");
+			expect(output).toContain("memaster/drafts");
 		},
 	);
 
@@ -201,14 +201,14 @@ describe("backlog doctor", () => {
 		const output = `${result.stdout}${result.stderr}`;
 		expect(result.exitCode).toBe(1);
 		expect(output).toContain("Possible cross-branch ID collisions (diagnostic only)");
-		expect(output).toContain("feature:backlog/tasks/task-20 - Branch Beta.md");
+		expect(output).toContain("feature:memaster/tasks/task-20 - Branch Beta.md");
 		expect(output).toContain("will not edit another branch");
 	});
 
 	it.skipIf(process.platform === "win32")(
 		"reports an incomplete reference scan instead of claiming no references",
 		async () => {
-			const docsDir = join(core.filesystem.backlogDir, "docs");
+			const docsDir = join(core.filesystem.memasterDir, "docs");
 			const unreadablePath = join(docsDir, "unreadable.md");
 			await mkdir(docsDir, { recursive: true });
 			await Bun.write(unreadablePath, "See TASK-1");
@@ -225,10 +225,10 @@ describe("backlog doctor", () => {
 			const output = `${result.stdout}${result.stderr}`;
 			expect(result.exitCode).toBe(1);
 			expect(output).toContain("Reference scan incomplete; repair is blocked");
-			expect(output).toContain("Reference scan could not read backlog/docs/unreadable.md");
+			expect(output).toContain("Reference scan could not read memaster/docs/unreadable.md");
 			expect(output).not.toContain("No textual references");
 			expect(output).toContain("Resolve the blocked reasons above");
-			expect(output).not.toContain("backlog doctor --fix");
+			expect(output).not.toContain("memaster doctor --fix");
 		},
 	);
 
@@ -296,7 +296,7 @@ describe("backlog doctor", () => {
 });
 
 describe("archived tasks stored outside the archive folder", () => {
-	const completedFolder = () => join(core.filesystem.backlogDir, "completed");
+	const completedFolder = () => join(core.filesystem.memasterDir, "completed");
 
 	async function writeCompletedTask(fileName: string, task: Task): Promise<string> {
 		await mkdir(completedFolder(), { recursive: true });
@@ -314,16 +314,16 @@ describe("archived tasks stored outside the archive folder", () => {
 		const previewOutput = `${preview.stdout}${preview.stderr}`;
 		expect(preview.exitCode).toBe(0);
 		expect(previewOutput).toContain("No duplicate IDs, self-referential dependencies, or dependency cycles found.");
-		expect(previewOutput).toContain("1 archived task file stored outside backlog/archive/tasks:");
-		expect(previewOutput).toContain("backlog/completed/task-7 - Finished.md");
+		expect(previewOutput).toContain("1 archived task file stored outside memaster/archive/tasks:");
+		expect(previewOutput).toContain("memaster/completed/task-7 - Finished.md");
 		expect(previewOutput).toContain(
-			"'backlog doctor --fix' moves them into backlog/archive/tasks. File names and task IDs stay the same.",
+			"'memaster doctor --fix' moves them into memaster/archive/tasks. File names and task IDs stay the same.",
 		);
 		expect(await Bun.file(source).exists()).toBe(true);
 
 		const fixed = await $`bun ${cliPath} doctor --fix --yes`.cwd(testDir).quiet().nothrow();
 		expect(fixed.exitCode).toBe(0);
-		expect(`${fixed.stdout}`).toContain("Moved 1 archived task file into backlog/archive/tasks.");
+		expect(`${fixed.stdout}`).toContain("Moved 1 archived task file into memaster/archive/tasks.");
 		expect(await Bun.file(source).exists()).toBe(false);
 		expect(await Bun.file(join(core.filesystem.archiveTasksDir, "task-7 - Finished.md")).text()).toBe(content);
 		expect((await core.filesystem.listArchivedTasks()).map((task) => task.id)).toEqual(["TASK-7"]);
@@ -338,11 +338,11 @@ describe("archived tasks stored outside the archive folder", () => {
 		const reportStart = [
 			"No duplicate IDs, self-referential dependencies, or dependency cycles found.",
 			"",
-			"1 archived task file stored outside backlog/archive/tasks:",
-			`  backlog/completed/${fileName}`,
+			"1 archived task file stored outside memaster/archive/tasks:",
+			`  memaster/completed/${fileName}`,
 		];
 		const reportEnd =
-			"'backlog doctor --fix' moves them into backlog/archive/tasks. File names and task IDs stay the same.";
+			"'memaster doctor --fix' moves them into memaster/archive/tasks. File names and task IDs stay the same.";
 		const reportLines = async () => {
 			const report = await $`bun ${cliPath} doctor`.cwd(testDir).quiet().nothrow();
 			expect(report.exitCode).toBe(0);
@@ -356,7 +356,7 @@ describe("archived tasks stored outside the archive folder", () => {
 			expect(await reportLines()).toEqual([...reportStart, reportEnd]);
 		});
 
-		it("names the real directory when the folder is a link to one outside the backlog directory", async () => {
+		it("names the real directory when the folder is a link to one outside the memaster directory", async () => {
 			await removeDuplicateTasks();
 			const outside = join(testDir, "shared-completed");
 			await mkdir(outside, { recursive: true });
@@ -365,12 +365,12 @@ describe("archived tasks stored outside the archive folder", () => {
 
 			expect(await reportLines()).toEqual([
 				...reportStart,
-				`backlog/completed is a link to ${await realpath(outside)}, outside the backlog directory. The files are moved out of that folder.`,
+				`memaster/completed is a link to ${await realpath(outside)}, outside the memaster directory. The files are moved out of that folder.`,
 				reportEnd,
 			]);
 		});
 
-		it("names the real archive folder when it is a link to one outside the backlog directory", async () => {
+		it("names the real archive folder when it is a link to one outside the memaster directory", async () => {
 			await removeDuplicateTasks();
 			const outside = join(testDir, "shared-archive");
 			await mkdir(outside, { recursive: true });
@@ -380,7 +380,7 @@ describe("archived tasks stored outside the archive folder", () => {
 
 			expect(await reportLines()).toEqual([
 				...reportStart,
-				`backlog/archive/tasks is a link to ${await realpath(outside)}, outside the backlog directory. The files are moved into that folder.`,
+				`memaster/archive/tasks is a link to ${await realpath(outside)}, outside the memaster directory. The files are moved into that folder.`,
 				reportEnd,
 			]);
 		});
@@ -389,7 +389,7 @@ describe("archived tasks stored outside the archive folder", () => {
 			await removeDuplicateTasks();
 			const outside = join(testDir, "shared-archive");
 			await mkdir(outside, { recursive: true });
-			const archiveParent = join(core.filesystem.backlogDir, "archive");
+			const archiveParent = join(core.filesystem.memasterDir, "archive");
 			await safeCleanup(archiveParent);
 			await symlink(outside, archiveParent, "junction");
 			await writeCompletedTask(fileName, makeTask("TASK-7", "Finished"));
@@ -400,15 +400,15 @@ describe("archived tasks stored outside the archive folder", () => {
 
 			expect(await reportLines()).toEqual([
 				...reportStart,
-				`backlog/archive/tasks is a link to ${destination}, outside the backlog directory. The files are moved into that folder.`,
+				`memaster/archive/tasks is a link to ${destination}, outside the memaster directory. The files are moved into that folder.`,
 				reportEnd,
 			]);
 			expect(await Bun.file(source).text()).toBe(content);
 
 			const fixed = await $`bun ${cliPath} doctor --fix --yes`.cwd(testDir).quiet().nothrow();
 			expect(fixed.exitCode).toBe(0);
-			expect(`${fixed.stdout}`).toContain(`backlog/archive/tasks is a link to ${destination}`);
-			expect(`${fixed.stdout}`).toContain("Moved 1 archived task file into backlog/archive/tasks.");
+			expect(`${fixed.stdout}`).toContain(`memaster/archive/tasks is a link to ${destination}`);
+			expect(`${fixed.stdout}`).toContain("Moved 1 archived task file into memaster/archive/tasks.");
 			expect(await Bun.file(join(destination, fileName)).text()).toBe(content);
 			expect(await Bun.file(source).exists()).toBe(false);
 			expect((await core.filesystem.listArchivedTasks()).map((task) => task.id)).toEqual(["TASK-7"]);
@@ -425,14 +425,14 @@ describe("archived tasks stored outside the archive folder", () => {
 		const preview = await $`bun ${cliPath} doctor`.cwd(testDir).quiet().nothrow();
 		const previewOutput = `${preview.stdout}${preview.stderr}`;
 		expect(preview.exitCode).toBe(1);
-		expect(previewOutput).toContain(`backlog/archive/tasks/${fileName}\n    TASK-41 -> TASK-`);
-		expect(previewOutput).toContain("1 archived task file cannot be moved because backlog/archive/tasks already has");
+		expect(previewOutput).toContain(`memaster/archive/tasks/${fileName}\n    TASK-41 -> TASK-`);
+		expect(previewOutput).toContain("1 archived task file cannot be moved because memaster/archive/tasks already has");
 
 		const fixed = await $`bun ${cliPath} doctor --fix --yes`.cwd(testDir).quiet().nothrow();
 		const fixedOutput = `${fixed.stdout}${fixed.stderr}`;
 		expect(fixed.exitCode).toBe(0);
 		expect(fixedOutput).toContain("Repaired 3 duplicate task files.");
-		expect(fixedOutput).toContain("Moved 1 archived task file into backlog/archive/tasks.");
+		expect(fixedOutput).toContain("Moved 1 archived task file into memaster/archive/tasks.");
 		expect(await readdir(completedFolder())).toEqual([]);
 		expect((await core.getTask("TASK-41"))?.title).toBe("Finished work");
 		expect((await core.previewDuplicateTaskIdRepair()).groups).toEqual([]);
@@ -450,7 +450,7 @@ describe("archived tasks stored outside the archive folder", () => {
 		const output = `${fixed.stdout}${fixed.stderr}`;
 
 		expect(fixed.exitCode).toBe(1);
-		expect(output).toContain(`backlog/completed/${fileName}`);
+		expect(output).toContain(`memaster/completed/${fileName}`);
 		expect(output).toContain("Rename or remove one file of each pair by hand.");
 		expect([await Bun.file(inArchive).text(), await Bun.file(inCompleted).text()]).toEqual(before);
 	});
@@ -464,8 +464,8 @@ describe("CLI collision safety", () => {
 			const output = `${result.stdout}${result.stderr}`;
 			expect(result.exitCode).toBe(1);
 			expect(output).toContain("duplicate task ID");
-			expect(output).toContain("backlog doctor");
-			expect(output).toContain("backlog/tasks/task-1 - Alpha.md");
+			expect(output).toContain("memaster doctor");
+			expect(output).toContain("memaster/tasks/task-1 - Alpha.md");
 		}
 	});
 
@@ -496,8 +496,8 @@ describe("CLI collision safety", () => {
 		const output = `${result.stdout}${result.stderr}`;
 		expect(result.exitCode).toBe(1);
 		expect(output).toContain("duplicate task ID");
-		expect(output).toContain("backlog/tasks/task-1 - Alpha.md");
-		expect(output).toContain("backlog/archive/tasks/task-001 - Gamma.md");
+		expect(output).toContain("memaster/tasks/task-1 - Alpha.md");
+		expect(output).toContain("memaster/archive/tasks/task-001 - Gamma.md");
 		expect(await Bun.file(outputPath).text()).toBe("sentinel board content");
 	});
 });
@@ -554,7 +554,7 @@ describe("dependency defects", () => {
 		expect(report.exitCode).toBe(1);
 		expect(output).toContain("TASK-2 depends on itself");
 		expect(output).toContain(
-			"'backlog task edit <id> --dep <ids>' (or --clear-deps). Restore an archived task first: 'backlog task restore <id>'.",
+			"'memaster task edit <id> --dep <ids>' (or --clear-deps). Restore an archived task first: 'memaster task restore <id>'.",
 		);
 		expect(output).not.toContain("edit the file directly");
 
@@ -678,11 +678,11 @@ describe("document and decision identity", () => {
 		const output = `${result.stdout}${result.stderr}`;
 		expect(result.exitCode).toBe(1);
 		expect(output).toContain("Duplicate document IDs (diagnostic only)");
-		expect(output).toContain("backlog/docs/doc-1 - Alpha.md");
-		expect(output).toContain("backlog/docs/nested/doc-01 - Beta.md");
+		expect(output).toContain("memaster/docs/doc-1 - Alpha.md");
+		expect(output).toContain("memaster/docs/nested/doc-01 - Beta.md");
 		expect(output).toContain("Duplicate decision IDs (diagnostic only)");
-		expect(output).toContain("backlog/decisions/decision-2 - Gamma.md");
-		expect(output).toContain("backlog/decisions/decision-002 - Delta.md");
+		expect(output).toContain("memaster/decisions/decision-2 - Gamma.md");
+		expect(output).toContain("memaster/decisions/decision-002 - Delta.md");
 	});
 
 	it("surfaces documents and decisions without an id as malformed", async () => {
@@ -693,9 +693,9 @@ describe("document and decision identity", () => {
 		const output = `${result.stdout}${result.stderr}`;
 		expect(result.exitCode).toBe(1);
 		expect(output).toContain("Malformed document files without an id in frontmatter");
-		expect(output).toContain("backlog/docs/orphan.md");
+		expect(output).toContain("memaster/docs/orphan.md");
 		expect(output).toContain("Malformed decision files without an id in frontmatter");
-		expect(output).toContain("backlog/decisions/decision-orphan.md");
+		expect(output).toContain("memaster/decisions/decision-orphan.md");
 	});
 
 	it("never reports healthy when a document or decision file cannot be parsed", async () => {
@@ -715,9 +715,9 @@ describe("document and decision identity", () => {
 		expect(result.exitCode).toBe(1);
 		expect(output).not.toContain("No duplicate IDs, self-referential dependencies, or dependency cycles found.");
 		expect(output).toContain("Unreadable document files");
-		expect(output).toContain("backlog/docs/doc-2 - Broken.md");
+		expect(output).toContain("memaster/docs/doc-2 - Broken.md");
 		expect(output).toContain("Unreadable decision files");
-		expect(output).toContain("backlog/decisions/decision-2 - Broken.md");
+		expect(output).toContain("memaster/decisions/decision-2 - Broken.md");
 	});
 
 	it.skipIf(process.platform === "win32")("reports a document directory it cannot scan", async () => {
@@ -744,7 +744,7 @@ describe("document and decision identity", () => {
 		expect(result.exitCode).toBe(1);
 		expect(output).not.toContain("No duplicate IDs, self-referential dependencies, or dependency cycles found.");
 		expect(output).toContain("Unreadable document files or directories");
-		expect(output).toContain("backlog/docs");
+		expect(output).toContain("memaster/docs");
 	});
 
 	it("keeps valid documents readable when a sibling file cannot be parsed", async () => {
@@ -788,7 +788,7 @@ describe("document and decision identity", () => {
 			expect(output).toContain("Document ID doc-1 is ambiguous");
 			expect(output).toContain("doc-1 - Alpha.md");
 			expect(output).toContain("nested/doc-01 - Beta.md");
-			expect(output).toContain("backlog doctor");
+			expect(output).toContain("memaster doctor");
 		}
 		expect(await Bun.file(alphaPath).text()).toBe(alphaBefore);
 	});

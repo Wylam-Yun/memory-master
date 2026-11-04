@@ -3,9 +3,9 @@ import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { CREATE_LOCK_ERROR_MESSAGE } from "../file-system/operations.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { initializeTestProject } from "./test-utils.ts";
 
@@ -14,10 +14,10 @@ const cli = getTestCliPath();
 describe("decision creation", () => {
 	let directory: string;
 	let core: Core;
-	let server: BacklogServer | undefined;
+	let server: MemasterServer | undefined;
 
 	beforeEach(async () => {
-		directory = await mkdtemp(join(tmpdir(), "backlog-decision-create-"));
+		directory = await mkdtemp(join(tmpdir(), "memaster-decision-create-"));
 		core = new Core(directory);
 		await initializeTestProject(core, "Decision creation");
 	});
@@ -49,7 +49,7 @@ describe("decision creation", () => {
 
 	it("creates the same empty sections through HTTP and CLI", async () => {
 		await $`bun ${cli} decision create "Same choice"`.cwd(directory).quiet();
-		server = new BacklogServer(directory);
+		server = new MemasterServer(directory);
 		await server.start(0, false);
 		const response = await fetch(`http://127.0.0.1:${server.getPort()}/api/decisions`, {
 			method: "POST",

@@ -5,7 +5,7 @@ import type { Task } from "../types/index.ts";
 const context = {
 	repositoryRoot: "/repo",
 	projectRoot: "/repo",
-	backlogDirectory: "backlog",
+	memasterDirectory: "memaster",
 };
 
 function task(title: string, id = "BACK-1"): Task {
@@ -30,7 +30,7 @@ describe("TaskIdentityIndex", () => {
 			id: "BACK-1",
 			type: "task",
 			branch: "origin/main",
-			path: "backlog/tasks/back-1 - Shared.md",
+			path: "memaster/tasks/back-1 - Shared.md",
 			lastModified: new Date("2026-08-01T10:00:00Z"),
 			task: task("Hydrated title"),
 		};
@@ -53,7 +53,7 @@ describe("TaskIdentityIndex", () => {
 			id: "BACK-001",
 			type: "task",
 			branch: "feature/active",
-			path: "backlog/tasks/back-1 - Shared.md",
+			path: "memaster/tasks/back-1 - Shared.md",
 			lastModified: new Date("2026-08-01T10:00:00Z"),
 			task: task("Active"),
 		};
@@ -61,7 +61,7 @@ describe("TaskIdentityIndex", () => {
 			id: "BACK-1",
 			type: "archived",
 			branch: "feature/archive",
-			path: "backlog/archive/tasks/back-1 - Shared.md",
+			path: "memaster/archive/tasks/back-1 - Shared.md",
 			lastModified: new Date("2026-08-01T10:00:00Z"),
 		};
 
@@ -80,7 +80,7 @@ describe("TaskIdentityIndex", () => {
 			id: "BACK-1",
 			type: "task",
 			branch: "branch-a",
-			path: "backlog/tasks/back-1 - Shared.md",
+			path: "memaster/tasks/back-1 - Shared.md",
 			lastModified: new Date("2026-08-01T10:00:00Z"),
 			task: task("Branch A"),
 		};
@@ -100,7 +100,7 @@ describe("TaskIdentityIndex", () => {
 			id,
 			type: "task",
 			branch: "local",
-			path: `backlog/tasks/${id.toLowerCase()} - Subtask.md`,
+			path: `memaster/tasks/${id.toLowerCase()} - Subtask.md`,
 			lastModified: new Date("2026-08-01T10:00:00Z"),
 			task: task(`Subtask ${id}`, id),
 		}));
@@ -116,14 +116,14 @@ describe("TaskIdentityIndex", () => {
 				id: "BACK-001",
 				type: "archived",
 				branch: "branch-a",
-				path: "backlog/archive/tasks/back-1 - Shared.md",
+				path: "memaster/archive/tasks/back-1 - Shared.md",
 				lastModified: new Date("2026-08-01T10:00:00Z"),
 			},
 			{
 				id: "BACK-1",
 				type: "archived",
 				branch: "branch-b",
-				path: "backlog/archive/tasks/back-1 - Shared.md",
+				path: "memaster/archive/tasks/back-1 - Shared.md",
 				lastModified: new Date("2026-08-01T11:00:00Z"),
 			},
 		]);
@@ -139,7 +139,7 @@ describe("TaskIdentityIndex", () => {
 				id: "BACK-7",
 				type: "archived",
 				branch: "local",
-				path: "backlog/archive/tasks/back-7 - Archived.md",
+				path: "memaster/archive/tasks/back-7 - Archived.md",
 				lastModified: new Date(0),
 				task: archivedTask,
 				workingCopy: true,
@@ -152,7 +152,7 @@ describe("TaskIdentityIndex", () => {
 	});
 
 	describe("selectTaskRecord resolves a task's copies by the configured strategy", () => {
-		const path = "backlog/tasks/back-1 - Shared.md";
+		const path = "memaster/tasks/back-1 - Shared.md";
 		const working = (status: string, lastModified: string): TaskIdentityRecord => ({
 			id: "BACK-1",
 			type: "task",

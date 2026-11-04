@@ -19,21 +19,15 @@ import {
 } from "../markdown/parser.ts";
 import { serializeDecision, serializeDocument, serializeTask } from "../markdown/serializer.ts";
 import type {
-	BacklogConfig,
 	ContentRecord,
 	ContentRecordKind,
 	Decision,
 	Document,
+	MemasterConfig,
 	Milestone,
 	Task,
 	TaskListFilter,
 } from "../types/index.ts";
-import type { BacklogConfigSource } from "../utils/backlog-directory.ts";
-import {
-	normalizeProjectBacklogDirectory,
-	resolveBacklogDirectory,
-	resolveBacklogDirectoryFromRootConfig,
-} from "../utils/backlog-directory.ts";
 import { decisionIdKey, decisionIdsEqual, findDecisionById } from "../utils/decision-id.ts";
 import {
 	documentIdKey,
@@ -46,6 +40,12 @@ import { normalizeDocumentRelativePath, normalizeDocumentSubPath } from "../util
 import { normalizeDueDate } from "../utils/due-date.ts";
 import type { DraftIdentityFindings } from "../utils/duplicate-detection.ts";
 import { AmbiguousIdError, isAmbiguousIdError } from "../utils/entity-id.ts";
+import type { MemasterConfigSource } from "../utils/memaster-directory.ts";
+import {
+	normalizeProjectMemasterDirectory,
+	resolveMemasterDirectory,
+	resolveMemasterDirectoryFromRootConfig,
+} from "../utils/memaster-directory.ts";
 import {
 	buildGlobPattern,
 	extractAnyPrefix,
@@ -100,7 +100,7 @@ interface LockAttemptSettings {
 type ConfigListKey = "statuses" | "labels" | "types" | "priorities" | "projects" | "default_assignee";
 
 /**
- * A mapping key line, whatever characters the name uses. Keys Backlog does not read still end the
+ * A mapping key line, whatever characters the name uses. Keys Memaster does not read still end the
  * previous key's block, so an unrelated `custom-setting:` cannot fold its value into the block being
  * extracted. A sequence item is not a key even when its text contains a colon.
  */
@@ -149,10 +149,10 @@ function extractConfigKeyYaml(content: string, key: string): string | undefined 
 
 const CONFIG_VALUE_ERROR_NAME = "ConfigValueError";
 
-/** Reports a config value Backlog refuses to guess at, naming the file and the offending key. */
+/** Reports a config value Memaster refuses to guess at, naming the file and the offending key. */
 function configValueError(configPath: string, key: string, problem: string, remedy: string): Error {
 	const error = new Error(
-		`Backlog could not start because ${configPath} has an invalid value for "${key}"${problem ? `: ${problem}` : ""}. ${remedy}`,
+		`Memaster could not start because ${configPath} has an invalid value for "${key}"${problem ? `: ${problem}` : ""}. ${remedy}`,
 	);
 	error.name = CONFIG_VALUE_ERROR_NAME;
 	return error;
@@ -171,7 +171,7 @@ function configSyntaxError(configPath: string, key: string, reason: unknown): Er
 
 /** Names the shape a rejected value turned out to have, for an error a person has to act on. */
 function describeConfigValue(value: unknown): string {
-	if (value === undefined) return "no value Backlog could read";
+	if (value === undefined) return "no value Memaster could read";
 	switch (typeof value) {
 		case "string":
 			return "a scalar";
@@ -392,12 +392,12 @@ export class DraftIdentityError extends Error {
 }
 
 export class FileSystem {
-	private resolvedBacklogDir: string;
-	private resolvedBacklogDirName: string;
+	private resolvedMemasterDir: string;
+	private resolvedMemasterDirName: string;
 	private resolvedConfigPath: string;
-	private configSource: BacklogConfigSource;
+	private configSource: MemasterConfigSource;
 	private readonly projectRoot: string;
-	private cachedConfig: BacklogConfig | null = null;
+	private cachedConfig: MemasterConfig | null = null;
 	private cachedConfigSnapshot: { path: string; content: string } | null = null;
 	private readonly parsedTaskFiles = new Map<string, ParsedTaskFile>();
 	private taskParseCacheEpoch = 0;
@@ -408,51 +408,51 @@ export class FileSystem {
 
 	constructor(projectRoot: string) {
 		this.projectRoot = projectRoot;
-		const resolution = resolveBacklogDirectory(projectRoot);
-		this.resolvedBacklogDirName = resolution.backlogDir ?? DEFAULT_DIRECTORIES.BACKLOG;
-		this.resolvedBacklogDir = resolution.backlogPath ?? join(projectRoot, DEFAULT_DIRECTORIES.BACKLOG);
-		this.resolvedConfigPath = resolution.configPath ?? join(this.resolvedBacklogDir, DEFAULT_FILES.CONFIG);
+		const resolution = resolveMemasterDirectory(projectRoot);
+		this.resolvedMemasterDirName = resolution.memasterDir ?? DEFAULT_DIRECTORIES.MEMASTER;
+		this.resolvedMemasterDir = resolution.memasterPath ?? join(projectRoot, DEFAULT_DIRECTORIES.MEMASTER);
+		this.resolvedConfigPath = resolution.configPath ?? join(this.resolvedMemasterDir, DEFAULT_FILES.CONFIG);
 		this.configSource = resolution.configSource ?? "folder";
 	}
 
-	private async getBacklogDir(): Promise<string> {
-		return this.resolvedBacklogDir;
+	private async getMemasterDir(): Promise<string> {
+		return this.resolvedMemasterDir;
 	}
 
 	// Public accessors for directory paths
-	get backlogDir(): string {
-		return this.resolvedBacklogDir;
+	get memasterDir(): string {
+		return this.resolvedMemasterDir;
 	}
-	get backlogDirName(): string {
-		return this.resolvedBacklogDirName;
+	get memasterDirName(): string {
+		return this.resolvedMemasterDirName;
 	}
 	get tasksDir(): string {
-		return join(this.resolvedBacklogDir, DEFAULT_DIRECTORIES.TASKS);
+		return join(this.resolvedMemasterDir, DEFAULT_DIRECTORIES.TASKS);
 	}
 	get archiveTasksDir(): string {
-		return join(this.resolvedBacklogDir, DEFAULT_DIRECTORIES.ARCHIVE_TASKS);
+		return join(this.resolvedMemasterDir, DEFAULT_DIRECTORIES.ARCHIVE_TASKS);
 	}
 	get archiveMilestonesDir(): string {
-		return join(this.resolvedBacklogDir, DEFAULT_DIRECTORIES.ARCHIVE_MILESTONES);
+		return join(this.resolvedMemasterDir, DEFAULT_DIRECTORIES.ARCHIVE_MILESTONES);
 	}
 	get decisionsDir(): string {
-		return join(this.resolvedBacklogDir, DEFAULT_DIRECTORIES.DECISIONS);
+		return join(this.resolvedMemasterDir, DEFAULT_DIRECTORIES.DECISIONS);
 	}
 
 	get docsDir(): string {
-		return join(this.resolvedBacklogDir, DEFAULT_DIRECTORIES.DOCS);
+		return join(this.resolvedMemasterDir, DEFAULT_DIRECTORIES.DOCS);
 	}
 
 	get archiveDocsDir(): string {
-		return join(this.resolvedBacklogDir, DEFAULT_DIRECTORIES.ARCHIVE_DOCS);
+		return join(this.resolvedMemasterDir, DEFAULT_DIRECTORIES.ARCHIVE_DOCS);
 	}
 
 	get archiveDecisionsDir(): string {
-		return join(this.resolvedBacklogDir, DEFAULT_DIRECTORIES.ARCHIVE_DECISIONS);
+		return join(this.resolvedMemasterDir, DEFAULT_DIRECTORIES.ARCHIVE_DECISIONS);
 	}
 
 	get milestonesDir(): string {
-		return join(this.resolvedBacklogDir, DEFAULT_DIRECTORIES.MILESTONES);
+		return join(this.resolvedMemasterDir, DEFAULT_DIRECTORIES.MILESTONES);
 	}
 
 	get configFilePath(): string {
@@ -476,14 +476,17 @@ export class FileSystem {
 			: null;
 	}
 
-	publishConfig(config: BacklogConfig, sourceConfigPath: string, content: string): boolean {
+	publishConfig(config: MemasterConfig, sourceConfigPath: string, content: string): boolean {
 		const rootConfigPath = join(this.projectRoot, DEFAULT_FILES.ROOT_CONFIG);
 		if (resolve(sourceConfigPath) === resolve(rootConfigPath)) {
-			if (config.backlogDirectory !== undefined && normalizeProjectBacklogDirectory(config.backlogDirectory) === null) {
+			if (
+				config.memasterDirectory !== undefined &&
+				normalizeProjectMemasterDirectory(config.memasterDirectory) === null
+			) {
 				return false;
 			}
-			const resolution = resolveBacklogDirectoryFromRootConfig(this.projectRoot, config.backlogDirectory);
-			if (!resolution.backlogDir || !resolution.backlogPath || resolution.configSource !== "root") {
+			const resolution = resolveMemasterDirectoryFromRootConfig(this.projectRoot, config.memasterDirectory);
+			if (!resolution.memasterDir || !resolution.memasterPath || resolution.configSource !== "root") {
 				return false;
 			}
 			this.applyConfigResolution(resolution);
@@ -494,34 +497,34 @@ export class FileSystem {
 	}
 
 	private refreshConfigResolution(): void {
-		this.applyConfigResolution(resolveBacklogDirectory(this.projectRoot));
+		this.applyConfigResolution(resolveMemasterDirectory(this.projectRoot));
 	}
 
-	private applyConfigResolution(resolution: ReturnType<typeof resolveBacklogDirectory>): void {
-		const backlogDirName = resolution.backlogDir ?? DEFAULT_DIRECTORIES.BACKLOG;
-		const backlogDir = resolution.backlogPath ?? join(this.projectRoot, DEFAULT_DIRECTORIES.BACKLOG);
-		if (resolve(backlogDir) !== resolve(this.resolvedBacklogDir)) {
+	private applyConfigResolution(resolution: ReturnType<typeof resolveMemasterDirectory>): void {
+		const memasterDirName = resolution.memasterDir ?? DEFAULT_DIRECTORIES.MEMASTER;
+		const memasterDir = resolution.memasterPath ?? join(this.projectRoot, DEFAULT_DIRECTORIES.MEMASTER);
+		if (resolve(memasterDir) !== resolve(this.resolvedMemasterDir)) {
 			this.invalidateTaskParseCache();
 		}
-		this.resolvedBacklogDirName = backlogDirName;
-		this.resolvedBacklogDir = backlogDir;
-		this.resolvedConfigPath = resolution.configPath ?? join(this.resolvedBacklogDir, DEFAULT_FILES.CONFIG);
+		this.resolvedMemasterDirName = memasterDirName;
+		this.resolvedMemasterDir = memasterDir;
+		this.resolvedConfigPath = resolution.configPath ?? join(this.resolvedMemasterDir, DEFAULT_FILES.CONFIG);
 		this.configSource = resolution.configSource ?? "folder";
 	}
 
-	setBacklogDirectory(backlogDir: string): void {
-		const normalized = normalizeProjectBacklogDirectory(backlogDir);
+	setMemasterDirectory(memasterDir: string): void {
+		const normalized = normalizeProjectMemasterDirectory(memasterDir);
 		if (!normalized) {
-			throw new Error("Backlog directory must be a project-relative path.");
+			throw new Error("Memaster directory must be a project-relative path.");
 		}
-		const nextBacklogDir = join(this.projectRoot, normalized);
-		if (resolve(nextBacklogDir) !== resolve(this.resolvedBacklogDir)) {
+		const nextMemasterDir = join(this.projectRoot, normalized);
+		if (resolve(nextMemasterDir) !== resolve(this.resolvedMemasterDir)) {
 			this.invalidateTaskParseCache();
 		}
-		this.resolvedBacklogDirName = normalized;
-		this.resolvedBacklogDir = nextBacklogDir;
+		this.resolvedMemasterDirName = normalized;
+		this.resolvedMemasterDir = nextMemasterDir;
 		if (this.configSource === "folder") {
-			this.resolvedConfigPath = join(this.resolvedBacklogDir, DEFAULT_FILES.CONFIG);
+			this.resolvedConfigPath = join(this.resolvedMemasterDir, DEFAULT_FILES.CONFIG);
 		}
 	}
 
@@ -531,56 +534,56 @@ export class FileSystem {
 		this.taskFileReadGenerations.clear();
 	}
 
-	setConfigLocation(configSource: BacklogConfigSource): void {
+	setConfigLocation(configSource: MemasterConfigSource): void {
 		this.configSource = configSource;
 		this.resolvedConfigPath =
 			configSource === "root"
 				? join(this.projectRoot, DEFAULT_FILES.ROOT_CONFIG)
-				: join(this.resolvedBacklogDir, DEFAULT_FILES.CONFIG);
+				: join(this.resolvedMemasterDir, DEFAULT_FILES.CONFIG);
 	}
 
-	resolveBacklogDirectoryInfo() {
-		return resolveBacklogDirectory(this.projectRoot);
+	resolveMemasterDirectoryInfo() {
+		return resolveMemasterDirectory(this.projectRoot);
 	}
 
 	private async getTasksDir(): Promise<string> {
-		const backlogDir = await this.getBacklogDir();
-		return join(backlogDir, DEFAULT_DIRECTORIES.TASKS);
+		const memasterDir = await this.getMemasterDir();
+		return join(memasterDir, DEFAULT_DIRECTORIES.TASKS);
 	}
 
 	async getDraftsDir(): Promise<string> {
-		const backlogDir = await this.getBacklogDir();
-		return join(backlogDir, DEFAULT_DIRECTORIES.DRAFTS);
+		const memasterDir = await this.getMemasterDir();
+		return join(memasterDir, DEFAULT_DIRECTORIES.DRAFTS);
 	}
 
 	async getArchiveTasksDir(): Promise<string> {
-		const backlogDir = await this.getBacklogDir();
-		return join(backlogDir, DEFAULT_DIRECTORIES.ARCHIVE_TASKS);
+		const memasterDir = await this.getMemasterDir();
+		return join(memasterDir, DEFAULT_DIRECTORIES.ARCHIVE_TASKS);
 	}
 
 	private async getArchiveMilestonesDir(): Promise<string> {
-		const backlogDir = await this.getBacklogDir();
-		return join(backlogDir, DEFAULT_DIRECTORIES.ARCHIVE_MILESTONES);
+		const memasterDir = await this.getMemasterDir();
+		return join(memasterDir, DEFAULT_DIRECTORIES.ARCHIVE_MILESTONES);
 	}
 
 	private async getArchiveDraftsDir(): Promise<string> {
-		const backlogDir = await this.getBacklogDir();
-		return join(backlogDir, DEFAULT_DIRECTORIES.ARCHIVE_DRAFTS);
+		const memasterDir = await this.getMemasterDir();
+		return join(memasterDir, DEFAULT_DIRECTORIES.ARCHIVE_DRAFTS);
 	}
 
 	private async getDecisionsDir(): Promise<string> {
-		const backlogDir = await this.getBacklogDir();
-		return join(backlogDir, DEFAULT_DIRECTORIES.DECISIONS);
+		const memasterDir = await this.getMemasterDir();
+		return join(memasterDir, DEFAULT_DIRECTORIES.DECISIONS);
 	}
 
 	private async getDocsDir(): Promise<string> {
-		const backlogDir = await this.getBacklogDir();
-		return join(backlogDir, DEFAULT_DIRECTORIES.DOCS);
+		const memasterDir = await this.getMemasterDir();
+		return join(memasterDir, DEFAULT_DIRECTORIES.DOCS);
 	}
 
 	private async getMilestonesDir(): Promise<string> {
-		const backlogDir = await this.getBacklogDir();
-		return join(backlogDir, DEFAULT_DIRECTORIES.MILESTONES);
+		const memasterDir = await this.getMemasterDir();
+		return join(memasterDir, DEFAULT_DIRECTORIES.MILESTONES);
 	}
 
 	/**
@@ -592,11 +595,11 @@ export class FileSystem {
 	 * report every archived task as a duplicate nor send a reader around a symlink cycle.
 	 */
 	async getArchivedTaskLocations(): Promise<Array<{ directory: string; realDirectory: string }>> {
-		const backlogDir = await this.getBacklogDir();
+		const memasterDir = await this.getMemasterDir();
 		const locations: Array<{ directory: string; realDirectory: string }> = [];
 		const realDirectories = new Set<string>();
 		for (const relativeDirectory of ARCHIVED_TASK_DIRECTORIES) {
-			const directory = join(backlogDir, relativeDirectory);
+			const directory = join(memasterDir, relativeDirectory);
 			const realDirectory = await realpath(directory).catch(() => null);
 			if (realDirectory === null || realDirectories.has(realDirectory)) continue;
 			realDirectories.add(realDirectory);
@@ -610,18 +613,18 @@ export class FileSystem {
 		return (await this.getArchivedTaskLocations()).map((location) => location.directory);
 	}
 
-	async ensureBacklogStructure(): Promise<void> {
-		const backlogDir = await this.getBacklogDir();
+	async ensureMemasterStructure(): Promise<void> {
+		const memasterDir = await this.getMemasterDir();
 		const directories = [
-			backlogDir,
-			join(backlogDir, DEFAULT_DIRECTORIES.TASKS),
-			join(backlogDir, DEFAULT_DIRECTORIES.DRAFTS),
-			join(backlogDir, DEFAULT_DIRECTORIES.ARCHIVE_TASKS),
-			join(backlogDir, DEFAULT_DIRECTORIES.ARCHIVE_DRAFTS),
-			join(backlogDir, DEFAULT_DIRECTORIES.MILESTONES),
-			join(backlogDir, DEFAULT_DIRECTORIES.ARCHIVE_MILESTONES),
-			join(backlogDir, DEFAULT_DIRECTORIES.DOCS),
-			join(backlogDir, DEFAULT_DIRECTORIES.DECISIONS),
+			memasterDir,
+			join(memasterDir, DEFAULT_DIRECTORIES.TASKS),
+			join(memasterDir, DEFAULT_DIRECTORIES.DRAFTS),
+			join(memasterDir, DEFAULT_DIRECTORIES.ARCHIVE_TASKS),
+			join(memasterDir, DEFAULT_DIRECTORIES.ARCHIVE_DRAFTS),
+			join(memasterDir, DEFAULT_DIRECTORIES.MILESTONES),
+			join(memasterDir, DEFAULT_DIRECTORIES.ARCHIVE_MILESTONES),
+			join(memasterDir, DEFAULT_DIRECTORIES.DOCS),
+			join(memasterDir, DEFAULT_DIRECTORIES.DECISIONS),
 		];
 
 		for (const dir of directories) {
@@ -675,7 +678,7 @@ export class FileSystem {
 				return null;
 			}
 		} catch {
-			// If config cannot be read, still try git and fall back to the backlog directory on failure.
+			// If config cannot be read, still try git and fall back to the memaster directory on failure.
 		}
 
 		try {
@@ -697,18 +700,18 @@ export class FileSystem {
 		}
 	}
 
-	private async getCreateLockTarget(backlogDir: string): Promise<CreateLockTarget> {
+	private async getCreateLockTarget(memasterDir: string): Promise<CreateLockTarget> {
 		const commonGitDir = await this.getGitCommonDir();
 		if (commonGitDir) {
 			return {
 				targetPath: commonGitDir,
-				locksDir: join(commonGitDir, "backlog.md", "locks"),
+				locksDir: join(commonGitDir, "memory-master", "locks"),
 			};
 		}
 
 		return {
-			targetPath: backlogDir,
-			locksDir: join(backlogDir, ".locks"),
+			targetPath: memasterDir,
+			locksDir: join(memasterDir, ".locks"),
 		};
 	}
 
@@ -718,8 +721,8 @@ export class FileSystem {
 			return await fn();
 		}
 
-		const backlogDir = await this.getBacklogDir();
-		const lockTarget = await this.getCreateLockTarget(backlogDir);
+		const memasterDir = await this.getMemasterDir();
+		const lockTarget = await this.getCreateLockTarget(memasterDir);
 		const timeoutMs = options.timeoutMs ?? DEFAULT_CREATE_LOCK_TIMEOUT_MS;
 		const retryDelayMs = options.retryDelayMs ?? DEFAULT_CREATE_LOCK_RETRY_DELAY_MS;
 		return await this.withLockTarget(
@@ -743,7 +746,7 @@ export class FileSystem {
 	 * The lock target is the task file itself because proper-lockfile keys its in-process
 	 * lock registry by target path: a shared target with per-task lockfile paths would
 	 * clobber concurrent locks held by one process. Unlike the create lock, the lockfile
-	 * lives under this project's backlog directory rather than the shared git common dir:
+	 * lives under this project's memaster directory rather than the shared git common dir:
 	 * an edit protects one file, so sibling worktrees editing their own copy of a task must
 	 * not fail each other. USE_GLOBAL_TASK_ID_LOCK=false bypasses it like the create lock.
 	 */
@@ -792,7 +795,7 @@ export class FileSystem {
 			.replace(/^\.+/, "");
 		return await this.withLockTarget(
 			filePath,
-			join(await this.getBacklogDir(), ".locks", `${scope}-${lockKey || "unknown"}`),
+			join(await this.getMemasterDir(), ".locks", `${scope}-${lockKey || "unknown"}`),
 			{ staleMs: DEFAULT_CREATE_LOCK_STALE_MS, retries: 0, retryDelayMs: 0 },
 			(error) => this.toTaskLockError(error, entityId),
 			fn,
@@ -1818,7 +1821,7 @@ export class FileSystem {
 
 	/**
 	 * The file of a listed document or decision as a path from the project root with forward slashes,
-	 * for example `backlog/docs/guides/doc-3 - API-Guidelines.md`. Messages name a record's file this
+	 * for example `memaster/docs/guides/doc-3 - API-Guidelines.md`. Messages name a record's file this
 	 * way, and a task's `documentation` entry that names the file is written this way.
 	 */
 	contentRecordProjectPath(kind: ContentRecordKind, record: ContentRecord): string {
@@ -2247,7 +2250,7 @@ ${description || `Milestone: ${title}`}`,
 	}
 
 	// Config operations
-	async loadConfig(): Promise<BacklogConfig | null> {
+	async loadConfig(): Promise<MemasterConfig | null> {
 		// Return cached config if available
 		if (this.cachedConfig !== null) {
 			return this.cachedConfig;
@@ -2266,7 +2269,7 @@ ${description || `Milestone: ${title}`}`,
 			return null;
 		}
 
-		// A value Backlog cannot read is reported, not swallowed: callers must not silently
+		// A value Memaster cannot read is reported, not swallowed: callers must not silently
 		// fall back to defaults while the config file says something else.
 		const config = this.parseConfig(content);
 		this.cachedConfig = config;
@@ -2274,14 +2277,14 @@ ${description || `Milestone: ${title}`}`,
 		return config;
 	}
 
-	async saveConfig(config: BacklogConfig): Promise<void> {
-		const normalizedConfig: BacklogConfig = {
+	async saveConfig(config: MemasterConfig): Promise<void> {
+		const normalizedConfig: MemasterConfig = {
 			...config,
-			...(this.configSource === "root" ? { backlogDirectory: this.resolvedBacklogDirName } : {}),
+			...(this.configSource === "root" ? { memasterDirectory: this.resolvedMemasterDirName } : {}),
 			definitionOfDone: this.normalizeDefinitionOfDone(config.definitionOfDone),
 		};
 		if (this.configSource === "folder") {
-			delete normalizedConfig.backlogDirectory;
+			delete normalizedConfig.memasterDirectory;
 		}
 		const configPath = this.resolvedConfigPath;
 		const content = this.serializeConfig(normalizedConfig);
@@ -2312,8 +2315,8 @@ ${description || `Milestone: ${title}`}`,
 		}
 	}
 
-	parseConfig(content: string): BacklogConfig {
-		const config: Partial<BacklogConfig> = {};
+	parseConfig(content: string): MemasterConfig {
+		const config: Partial<MemasterConfig> = {};
 		const parsedDefinitionOfDone = this.parseDefinitionOfDone(content);
 		// Every list key goes through the same strict parse, which throws rather than guess.
 		const parseListValue = (key: ConfigListKey) => parseConfigListValue(content, key, this.resolvedConfigPath);
@@ -2398,9 +2401,9 @@ ${description || `Milestone: ${title}`}`,
 				case "task_prefix":
 					config.prefixes = { task: value.replace(/['"]/g, "") };
 					break;
-				case "backlog_directory":
-				case "backlogDirectory":
-					config.backlogDirectory = value.replace(/['"]/g, "");
+				case "memaster_directory":
+				case "memasterDirectory":
+					config.memasterDirectory = value.replace(/['"]/g, "");
 					break;
 			}
 		}
@@ -2431,11 +2434,11 @@ ${description || `Milestone: ${title}`}`,
 			activeBranchDays: config.activeBranchDays,
 			onStatusChange: config.onStatusChange,
 			prefixes: config.prefixes,
-			backlogDirectory: config.backlogDirectory,
+			memasterDirectory: config.memasterDirectory,
 		};
 	}
 
-	private serializeConfig(config: BacklogConfig): string {
+	private serializeConfig(config: MemasterConfig): string {
 		const normalizedDefinitionOfDone = this.normalizeDefinitionOfDone(config.definitionOfDone);
 		const lines = [
 			`project_name: "${config.projectName}"`,
@@ -2473,7 +2476,7 @@ ${description || `Milestone: ${title}`}`,
 			...(typeof config.activeBranchDays === "number" ? [`active_branch_days: ${config.activeBranchDays}`] : []),
 			...(config.onStatusChange ? [`onStatusChange: '${config.onStatusChange}'`] : []),
 			...(config.prefixes?.task ? [`task_prefix: "${config.prefixes.task}"`] : []),
-			...(config.backlogDirectory ? [`backlog_directory: "${config.backlogDirectory}"`] : []),
+			...(config.memasterDirectory ? [`memaster_directory: "${config.memasterDirectory}"`] : []),
 		];
 
 		return `${lines.join("\n")}\n`;

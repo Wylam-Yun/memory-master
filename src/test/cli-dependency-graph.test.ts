@@ -117,7 +117,7 @@ describe("CLI dependency graph", () => {
 
 	it("terminates a cycle instead of repeating it", async () => {
 		// Validation refuses to create a cycle, so store one directly as the legacy defect
-		// `backlog doctor` reports; the graph must still render it honestly.
+		// `memaster doctor` reports; the graph must still render it honestly.
 		await addTask("task-1", "Selected", ["task-2"]);
 		await addTask("task-2", "Second", ["task-1"]);
 
@@ -169,8 +169,8 @@ describe("CLI dependency graph", () => {
 	it("reports an ambiguous dependency identity explicitly and never picks a record", async () => {
 		await addTask("task-1", "Contested");
 		await addTask("task-2", "Selected", ["task-1"]);
-		const original = join(TEST_DIR, "backlog", "tasks", "task-1 - Contested.md");
-		await writeFile(join(TEST_DIR, "backlog", "tasks", "task-01 - Contested-copy.md"), await readFile(original));
+		const original = join(TEST_DIR, "memaster", "tasks", "task-1 - Contested.md");
+		await writeFile(join(TEST_DIR, "memaster", "tasks", "task-01 - Contested-copy.md"), await readFile(original));
 
 		const stdout = (await runCli(["task", "view", "2", "--plain"])).stdout.toString();
 		expect(graphSection(stdout)).toEqual(["Depends on (1 direct, 1 total):", "└─ TASK-1 - ambiguous task ID"]);

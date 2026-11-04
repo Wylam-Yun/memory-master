@@ -1,29 +1,29 @@
-## Backlog.md Initialization Required
+## Memaster Initialization Required
 
-This directory does not have Backlog.md initialized.
+This directory does not have Memaster initialized.
 
 To initialize the current project, run:
 
 ```bash
-backlog init
+memaster init
 ```
 
 For non-interactive defaults, run:
 
 ```bash
-backlog init --defaults
+memaster init --defaults
 ```
 
 For local projects without Git, run:
 
 ```bash
-backlog init --no-git
+memaster init --no-git
 ```
 
 After initialization, run:
 
 ```bash
-backlog instructions overview
+memaster instructions overview
 ```
 
 That command prints the current workflow guidance.

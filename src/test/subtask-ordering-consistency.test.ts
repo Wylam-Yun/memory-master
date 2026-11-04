@@ -11,7 +11,7 @@ import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } fro
 const cliPath = getTestCliPath();
 
 // One parent with more than nine subtasks, plus two-digit top-level ids, so any surface that
-// compares ids as plain strings puts TASK-1.10 in front of TASK-1.2 (github.com/MrLesk/Backlog.md/issues/953).
+// compares ids as plain strings puts TASK-1.10 in front of TASK-1.2 (github.com/Wylam-Yun/memory-master/issues/953).
 const SUBTASK_IDS = Array.from({ length: 11 }, (_, index) => `TASK-1.${index + 1}`);
 const EXPECTED_ORDER = ["TASK-1", ...SUBTASK_IDS.slice().sort(compareTaskIds), "TASK-2", "TASK-11"];
 
@@ -56,7 +56,7 @@ describe("subtask ordering consistency", () => {
 	});
 
 	it("orders the board's task corpus numerically, so TASK-1.9 precedes TASK-1.10", async () => {
-		// The corpus `backlog board` hands to the unified view. No task here has an ordinal or a
+		// The corpus `memaster board` hands to the unified view. No task here has an ordinal or a
 		// priority, so the default order its task list shows after Tab is this ID order.
 		const ids = (await core.loadTasks()).map((task) => task.id);
 

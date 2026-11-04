@@ -16,7 +16,7 @@ let mcpServer: McpServer;
 async function loadConfig(server: McpServer) {
 	const config = await server.filesystem.loadConfig();
 	if (!config) {
-		throw new Error("Failed to load backlog configuration for tests");
+		throw new Error("Failed to load memaster configuration for tests");
 	}
 	return config;
 }
@@ -25,7 +25,7 @@ describe("MCP draft support via task tools", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("mcp-drafts");
 		mcpServer = new McpServer(TEST_DIR, "Test instructions");
-		await mcpServer.filesystem.ensureBacklogStructure();
+		await mcpServer.filesystem.ensureMemasterStructure();
 
 		await initializeFilesystemTestProject(mcpServer, "Test Project");
 
@@ -211,7 +211,7 @@ describe("MCP draft support via task tools", () => {
 			},
 		});
 
-		const draftsDir = join(TEST_DIR, "backlog", "drafts");
+		const draftsDir = join(TEST_DIR, "memaster", "drafts");
 		const twinPath = join(draftsDir, "draft-001 - Alpha two.md");
 		await Bun.write(
 			twinPath,
@@ -279,7 +279,7 @@ describe("MCP draft support via task tools", () => {
 		const archivedDraft = await mcpServer.filesystem.loadDraft("draft-1");
 		expect(archivedDraft).toBeNull();
 
-		const archiveDir = join(TEST_DIR, "backlog", "archive", "drafts");
+		const archiveDir = join(TEST_DIR, "memaster", "archive", "drafts");
 		const archiveFiles = await readdir(archiveDir);
 		expect(archiveFiles.some((file) => file.startsWith("draft-1"))).toBe(true);
 	});

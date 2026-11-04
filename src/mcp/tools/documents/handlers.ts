@@ -1,9 +1,9 @@
-import { type ContentRecordChangeResult, describeContentRecordChange } from "../../../core/backlog.ts";
+import { type ContentRecordChangeResult, describeContentRecordChange } from "../../../core/memaster.ts";
 import type { Document, DocumentSearchResult } from "../../../types/index.ts";
 import { documentNotFoundMessage } from "../../../utils/document-id.ts";
 import { isAmbiguousIdError } from "../../../utils/entity-id.ts";
 import { formatUtcDateForDisplay } from "../../../utils/utc-date-display.ts";
-import { BacklogToolError, runCoreOperation } from "../../errors/mcp-errors.ts";
+import { MemasterToolError, runCoreOperation } from "../../errors/mcp-errors.ts";
 import type { McpServer } from "../../server.ts";
 import type { CallToolResult } from "../../types.ts";
 import { formatDocumentCallResult } from "../../utils/document-response.ts";
@@ -69,7 +69,7 @@ export class DocumentHandlers {
 	private async loadDocumentOrThrow(id: string): Promise<Document> {
 		const document = await this.core.getDocument(id);
 		if (!document) {
-			throw new BacklogToolError(documentNotFoundMessage(id), "DOCUMENT_NOT_FOUND");
+			throw new MemasterToolError(documentNotFoundMessage(id), "DOCUMENT_NOT_FOUND");
 		}
 		return document;
 	}
@@ -127,8 +127,8 @@ export class DocumentHandlers {
 		try {
 			return await runCoreOperation(operation);
 		} catch (error) {
-			if (error instanceof BacklogToolError || isAmbiguousIdError(error)) throw error;
-			throw new BacklogToolError(
+			if (error instanceof MemasterToolError || isAmbiguousIdError(error)) throw error;
+			throw new MemasterToolError(
 				error instanceof Error ? `${failure}: ${error.message}` : `${failure}.`,
 				"OPERATION_FAILED",
 			);
@@ -200,7 +200,7 @@ export class DocumentHandlers {
 		result: ContentRecordChangeResult | null,
 	): CallToolResult {
 		if (!result) {
-			throw new BacklogToolError(documentNotFoundMessage(id), "DOCUMENT_NOT_FOUND");
+			throw new MemasterToolError(documentNotFoundMessage(id), "DOCUMENT_NOT_FOUND");
 		}
 		const lines = describeContentRecordChange("document", operation, result).map((line) => `${line}.`);
 		return { content: [{ type: "text", text: lines.join("\n") }] };

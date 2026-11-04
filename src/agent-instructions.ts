@@ -39,7 +39,7 @@ type GuidelineMarkerKind = "default" | "mcp";
  * Gets the markers for an installed guideline block
  */
 function getMarkers(kind: GuidelineMarkerKind = "default"): { start: string; end: string } {
-	const label = kind === "mcp" ? "BACKLOG.MD MCP GUIDELINES" : "BACKLOG.MD GUIDELINES";
+	const label = kind === "mcp" ? "MEMASTER MCP GUIDELINES" : "MEMASTER GUIDELINES";
 	return {
 		start: `<!-- ${label} START -->`,
 		end: `<!-- ${label} END -->`,
@@ -47,9 +47,9 @@ function getMarkers(kind: GuidelineMarkerKind = "default"): { start: string; end
 }
 
 /**
- * Checks if the Backlog.md guidelines are already present in the content
+ * Checks if the Memaster guidelines are already present in the content
  */
-function hasBacklogGuidelines(content: string): boolean {
+function hasMemasterGuidelines(content: string): boolean {
 	const { start } = getMarkers();
 	return content.includes(start);
 }
@@ -60,12 +60,12 @@ function hasBacklogGuidelines(content: string): boolean {
  * version so local instructions can later be compared against the bundled ones.
  */
 function versionMarkerLine(version: string): string {
-	const marker = `backlog.md-instructions-version: ${version}`;
+	const marker = `memory-master-instructions-version: ${version}`;
 	return `<!-- ${marker} -->`;
 }
 
 /**
- * Wraps the Backlog.md guidelines with appropriate markers
+ * Wraps the Memaster guidelines with appropriate markers
  */
 function wrapWithMarkers(content: string, version: string, kind: GuidelineMarkerKind = "default"): string {
 	const { start, end } = getMarkers(kind);
@@ -171,12 +171,12 @@ export async function addAgentInstructions(
 						defaultStripped.content.slice(0, insertAt) +
 						wrapWithMarkers(content, version) +
 						defaultStripped.content.slice(insertAt);
-				} else if (hasBacklogGuidelines(existing)) {
+				} else if (hasMemasterGuidelines(existing)) {
 					// Guidelines already exist but could not be parsed, skip this file.
 					results.push({ action: "unchanged", fileName: name, filePath });
 					continue;
 				} else {
-					// Append Backlog.md guidelines with markers
+					// Append Memaster guidelines with markers
 					if (!existing.endsWith("\n")) existing += "\n";
 					finalContent = existing + wrapWithMarkers(content, version);
 				}
@@ -280,11 +280,11 @@ export async function ensureMcpGuidelines(
 }
 
 /**
- * Installs the Claude Code backlog agent to the project's .claude/agents directory
+ * Installs the Claude Code memaster agent to the project's .claude/agents directory
  */
 export async function installClaudeAgent(projectRoot: string): Promise<void> {
 	const agentDir = join(projectRoot, ".claude", "agents");
-	const agentPath = join(agentDir, "project-manager-backlog.md");
+	const agentPath = join(agentDir, "project-manager-memory-master");
 
 	// Create the directory if it doesn't exist
 	await mkdir(agentDir, { recursive: true });

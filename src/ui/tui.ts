@@ -98,7 +98,7 @@ function stripControlCharacters(value: string): string {
 /**
  * Terminal/window title for a TUI surface, so parallel terminals can be told apart.
  * Uses the configured project name when it identifies the project, and falls back to a
- * generic "Backlog <view>" title for a blank name or the "Untitled Project" placeholder.
+ * generic "Memaster <view>" title for a blank name or the "Untitled Project" placeholder.
  *
  * The title is emitted as `ESC ] 0 ; <title> BEL`, so the composed string is stripped of
  * control characters: both the project name and the view (search queries, task titles)
@@ -108,7 +108,7 @@ function stripControlCharacters(value: string): string {
 export function formatTuiTitle(view: string, projectName?: string): string {
 	const name = stripControlCharacters(projectName ?? "").trim();
 	const usableName = name && name.toLowerCase() !== "untitled project" ? name : "";
-	return stripControlCharacters(usableName ? `${usableName} - ${view}` : `Backlog ${view}`);
+	return stripControlCharacters(usableName ? `${usableName} - ${view}` : `Memaster ${view}`);
 }
 
 /** Save the icon and window titles onto the terminal's title stack, the pair OSC 0 sets. */

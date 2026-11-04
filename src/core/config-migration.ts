@@ -1,10 +1,10 @@
-import type { BacklogConfig } from "../types/index.ts";
+import type { MemasterConfig } from "../types/index.ts";
 
 /**
  * Migrates config to ensure all required fields exist with default values
  */
-export function migrateConfig(config: Partial<BacklogConfig>): BacklogConfig {
-	const defaultConfig: BacklogConfig = {
+export function migrateConfig(config: Partial<MemasterConfig>): MemasterConfig {
+	const defaultConfig: MemasterConfig = {
 		projectName: "Untitled Project",
 		defaultEditor: "",
 		defaultStatus: "",
@@ -25,7 +25,7 @@ export function migrateConfig(config: Partial<BacklogConfig>): BacklogConfig {
 	// Only include fields from config that are not undefined
 	const filteredConfig = Object.fromEntries(Object.entries(config).filter(([_, value]) => value !== undefined));
 
-	const migratedConfig: BacklogConfig = {
+	const migratedConfig: MemasterConfig = {
 		...defaultConfig,
 		...filteredConfig,
 	};
@@ -40,7 +40,7 @@ export function migrateConfig(config: Partial<BacklogConfig>): BacklogConfig {
 /**
  * Checks if config needs migration (missing any expected fields)
  */
-export function needsMigration(config: Partial<BacklogConfig>): boolean {
+export function needsMigration(config: Partial<MemasterConfig>): boolean {
 	// Check for all expected fields including new ones
 	// We need to check not just presence but also that they aren't undefined
 	const expectedFieldsWithDefaults = [
@@ -53,7 +53,7 @@ export function needsMigration(config: Partial<BacklogConfig>): boolean {
 	];
 
 	return expectedFieldsWithDefaults.some(({ field }) => {
-		const value = config[field as keyof BacklogConfig];
+		const value = config[field as keyof MemasterConfig];
 		return value === undefined;
 	});
 }

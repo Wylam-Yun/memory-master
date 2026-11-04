@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
@@ -12,7 +12,7 @@ let TEST_DIR: string;
  * (promote, demote, archive-draft — both single-shot and edit-with-updates
  * variants) must scope their commit to exactly the files they moved, never
  * sweeping in an unrelated staged deletion or a peer's untracked file that
- * happens to sit inside the backlog directory.
+ * happens to sit inside the memaster directory.
  */
 describe("draft/task lifecycle auto-commit scoping", () => {
 	let core: Core;
@@ -38,8 +38,8 @@ describe("draft/task lifecycle auto-commit scoping", () => {
 		await safeCleanup(TEST_DIR);
 	});
 
-	// Seed an unrelated staged deletion (outside the backlog dir) plus a peer's
-	// untracked file (inside the backlog dir), on top of a clean committed baseline.
+	// Seed an unrelated staged deletion (outside the memaster dir) plus a peer's
+	// untracked file (inside the memaster dir), on top of a clean committed baseline.
 	// Returns nothing; asserts are done by the caller against the operation's commit.
 	async function seedUnrelatedDirtyState(): Promise<void> {
 		await $`git add .`.cwd(TEST_DIR).quiet();
@@ -50,7 +50,7 @@ describe("draft/task lifecycle auto-commit scoping", () => {
 		await $`git commit -m "add unrelated file"`.cwd(TEST_DIR).quiet();
 		await $`git rm --quiet UNRELATED.txt`.cwd(TEST_DIR).quiet();
 
-		const peerPlanPath = join(core.filesystem.backlogDir, "plans", "peer-plan.md");
+		const peerPlanPath = join(core.filesystem.memasterDir, "plans", "peer-plan.md");
 		await Bun.write(peerPlanPath, "# Peer's in-progress plan\n");
 	}
 
@@ -67,7 +67,7 @@ describe("draft/task lifecycle auto-commit scoping", () => {
 
 		const status = await (await core.getGitOps()).getStatus();
 		expect(status).toContain("D  UNRELATED.txt");
-		expect(status).toContain("?? backlog/plans/");
+		expect(status).toContain("?? memaster/plans/");
 	}
 
 	it("promoteDraft (single-shot) does not sweep unrelated files", async () => {
@@ -80,7 +80,7 @@ describe("draft/task lifecycle auto-commit scoping", () => {
 		const ok = await core.promoteDraft(draft.id, true);
 		expect(ok).toBe(true);
 
-		expect(await (await core.getGitOps()).getLastCommitMessage()).toContain("backlog: Promote draft");
+		expect(await (await core.getGitOps()).getLastCommitMessage()).toContain("memaster: Promote draft");
 		const committed = await committedFilesOfLastCommit();
 		// Both the old draft path and the new task path are part of the commit.
 		expect(committed).toContain("/drafts/");
@@ -95,7 +95,7 @@ describe("draft/task lifecycle auto-commit scoping", () => {
 		const ok = await core.demoteTask(task.id, true);
 		expect(ok.success).toBe(true);
 
-		expect(await (await core.getGitOps()).getLastCommitMessage()).toContain("backlog: Demote task");
+		expect(await (await core.getGitOps()).getLastCommitMessage()).toContain("memaster: Demote task");
 		const committed = await committedFilesOfLastCommit();
 		expect(committed).toContain("/tasks/");
 		expect(committed).toContain("/drafts/");
@@ -112,7 +112,7 @@ describe("draft/task lifecycle auto-commit scoping", () => {
 		const ok = await core.archiveDraft(draft.id, true);
 		expect(ok).toBe(true);
 
-		expect(await (await core.getGitOps()).getLastCommitMessage()).toContain("backlog: Archive draft");
+		expect(await (await core.getGitOps()).getLastCommitMessage()).toContain("memaster: Archive draft");
 		const committed = await committedFilesOfLastCommit();
 		// Old drafts/ path and new archive/drafts/ path both present.
 		expect(committed).toContain("/drafts/");
@@ -134,7 +134,7 @@ describe("draft/task lifecycle auto-commit scoping", () => {
 		expect(ok).toBe(true);
 
 		const committed = await committedFilesOfLastCommit();
-		expect(committed).toContain(`backlog/archive/drafts/${basename(sourcePath)}`);
+		expect(committed).toContain(`memaster/archive/drafts/${basename(sourcePath)}`);
 		expect((await $`git diff --cached --name-only`.cwd(TEST_DIR).text()).trim()).toBe("");
 	});
 
@@ -147,7 +147,7 @@ describe("draft/task lifecycle auto-commit scoping", () => {
 
 		await core.editTaskOrDraft(draft.id, { status: "To Do" }, true);
 
-		expect(await (await core.getGitOps()).getLastCommitMessage()).toContain("backlog: Promote draft");
+		expect(await (await core.getGitOps()).getLastCommitMessage()).toContain("memaster: Promote draft");
 		const committed = await committedFilesOfLastCommit();
 		expect(committed).toContain("/drafts/");
 		expect(committed).toContain("/tasks/");
@@ -160,7 +160,7 @@ describe("draft/task lifecycle auto-commit scoping", () => {
 
 		await core.editTaskOrDraft(task.id, { status: "Draft" }, true);
 
-		expect(await (await core.getGitOps()).getLastCommitMessage()).toContain("backlog: Demote task");
+		expect(await (await core.getGitOps()).getLastCommitMessage()).toContain("memaster: Demote task");
 		const committed = await committedFilesOfLastCommit();
 		expect(committed).toContain("/tasks/");
 		expect(committed).toContain("/drafts/");

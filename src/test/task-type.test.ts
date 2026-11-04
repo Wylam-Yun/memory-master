@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { $ } from "bun";
 import { DEFAULT_TASK_TYPES } from "../constants/index.ts";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { parseTask } from "../markdown/parser.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { Task } from "../types/index.ts";
@@ -15,7 +15,7 @@ describe("task type field", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("test-task-type");
 		core = new Core(TEST_DIR);
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await $`git init -b main`.cwd(TEST_DIR).quiet();
 		await initializeTestProject(core, "Type Test Project");
 	});

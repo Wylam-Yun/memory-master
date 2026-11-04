@@ -2,11 +2,11 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { Task } from "../types/index.ts";
 
-const TEST_DIR = join(tmpdir(), "backlog-id-gen-test");
+const TEST_DIR = join(tmpdir(), "memaster-id-gen-test");
 
 describe("Task ID Generation with Archives", () => {
 	let core: Core;
@@ -73,7 +73,7 @@ describe("Task ID Generation with Archives", () => {
 	});
 
 	it("reserves the IDs of archived tasks stored in a completed folder", async () => {
-		const leftoverDirectory = join(core.fs.backlogDir, "completed");
+		const leftoverDirectory = join(core.fs.memasterDir, "completed");
 		await mkdir(leftoverDirectory, { recursive: true });
 		const leftoverTask: Task = {
 			id: "TASK-7",
@@ -99,7 +99,7 @@ describe("Task ID Generation with Archives", () => {
 		const afterArchiveFolder = await core.createTaskFromInput({ title: "After the archive folder" }, false);
 		expect(afterArchiveFolder.task.id).toBe("TASK-6");
 
-		const leftoverDirectory = join(core.fs.backlogDir, "completed");
+		const leftoverDirectory = join(core.fs.memasterDir, "completed");
 		await mkdir(leftoverDirectory, { recursive: true });
 		await Bun.write(join(leftoverDirectory, "task-9 - Damaged.md"), "not a task file");
 

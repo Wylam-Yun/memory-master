@@ -1,28 +1,28 @@
 # Shell Completion Scripts
 
-**Note**: The completion scripts are embedded in the compiled `backlog` binary. These files serve as reference documentation and are used during development (the CLI reads them first if available, otherwise uses the embedded versions).
+**Note**: The completion scripts are embedded in the compiled `memaster` binary. These files serve as reference documentation and are used during development (the CLI reads them first if available, otherwise uses the embedded versions).
 
 ## Available Shells
 
 ### Zsh
 
-**File**: `_backlog`
+**File**: `_memaster`
 
 **Installation**:
 
 1. **Automatic** (recommended):
    ```bash
-   backlog completion install --shell zsh
+   memaster completion install --shell zsh
    ```
 
 2. **Manual**:
    ```bash
    # Copy to a directory in your $fpath
-   sudo cp _backlog /usr/local/share/zsh/site-functions/_backlog
+   sudo cp _memaster /usr/local/share/zsh/site-functions/_memaster
 
    # Or add to your custom completions directory
    mkdir -p ~/.zsh/completions
-   cp _backlog ~/.zsh/completions/_backlog
+   cp _memaster ~/.zsh/completions/_memaster
 
    # Add to ~/.zshrc if not already present:
    fpath=(~/.zsh/completions $fpath)
@@ -39,59 +39,59 @@
 **Verification**:
 ```bash
 # Type and press TAB
-backlog <TAB>
-backlog task <TAB>
+memaster <TAB>
+memaster task <TAB>
 ```
 
 ### Bash
 
-**File**: `backlog.bash`
+**File**: `memaster.bash`
 
 **Installation**:
 
 1. **Automatic** (recommended):
    ```bash
-   backlog completion install --shell bash
+   memaster completion install --shell bash
    ```
 
 2. **Manual**:
    ```bash
    # Copy to bash-completion directory
-   sudo cp backlog.bash /etc/bash_completion.d/backlog
+   sudo cp memaster.bash /etc/bash_completion.d/memaster
 
    # Or source in ~/.bashrc
-   echo "source /path/to/backlog.bash" >> ~/.bashrc
+   echo "source /path/to/memaster.bash" >> ~/.bashrc
    source ~/.bashrc
    ```
 
 3. **Testing without installation**:
    ```bash
    # In your current bash session
-   source ./completions/backlog.bash
+   source ./completions/memaster.bash
    ```
 
 **Verification**:
 ```bash
 # Type and press TAB
-backlog <TAB>
-backlog task <TAB>
+memaster <TAB>
+memaster task <TAB>
 ```
 
 ### Fish
 
-**File**: `backlog.fish`
+**File**: `memaster.fish`
 
 **Installation**:
 
 1. **Automatic** (recommended):
    ```bash
-   backlog completion install --shell fish
+   memaster completion install --shell fish
    ```
 
 2. **Manual**:
    ```bash
    # Copy to fish completions directory
-   cp backlog.fish ~/.config/fish/completions/backlog.fish
+   cp memaster.fish ~/.config/fish/completions/memaster.fish
 
    # Completions are automatically loaded in new fish sessions
    ```
@@ -99,32 +99,32 @@ backlog task <TAB>
 3. **Testing without installation**:
    ```bash
    # In your current fish session
-   source ./completions/backlog.fish
+   source ./completions/memaster.fish
    ```
 
 **Verification**:
 ```bash
 # Type and press TAB
-backlog <TAB>
-backlog task <TAB>
+memaster <TAB>
+memaster task <TAB>
 ```
 
 ### PowerShell
 
-**File**: `backlog.ps1`
+**File**: `memaster.ps1`
 
 **Installation**:
 
 1. **Automatic** (recommended):
    ```powershell
-   backlog completion install --shell pwsh
+   memaster completion install --shell pwsh
    ```
 
 2. **Manual**:
    ```powershell
-   $completionScript = Join-Path (Split-Path -Parent $PROFILE.CurrentUserAllHosts) "Completions/backlog-completion.ps1"
+   $completionScript = Join-Path (Split-Path -Parent $PROFILE.CurrentUserAllHosts) "Completions/memaster-completion.ps1"
    New-Item -ItemType Directory -Path (Split-Path -Parent $completionScript) -Force | Out-Null
-   # Save completions/backlog.ps1 content to $completionScript
+   # Save completions/memaster.ps1 content to $completionScript
 
    # Add to $PROFILE.CurrentUserAllHosts:
    if (Test-Path $completionScript) { . $completionScript }
@@ -132,14 +132,14 @@ backlog task <TAB>
 
 3. **Testing without installation**:
    ```powershell
-   . ./completions/backlog.ps1
+   . ./completions/memaster.ps1
    ```
 
 **Verification**:
 ```powershell
 # Type and press TAB
-backlog <TAB>
-backlog task <TAB>
+memaster <TAB>
+memaster task <TAB>
 ```
 
 ## How It Works
@@ -147,7 +147,7 @@ backlog task <TAB>
 All completion scripts use the same backend:
 
 1. The shell calls the completion function when TAB is pressed
-2. The completion function invokes `backlog completion __complete "<current-line>" "<cursor-position>"`
+2. The completion function invokes `memaster completion __complete "<current-line>" "<cursor-position>"`
 3. The CLI returns a newline-separated list of completions
 4. The shell presents these completions to the user
 
@@ -164,39 +164,39 @@ This architecture provides:
 **Zsh**:
 ```bash
 # Run automated tests
-zsh _backlog.test.zsh
+zsh _memaster.test.zsh
 
 # Or manually verify
 zsh
-source _backlog
-which _backlog
+source _memaster
+which _memaster
 ```
 
 **Bash**:
 ```bash
 # Manually verify
 bash
-source backlog.bash
-complete -p backlog
+source memaster.bash
+complete -p memaster
 ```
 
 **Fish**:
 ```bash
 # Run automated tests
-fish backlog.test.fish
+fish memaster.test.fish
 
 # Or manually verify
 fish
-source backlog.fish
-complete -C'backlog '
+source memaster.fish
+complete -C'memaster '
 ```
 
 **PowerShell**:
 ```powershell
 # Manually verify
 pwsh
-. ./completions/backlog.ps1
-(TabExpansion2 -inputScript "backlog task " -cursorColumn 13).CompletionMatches
+. ./completions/memaster.ps1
+(TabExpansion2 -inputScript "memaster task " -cursorColumn 13).CompletionMatches
 ```
 
 ### Adding New Completions
@@ -225,31 +225,31 @@ To update completion scripts:
 
 1. Verify the CLI is in your PATH:
    ```bash
-   which backlog
+   which memaster
    ```
 
 2. Check completion function is loaded:
    ```bash
    # Zsh
-   which _backlog
+   which _memaster
 
    # Bash
-   complete -p backlog
+   complete -p memaster
 
    # Fish
-   complete -C'backlog '
+   complete -C'memaster '
    ```
 
    ```powershell
    # PowerShell
-   (TabExpansion2 -inputScript "backlog " -cursorColumn 8).CompletionMatches
+   (TabExpansion2 -inputScript "memaster " -cursorColumn 8).CompletionMatches
    ```
 
 3. Test the completion backend directly:
    ```bash
-   backlog completion __complete "backlog task " 13
+   memaster completion __complete "memaster task " 13
    ```
-   This should output available subcommands for `backlog task`.
+   This should output available subcommands for `memaster task`.
 
 4. Reload your shell configuration:
    ```bash
@@ -271,7 +271,7 @@ To update completion scripts:
 ### Slow completions
 
 If completions feel slow, it may be because:
-- Large number of tasks/documents in your backlog
+- Large number of tasks/documents in your memaster
 - Network latency (if applicable)
 - First completion triggers CLI initialization
 
@@ -282,6 +282,6 @@ The completion system is designed to be fast, but with very large datasets you m
 When adding new completion features:
 
 1. Update the backend in `/src/completions/`
-2. Test with `backlog completion __complete`
+2. Test with `memaster completion __complete`
 3. Verify each shell script still works
 4. Update this README if behavior changes

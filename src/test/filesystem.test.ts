@@ -4,7 +4,7 @@ import { mkdir, readdir, rename, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { FileSystem } from "../file-system/operations.ts";
 import { serializeTask } from "../markdown/serializer.ts";
-import type { BacklogConfig, Decision, Document, Task } from "../types/index.ts";
+import type { Decision, Document, MemasterConfig, Task } from "../types/index.ts";
 import { createUniqueTestDir, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
@@ -13,25 +13,25 @@ describe("FileSystem", () => {
 	let filesystem: FileSystem;
 
 	beforeEach(async () => {
-		TEST_DIR = createUniqueTestDir("test-backlog");
+		TEST_DIR = createUniqueTestDir("test-memaster");
 		filesystem = new FileSystem(TEST_DIR);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 	});
 
 	afterEach(async () => {
 		await safeCleanup(TEST_DIR);
 	});
 
-	describe("ensureBacklogStructure", () => {
+	describe("ensureMemasterStructure", () => {
 		it("should create all required directories", async () => {
 			const expectedDirs = [
-				join(TEST_DIR, "backlog"),
-				join(TEST_DIR, "backlog", "tasks"),
-				join(TEST_DIR, "backlog", "drafts"),
-				join(TEST_DIR, "backlog", "archive", "tasks"),
-				join(TEST_DIR, "backlog", "archive", "drafts"),
-				join(TEST_DIR, "backlog", "docs"),
-				join(TEST_DIR, "backlog", "decisions"),
+				join(TEST_DIR, "memaster"),
+				join(TEST_DIR, "memaster", "tasks"),
+				join(TEST_DIR, "memaster", "drafts"),
+				join(TEST_DIR, "memaster", "archive", "tasks"),
+				join(TEST_DIR, "memaster", "archive", "drafts"),
+				join(TEST_DIR, "memaster", "docs"),
+				join(TEST_DIR, "memaster", "decisions"),
 			];
 
 			for (const dir of expectedDirs) {
@@ -43,15 +43,15 @@ describe("FileSystem", () => {
 		it("should ignore EEXIST for existing directories", async () => {
 			const projectDir = join(TEST_DIR, "onedrive-project");
 			const expectedDirs = [
-				join(projectDir, "backlog"),
-				join(projectDir, "backlog", "tasks"),
-				join(projectDir, "backlog", "drafts"),
-				join(projectDir, "backlog", "archive", "tasks"),
-				join(projectDir, "backlog", "archive", "drafts"),
-				join(projectDir, "backlog", "milestones"),
-				join(projectDir, "backlog", "archive", "milestones"),
-				join(projectDir, "backlog", "docs"),
-				join(projectDir, "backlog", "decisions"),
+				join(projectDir, "memaster"),
+				join(projectDir, "memaster", "tasks"),
+				join(projectDir, "memaster", "drafts"),
+				join(projectDir, "memaster", "archive", "tasks"),
+				join(projectDir, "memaster", "archive", "drafts"),
+				join(projectDir, "memaster", "milestones"),
+				join(projectDir, "memaster", "archive", "milestones"),
+				join(projectDir, "memaster", "docs"),
+				join(projectDir, "memaster", "decisions"),
 			];
 
 			for (const dir of expectedDirs) {
@@ -76,7 +76,7 @@ describe("FileSystem", () => {
 				);
 				const oneDriveFilesystem = new MockedFileSystem(projectDir);
 
-				await oneDriveFilesystem.ensureBacklogStructure();
+				await oneDriveFilesystem.ensureMemasterStructure();
 
 				for (const dir of expectedDirs) {
 					const stats = await stat(dir);
@@ -89,9 +89,9 @@ describe("FileSystem", () => {
 
 		it("should not ignore EEXIST when the path is not a directory", async () => {
 			const projectDir = join(TEST_DIR, "file-conflict-project");
-			const backlogDir = join(projectDir, "backlog");
-			const tasksPath = join(backlogDir, "tasks");
-			await mkdir(backlogDir, { recursive: true });
+			const memasterDir = join(projectDir, "memaster");
+			const tasksPath = join(memasterDir, "tasks");
+			await mkdir(memasterDir, { recursive: true });
 			await Bun.write(tasksPath, "not a directory");
 
 			const realMkdir = fsPromises.mkdir;
@@ -109,7 +109,7 @@ describe("FileSystem", () => {
 				const { FileSystem: MockedFileSystem } = await import(`../file-system/operations.ts?eexist-file=${Date.now()}`);
 				const conflictFilesystem = new MockedFileSystem(projectDir);
 
-				await expect(conflictFilesystem.ensureBacklogStructure()).rejects.toMatchObject({ code: "EEXIST" });
+				await expect(conflictFilesystem.ensureMemasterStructure()).rejects.toMatchObject({ code: "EEXIST" });
 			} finally {
 				mkdirSpy.mockRestore();
 			}
@@ -268,11 +268,11 @@ Invalid content`,
 			expect(demoted).toBe(true);
 
 			// Task should be removed from tasks directory
-			const tasksFiles = await readdir(join(TEST_DIR, "backlog", "tasks"));
+			const tasksFiles = await readdir(join(TEST_DIR, "memaster", "tasks"));
 			expect(tasksFiles.some((f) => f.startsWith("task-1"))).toBe(false);
 
 			// Draft should exist with new draft- ID
-			const draftsFiles = await readdir(join(TEST_DIR, "backlog", "drafts"));
+			const draftsFiles = await readdir(join(TEST_DIR, "memaster", "drafts"));
 			expect(draftsFiles.some((f) => f.startsWith("draft-1"))).toBe(true);
 
 			// Verify the demoted draft can be loaded and has correct ID
@@ -342,11 +342,11 @@ Invalid content`,
 			expect(promoted).toBe(true);
 
 			// Draft should be removed from drafts directory
-			const draftsFiles = await readdir(join(TEST_DIR, "backlog", "drafts"));
+			const draftsFiles = await readdir(join(TEST_DIR, "memaster", "drafts"));
 			expect(draftsFiles.some((f) => f.startsWith("draft-1"))).toBe(false);
 
 			// Task should exist with new task- ID
-			const tasksFiles = await readdir(join(TEST_DIR, "backlog", "tasks"));
+			const tasksFiles = await readdir(join(TEST_DIR, "memaster", "tasks"));
 			expect(tasksFiles.some((f) => f.startsWith("task-1"))).toBe(true);
 
 			// Verify the promoted task can be loaded and has correct ID
@@ -357,7 +357,7 @@ Invalid content`,
 		});
 
 		it("should promote a draft to the configured default status", async () => {
-			const customConfig: BacklogConfig = {
+			const customConfig: MemasterConfig = {
 				projectName: "Custom Default Status Project",
 				defaultStatus: "Ready",
 				statuses: ["Ready", "In Progress", "Done"],
@@ -400,7 +400,7 @@ Invalid content`,
 
 		it("should promote draft with custom task prefix", async () => {
 			// Configure custom task prefix
-			const customConfig: BacklogConfig = {
+			const customConfig: MemasterConfig = {
 				projectName: "Custom Prefix Project",
 				statuses: ["To Do", "In Progress", "Done"],
 				labels: [],
@@ -417,11 +417,11 @@ Invalid content`,
 			expect(promoted).toBe(true);
 
 			// Draft should be removed
-			const draftsFiles = await readdir(join(TEST_DIR, "backlog", "drafts"));
+			const draftsFiles = await readdir(join(TEST_DIR, "memaster", "drafts"));
 			expect(draftsFiles.some((f) => f.startsWith("draft-1"))).toBe(false);
 
 			// Task should exist with custom JIRA- prefix
-			const tasksFiles = await readdir(join(TEST_DIR, "backlog", "tasks"));
+			const tasksFiles = await readdir(join(TEST_DIR, "memaster", "tasks"));
 			expect(tasksFiles.some((f) => f.startsWith("jira-1"))).toBe(true);
 
 			// Verify the promoted task can be loaded with the custom prefix
@@ -461,19 +461,19 @@ Invalid content`,
 			await filesystem.saveDraft(sampleDraft);
 
 			const archived = await filesystem.archiveDraft("draft-1");
-			expect(archived?.sourcePath).toContain(join("backlog", "drafts"));
-			expect(archived?.targetPath).toContain(join("backlog", "archive", "drafts"));
+			expect(archived?.sourcePath).toContain(join("memaster", "drafts"));
+			expect(archived?.targetPath).toContain(join("memaster", "archive", "drafts"));
 
 			const draft = await filesystem.loadDraft("draft-1");
 			expect(draft).toBeNull();
 
-			const files = await readdir(join(TEST_DIR, "backlog", "archive", "drafts"));
+			const files = await readdir(join(TEST_DIR, "memaster", "archive", "drafts"));
 			expect(files.some((f) => f.startsWith("draft-1"))).toBe(true);
 		});
 	});
 
 	describe("config operations", () => {
-		const sampleConfig: BacklogConfig = {
+		const sampleConfig: MemasterConfig = {
 			projectName: "Test Project",
 			defaultAssignee: ["@admin"],
 			defaultStatus: "To Do",
@@ -493,14 +493,14 @@ Invalid content`,
 		it("should return null for missing config", async () => {
 			// Create a fresh filesystem without any config
 			const freshFilesystem = new FileSystem(join(TEST_DIR, "fresh"));
-			await freshFilesystem.ensureBacklogStructure();
+			await freshFilesystem.ensureMemasterStructure();
 
 			const config = await freshFilesystem.loadConfig();
 			expect(config).toBeNull();
 		});
 
 		it("should handle defaultReporter field", async () => {
-			const cfg: BacklogConfig = {
+			const cfg: MemasterConfig = {
 				projectName: "Reporter",
 				defaultReporter: "@author",
 				statuses: ["To Do"],
@@ -806,7 +806,7 @@ Invalid content`,
 		});
 
 		it("should handle config with minimal fields", async () => {
-			const minimalConfig: BacklogConfig = {
+			const minimalConfig: MemasterConfig = {
 				projectName: "Minimal Project",
 				statuses: ["To Do", "Done"],
 				labels: [],

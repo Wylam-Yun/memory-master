@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { serializeTask } from "../markdown/serializer.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Task } from "../types/index.ts";
 import { createUniqueTestDir, retry, safeCleanup, sleep, withTimeout } from "./test-utils.ts";
 
 let testDir: string;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 let serverPort = 0;
 let socket: WebSocket | null = null;
 
@@ -27,7 +27,7 @@ beforeEach(async () => {
 	testDir = createUniqueTestDir("server-reorder-publication");
 	await mkdir(testDir, { recursive: true });
 	const core = new Core(testDir);
-	await core.filesystem.ensureBacklogStructure();
+	await core.filesystem.ensureMemasterStructure();
 	await core.filesystem.saveConfig({
 		projectName: "Server reorder publication",
 		statuses: ["To Do", "In Progress", "Done"],
@@ -40,7 +40,7 @@ beforeEach(async () => {
 	});
 	for (const id of ["TASK-1", "TASK-2", "TASK-3"]) await core.filesystem.saveTask(task(id));
 
-	server = new BacklogServer(testDir);
+	server = new MemasterServer(testDir);
 	await server.start(0, false);
 	serverPort = server.getPort() ?? 0;
 	await retry(async () => {

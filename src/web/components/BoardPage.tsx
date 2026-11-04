@@ -52,7 +52,7 @@ export default function BoardPage({
 	const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null);
 	const [laneMode, setLaneMode] = useState<LaneMode>('none');
 	const [milestoneFilter, setMilestoneFilter] = useState<string | null>(null);
-	const laneStorageKey = 'backlog.board.lane';
+	const laneStorageKey = 'memaster.board.lane';
 
 	useEffect(() => {
 		const storedLane = typeof window !== 'undefined' ? window.localStorage.getItem(laneStorageKey) : null;

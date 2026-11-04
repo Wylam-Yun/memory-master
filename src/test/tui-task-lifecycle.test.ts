@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, unlink } from "node:fs/promises";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import type { Task } from "../types/index.ts";
 import { archiveTaskFromTui, formatArchiveConfirmation, formatArchiveNotice } from "../ui/task-lifecycle.ts";
 import { generateDetailContent } from "../ui/task-viewer-with-search.ts";
@@ -126,10 +126,10 @@ describe("TUI task lifecycle", () => {
 			archived: false,
 			reason: "failed",
 			error:
-				"Task TASK-1 is archived. Archived tasks are read-only. Restore it to the board first: backlog task restore TASK-1",
+				"Task TASK-1 is archived. Archived tasks are read-only. Restore it to the board first: memaster task restore TASK-1",
 		});
 		expect(formatArchiveNotice(stale, result)).toBe(
-			" {red-fg}Error archiving task: Task TASK-1 is archived. Archived tasks are read-only. Restore it to the board first: backlog task restore TASK-1{/}",
+			" {red-fg}Error archiving task: Task TASK-1 is archived. Archived tasks are read-only. Restore it to the board first: memaster task restore TASK-1{/}",
 		);
 	});
 

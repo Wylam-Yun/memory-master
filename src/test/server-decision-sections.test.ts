@@ -2,20 +2,20 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { join } from "node:path";
 import { FileSystem } from "../file-system/operations.ts";
 import { stripDecisionSectionMarkers } from "../markdown/structured-sections.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Decision, DecisionUpdateInput } from "../types/index.ts";
 import { createUniqueTestDir, safeCleanup } from "./test-utils.ts";
 
 describe("decision section round trips", () => {
 	let directory: string;
 	let decisionPath: string;
-	let server: BacklogServer;
+	let server: MemasterServer;
 	let url: string;
 
 	beforeEach(async () => {
 		directory = createUniqueTestDir("decision-sections");
 		const filesystem = new FileSystem(directory);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		await filesystem.saveConfig({
 			projectName: "Decision sections",
 			statuses: ["To Do", "In Progress", "Done"],
@@ -29,7 +29,7 @@ describe("decision section round trips", () => {
 			decisionPath,
 			'---\nid: decision-1\ntitle: Example\nstatus: proposed\ndate: "2026-09-01"\n---\n\n## Context\n\n## Decision\n\n## Consequences\n\n',
 		);
-		server = new BacklogServer(directory);
+		server = new MemasterServer(directory);
 		await server.start(0, false);
 		url = `http://127.0.0.1:${server.getPort()}/api/decisions`;
 	});
@@ -220,7 +220,7 @@ describe("decision section round trips", () => {
 		await Bun.write(decisionPath, original);
 		const updated = await update({ title: "Changed" });
 		expect(updated.title).toBe("Changed");
-		const saved = await Bun.file(join(directory, "backlog", "decisions", "decision-1 - Changed.md")).text();
+		const saved = await Bun.file(join(directory, "memaster", "decisions", "decision-1 - Changed.md")).text();
 		expect(saved).toContain("owner: team # keep this");
 		expect(stripDecisionSectionMarkers(saved).split(`${newline}---${newline}`)[1]).toBe(
 			original.split(`${newline}---${newline}`)[1],
@@ -251,7 +251,7 @@ describe("decision section round trips", () => {
 		};
 		expect((await fetch(`${url}/decision-9`, request)).status).toBe(404);
 		const original = await Bun.file(decisionPath).text();
-		await Bun.write(join(directory, "backlog", "decisions", "decision-001 - Duplicate.md"), original);
+		await Bun.write(join(directory, "memaster", "decisions", "decision-001 - Duplicate.md"), original);
 		expect((await fetch(`${url}/decision-1`, request)).status).toBe(409);
 		expect(await Bun.file(decisionPath).text()).toBe(original);
 	});

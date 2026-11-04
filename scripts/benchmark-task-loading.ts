@@ -2,12 +2,12 @@ import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { Core } from "../src/core/backlog.ts";
 import { initializeProject } from "../src/core/init.ts";
+import { Core } from "../src/core/memaster.ts";
 import { serializeTask } from "../src/markdown/serializer.ts";
 import { McpServer } from "../src/mcp/server.ts";
 import { TaskHandlers } from "../src/mcp/tools/tasks/handlers.ts";
-import { BacklogServer } from "../src/server/index.ts";
+import { MemasterServer } from "../src/server/index.ts";
 import type { Task } from "../src/types/index.ts";
 
 const DEFAULTS = {
@@ -181,11 +181,11 @@ async function runProcess(command: string[], cwd: string): Promise<string> {
 		stderr: "pipe",
 		env: {
 			...process.env,
-			GIT_AUTHOR_NAME: "Backlog Benchmark",
-			GIT_AUTHOR_EMAIL: "benchmark@backlog.local",
+			GIT_AUTHOR_NAME: "Memaster Benchmark",
+			GIT_AUTHOR_EMAIL: "benchmark@memaster.local",
 			GIT_AUTHOR_DATE: "2026-03-01T00:00:00Z",
-			GIT_COMMITTER_NAME: "Backlog Benchmark",
-			GIT_COMMITTER_EMAIL: "benchmark@backlog.local",
+			GIT_COMMITTER_NAME: "Memaster Benchmark",
+			GIT_COMMITTER_EMAIL: "benchmark@memaster.local",
 			GIT_COMMITTER_DATE: "2026-03-01T00:00:00Z",
 			GIT_CONFIG_NOSYSTEM: "1",
 		},
@@ -227,7 +227,7 @@ async function writeTask(directory: string, task: Task): Promise<string> {
 }
 
 async function createCorpus(options: Options): Promise<Corpus> {
-	const root = await mkdtemp(join(tmpdir(), "backlog-task-loading-benchmark-"));
+	const root = await mkdtemp(join(tmpdir(), "memaster-task-loading-benchmark-"));
 	try {
 		return await populateCorpus(root, options);
 	} catch (error) {
@@ -507,7 +507,7 @@ type WebServerInternals = {
 };
 
 function webSurface(projectRoot: string): BenchmarkSurface {
-	const server = new BacklogServer(projectRoot);
+	const server = new MemasterServer(projectRoot);
 	const internals = server as unknown as WebServerInternals;
 	const instrumentation = instrumentCore(internals.core);
 	return {

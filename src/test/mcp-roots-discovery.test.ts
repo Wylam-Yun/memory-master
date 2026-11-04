@@ -25,7 +25,7 @@ async function createProject(projectRoot: string, projectName: string): Promise<
 	await $`mkdir -p ${projectRoot}`.quiet();
 
 	const bootstrap = new McpServer(projectRoot, "Bootstrap");
-	await bootstrap.filesystem.ensureBacklogStructure();
+	await bootstrap.filesystem.ensureMemasterStructure();
 	await $`git init -b main`.cwd(projectRoot).quiet();
 	await initializeTestProject(bootstrap, projectName);
 	await bootstrap.stop();
@@ -38,7 +38,7 @@ async function setupDirs(): Promise<{
 }> {
 	TEST_DIR = createUniqueTestDir("mcp-roots");
 
-	const uninitializedDir = join(TEST_DIR, "no-backlog");
+	const uninitializedDir = join(TEST_DIR, "no-memaster");
 	const projectRoot = join(TEST_DIR, "real-project");
 	const secondProjectRoot = join(TEST_DIR, "second-project");
 
@@ -95,8 +95,8 @@ describe("MCP roots discovery", () => {
 		expect(server.getServer().oninitialized).toBeUndefined();
 
 		const resources = await server.testInterface.listResources();
-		expect(resources.resources.map((resource) => resource.uri)).toEqual(["backlog://init-required"]);
-		expect(resources.resources[0]?.name).toBe(`Backlog.md Not Initialized [${uninitializedDir}]`);
+		expect(resources.resources.map((resource) => resource.uri)).toEqual(["memaster://init-required"]);
+		expect(resources.resources[0]?.name).toBe(`Memaster Not Initialized [${uninitializedDir}]`);
 
 		const tools = await server.testInterface.listTools();
 		expect(tools.tools).toEqual([]);
@@ -132,11 +132,11 @@ describe("MCP roots discovery", () => {
 		const toolNames = tools.tools.map((tool) => tool.name);
 		expect(toolNames).toContain("task_create");
 		expect(toolNames).toContain("task_list");
-		expect(toolNames).toContain("get_backlog_instructions");
+		expect(toolNames).toContain("get_memaster_instructions");
 
 		const resources = await server.testInterface.listResources();
 		const uris = resources.resources.map((resource) => resource.uri);
-		expect(uris).toContain("backlog://workflow/overview");
+		expect(uris).toContain("memaster://workflow/overview");
 
 		await server.stop();
 	});
@@ -152,12 +152,12 @@ describe("MCP roots discovery", () => {
 			const tools = await client.listTools();
 			const toolNames = tools.tools.map((tool) => tool.name);
 			expect(toolNames).toContain("task_create");
-			expect(toolNames).toContain("get_backlog_instructions");
+			expect(toolNames).toContain("get_memaster_instructions");
 			expect(server.filesystem.rootDir).toBe(projectRoot);
 			expect(getRootsRequestCount()).toBe(1);
 
 			const resources = await client.listResources();
-			expect(resources.resources.map((resource) => resource.uri)).toContain("backlog://workflow/overview");
+			expect(resources.resources.map((resource) => resource.uri)).toContain("memaster://workflow/overview");
 			expect(getRootsRequestCount()).toBe(1);
 		} finally {
 			await client.close();
@@ -176,7 +176,7 @@ describe("MCP roots discovery", () => {
 
 		try {
 			const resources = await client.listResources();
-			expect(resources.resources.map((resource) => resource.uri)).toContain("backlog://workflow/overview");
+			expect(resources.resources.map((resource) => resource.uri)).toContain("memaster://workflow/overview");
 			expect(server.filesystem.rootDir).toBe(projectRoot);
 			expect(getRootsRequestCount()).toBe(1);
 		} finally {
@@ -211,8 +211,8 @@ describe("MCP roots discovery", () => {
 
 	it("skips a root whose config value is rejected and keeps examining later roots", async () => {
 		const { uninitializedDir, projectRoot, secondProjectRoot } = await setupDirs();
-		// The first root is a real project whose statuses value Backlog refuses to read.
-		const brokenConfigPath = join(projectRoot, "backlog", "config.yml");
+		// The first root is a real project whose statuses value Memaster refuses to read.
+		const brokenConfigPath = join(projectRoot, "memaster", "config.yml");
 		const brokenConfig = (await Bun.file(brokenConfigPath).text()).replace(/^statuses:.*$/m, 'statuses: ["To Do]');
 		await Bun.write(brokenConfigPath, brokenConfig);
 
@@ -249,7 +249,7 @@ describe("MCP roots discovery", () => {
 			expect(getRootsRequestCount()).toBe(1);
 
 			const fallbackResources = await client.listResources();
-			expect(fallbackResources.resources.map((resource) => resource.uri)).toEqual(["backlog://init-required"]);
+			expect(fallbackResources.resources.map((resource) => resource.uri)).toEqual(["memaster://init-required"]);
 			expect(server.filesystem.rootDir).toBe(uninitializedDir);
 			expect(getRootsRequestCount()).toBe(2);
 

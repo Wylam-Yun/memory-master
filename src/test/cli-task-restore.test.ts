@@ -16,20 +16,20 @@ import {
 let TEST_DIR: string;
 const CLI_PATH = getTestCliPath();
 
-/** Run `backlog task <args>` in the test project and return what a caller of the CLI sees. */
+/** Run `memaster task <args>` in the test project and return what a caller of the CLI sees. */
 async function task(...args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
 	const result = await $`bun ${[CLI_PATH, "task", ...args]}`.cwd(TEST_DIR).nothrow().quiet();
 	return { exitCode: result.exitCode, stdout: result.stdout.toString(), stderr: result.stderr.toString() };
 }
 
 async function taskFiles(folder: "tasks" | "archive/tasks" | "completed"): Promise<string[]> {
-	return (await readdir(join(TEST_DIR, "backlog", folder))).sort();
+	return (await readdir(join(TEST_DIR, "memaster", folder))).sort();
 }
 
-const boardPath = (name: string) => join(TEST_DIR, "backlog", "tasks", name);
-const archivePath = (name: string) => join(TEST_DIR, "backlog", "archive", "tasks", name);
+const boardPath = (name: string) => join(TEST_DIR, "memaster", "tasks", name);
+const archivePath = (name: string) => join(TEST_DIR, "memaster", "archive", "tasks", name);
 
-describe("backlog task restore", () => {
+describe("memaster task restore", () => {
 	beforeEach(async () => {
 		TEST_DIR = await createTestDirOutsideRepository("test-cli-task-restore");
 		await initializeFilesystemTestProject(new Core(TEST_DIR), "Restore Test Project");
@@ -156,7 +156,7 @@ describe("backlog task restore", () => {
 
 		expect(edit.exitCode).toBe(1);
 		expect(edit.stderr).toContain(
-			"Task TASK-1 is archived. Archived tasks are read-only. Restore it to the board first: backlog task restore TASK-1",
+			"Task TASK-1 is archived. Archived tasks are read-only. Restore it to the board first: memaster task restore TASK-1",
 		);
 		expect(edit.stderr).not.toContain("not found");
 		expect(await Bun.file(path).text()).toBe(before);
@@ -228,8 +228,8 @@ describe("backlog task restore", () => {
 		await task("create", "From the old folder", "-s", "Done");
 		await task("archive", "1");
 		const name = "task-1 - From-the-old-folder.md";
-		await mkdir(join(TEST_DIR, "backlog", "completed"));
-		await rename(archivePath(name), join(TEST_DIR, "backlog", "completed", name));
+		await mkdir(join(TEST_DIR, "memaster", "completed"));
+		await rename(archivePath(name), join(TEST_DIR, "memaster", "completed", name));
 		expect((await task("view", "1", "--plain")).stdout).toContain("Done (archived)");
 
 		const restored = await task("restore", "1");
@@ -267,7 +267,7 @@ describe("backlog task restore", () => {
 	});
 });
 
-describe("backlog task restore with auto-commit", () => {
+describe("memaster task restore with auto-commit", () => {
 	beforeEach(async () => {
 		TEST_DIR = await createTestDirOutsideRepository("test-cli-task-restore-commit");
 		await $`git init -b main`.cwd(TEST_DIR).quiet();
@@ -305,9 +305,9 @@ describe("backlog task restore with auto-commit", () => {
 		const restored = await task("restore", "1");
 
 		expect(restored.exitCode).toBe(0);
-		expect((await $`git log -1 --format=%s`.cwd(TEST_DIR).text()).trim()).toBe("backlog: Restore task TASK-1");
+		expect((await $`git log -1 --format=%s`.cwd(TEST_DIR).text()).trim()).toBe("memaster: Restore task TASK-1");
 		const committed = (await $`git show --name-status --format= HEAD`.cwd(TEST_DIR).text()).trim();
-		expect(committed).toBe("R100\tbacklog/archive/tasks/task-1 - Target.md\tbacklog/tasks/task-1 - Target.md");
+		expect(committed).toBe("R100\tmemaster/archive/tasks/task-1 - Target.md\tmemaster/tasks/task-1 - Target.md");
 		expect((await $`git status --porcelain`.cwd(TEST_DIR).text()).trim()).toBe("");
 	});
 });

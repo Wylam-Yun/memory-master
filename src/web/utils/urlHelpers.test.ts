@@ -14,7 +14,7 @@ describe("task URL helpers", () => {
 	});
 
 	it("preserves explicit prefixes that disambiguate equal numeric IDs", () => {
-		expect(createUrlPath("/tasks", "BACK-7", "Backlog task")).toBe("/tasks/BACK-7/backlog-task");
+		expect(createUrlPath("/tasks", "BACK-7", "Memaster task")).toBe("/tasks/BACK-7/memaster-task");
 		expect(createUrlPath("/tasks", "JIRA-007", "Jira task")).toBe("/tasks/JIRA-007/jira-task");
 	});
 

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { loadTaskDetail } from "../core/task-detail.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { Task } from "../types/index.ts";
@@ -564,7 +564,7 @@ describe("references to an archived or vacated task ID", () => {
 		expect(await core.archiveTask(archivedDependent.id, false)).toBe(true);
 
 		// A second file claims the archived record's identity from the active corpus: the conflict
-		// `backlog doctor` exists to surface, which an unrelated cleanup must not dissolve.
+		// `memaster doctor` exists to surface, which an unrelated cleanup must not dissolve.
 		const duplicatePath = join(core.filesystem.tasksDir, "task-02 - Active duplicate.md");
 		await Bun.write(
 			duplicatePath,

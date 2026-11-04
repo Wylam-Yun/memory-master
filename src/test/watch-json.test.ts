@@ -127,7 +127,7 @@ describe("JSON watch lifecycle", () => {
 		await symlink(outside, tasks, "junction");
 		const initial = filesSignature([tasks]);
 		expect(initial).toContain("task.md\0");
-		// An edit inside the link target, where notifications on the backlog do not reach.
+		// An edit inside the link target, where notifications on the memaster do not reach.
 		await writeFile(join(outside, "task.md"), "changed");
 		expect(filesSignature([tasks])).not.toBe(initial);
 	});

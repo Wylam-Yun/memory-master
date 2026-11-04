@@ -1,8 +1,8 @@
-## Backlog.md Overview (MCP)
+## Memaster Overview (MCP)
 
-Backlog.md tracks committed work: what will be built, fixed, or changed.
+Memaster tracks committed work: what will be built, fixed, or changed.
 
-### When to Use Backlog
+### When to Use Memaster
 
 Create a task when work requires planning, decisions, or handoff notes. Skip task creation for questions, exploration, and obvious mechanical edits.
 
@@ -12,9 +12,9 @@ Search first with `task_search` or `task_list`, then read matching work with `ta
 
 Read the matching resource before taking these actions; this overview does not replace it:
 
-- `backlog://workflow/task-creation` — before creating or splitting tasks
-- `backlog://workflow/task-execution` — before planning, changing status or assignee, adding notes, or implementing
-- `backlog://workflow/task-finalization` — before checking acceptance criteria, writing final summaries, or marking work finished
+- `memaster://workflow/task-creation` — before creating or splitting tasks
+- `memaster://workflow/task-execution` — before planning, changing status or assignee, adding notes, or implementing
+- `memaster://workflow/task-finalization` — before checking acceptance criteria, writing final summaries, or marking work finished
 
 ### Task Lifecycle
 
@@ -31,8 +31,8 @@ Mark finished work Done (or the configured final status) and leave it on the boa
 - `document_view` — view document metadata and markdown content
 - `document_create` — create a document with title, content, optional type/tags, and optional docs-directory-relative path
 - `document_update` — update document content, optional title/type/tags, and optional docs-directory-relative path
-- `document_archive` moves a document's file unchanged to the same relative path under `backlog/archive/docs/`. The ID stays reserved. An archived document leaves `document_list` and `document_search`, stays viewable with `document_view`, and is read-only: `document_update` on it fails until it is restored. No task is changed; the result names the tasks and drafts whose documentation list names the moved file.
-- `document_restore` moves an archived document's file back, unchanged, to the same relative path under `backlog/docs/`. The document keeps its ID and can be updated again. A file already at that path is never replaced.
+- `document_archive` moves a document's file unchanged to the same relative path under `memaster/archive/docs/`. The ID stays reserved. An archived document leaves `document_list` and `document_search`, stays viewable with `document_view`, and is read-only: `document_update` on it fails until it is restored. No task is changed; the result names the tasks and drafts whose documentation list names the moved file.
+- `document_restore` moves an archived document's file back, unchanged, to the same relative path under `memaster/docs/`. The document keeps its ID and can be updated again. A file already at that path is never replaced.
 - `document_delete` permanently removes an archived document's file and releases its ID once no other file and no committed file on any branch uses the number. Removing a document takes two steps: `document_archive`, then `document_delete`. Delete works only on an archived document and asks no question. No task is changed; the result names the tasks and drafts whose documentation list names the removed file, by its archive path or by the path it had before it was archived.
 - `document_search` — search documents using the shared fuzzy index
 - `task_create` — create new tasks with description and acceptance criteria; DoD fields are for **exceptional** task-level overrides only (`definitionOfDoneAdd`, `disableDefinitionOfDoneDefaults`)

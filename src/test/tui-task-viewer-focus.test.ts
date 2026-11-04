@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { ScreenInterface } from "neo-neo-bblessed";
-import type { Core } from "../core/backlog.ts";
+import type { Core } from "../core/memaster.ts";
 import type { Task } from "../types/index.ts";
 import { viewTaskEnhanced } from "../ui/task-viewer-with-search.ts";
 import { createScreen } from "../ui/tui.ts";

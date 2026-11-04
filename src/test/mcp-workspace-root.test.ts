@@ -15,7 +15,7 @@ async function createProject(projectRoot: string, projectName: string): Promise<
 	await $`mkdir -p ${projectRoot}`.quiet();
 
 	const bootstrap = new McpServer(projectRoot, "Bootstrap");
-	await bootstrap.filesystem.ensureBacklogStructure();
+	await bootstrap.filesystem.ensureMemasterStructure();
 	await $`git init -b main`.cwd(projectRoot).quiet();
 	await initializeTestProject(bootstrap, projectName);
 	await bootstrap.stop();
@@ -46,7 +46,7 @@ async function connectRootsClient(
 
 async function listTaskFiles(projectRoot: string): Promise<string[]> {
 	try {
-		return await readdir(join(projectRoot, "backlog", "tasks"));
+		return await readdir(join(projectRoot, "memaster", "tasks"));
 	} catch {
 		return [];
 	}
@@ -67,7 +67,7 @@ describe("MCP workspace root resolution", () => {
 		await createProject(workspaceProject, "Workspace Project");
 
 		// Server process starts in startupProject (think: a user-scope server whose
-		// cwd is ~ holding ~/.backlog), but the client's workspace is workspaceProject.
+		// cwd is ~ holding ~/.memaster), but the client's workspace is workspaceProject.
 		const server = await createMcpServer(startupProject);
 		const rootsRef = { current: [pathToFileURL(workspaceProject).toString()] };
 		const { client } = await connectRootsClient(server, rootsRef);
@@ -113,7 +113,7 @@ describe("MCP workspace root resolution", () => {
 		}
 	});
 
-	it("stays pinned and never queries roots when --cwd/BACKLOG_CWD is set", async () => {
+	it("stays pinned and never queries roots when --cwd/MEMASTER_CWD is set", async () => {
 		TEST_DIR = createUniqueTestDir("mcp-workspace");
 		const pinnedProject = join(TEST_DIR, "pinned-project");
 		const workspaceProject = join(TEST_DIR, "workspace-project");
@@ -148,7 +148,7 @@ describe("MCP workspace root resolution", () => {
 		await createProject(packageProject, "Package Project");
 
 		// Started in the package (cwd resolved to the nested project), but the client
-		// advertises the repo root, which itself has no backlog config.
+		// advertises the repo root, which itself has no memaster config.
 		const server = await createMcpServer(packageProject);
 		const rootsRef = { current: [pathToFileURL(repoRoot).toString()] };
 		const { client } = await connectRootsClient(server, rootsRef);
@@ -167,14 +167,14 @@ describe("MCP workspace root resolution", () => {
 		}
 	});
 
-	it("keeps the launch project when the client workspace has no backlog project", async () => {
+	it("keeps the launch project when the client workspace has no memaster project", async () => {
 		TEST_DIR = createUniqueTestDir("mcp-workspace");
 		const startupProject = join(TEST_DIR, "startup-project");
 		const emptyWorkspace = join(TEST_DIR, "empty-workspace");
 		await createProject(startupProject, "Startup Project");
 		await $`mkdir -p ${emptyWorkspace}`.quiet();
 
-		// Client opens a folder with no backlog project. The minimal fix keeps the
+		// Client opens a folder with no memaster project. The minimal fix keeps the
 		// launch-directory project rather than dropping it to init-required.
 		const server = await createMcpServer(startupProject);
 		const rootsRef = { current: [pathToFileURL(emptyWorkspace).toString()] };
@@ -195,7 +195,7 @@ describe("MCP workspace root resolution", () => {
 		}
 	});
 
-	it("returns to the launch project after the advertised workspace loses its backlog", async () => {
+	it("returns to the launch project after the advertised workspace loses its memaster", async () => {
 		TEST_DIR = createUniqueTestDir("mcp-workspace");
 		const startupProject = join(TEST_DIR, "startup-project");
 		const workspaceProject = join(TEST_DIR, "workspace-project");
@@ -216,7 +216,7 @@ describe("MCP workspace root resolution", () => {
 			});
 			expect(server.filesystem.rootDir).toBe(workspaceProject);
 
-			// Workspace switches to a folder with no backlog (e.g. the worktree was
+			// Workspace switches to a folder with no memaster (e.g. the worktree was
 			// removed). A launch-directory project must return to the launch project,
 			// not keep writing to the now-stale previous one.
 			rootsRef.current = [pathToFileURL(plainFolder).toString()];
@@ -240,7 +240,7 @@ describe("MCP workspace root resolution", () => {
 		const mainRepo = join(TEST_DIR, "main-repo");
 		await createProject(mainRepo, "Main Repo");
 		await $`git add -A`.cwd(mainRepo).nothrow().quiet();
-		await $`git commit -m "init backlog" --no-verify`.cwd(mainRepo).nothrow().quiet();
+		await $`git commit -m "init memaster" --no-verify`.cwd(mainRepo).nothrow().quiet();
 
 		const worktree = join(TEST_DIR, "worktrees", "feature");
 		await $`git worktree add ${worktree} -b feature`.cwd(mainRepo).quiet();

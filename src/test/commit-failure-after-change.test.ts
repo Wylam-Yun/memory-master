@@ -2,11 +2,11 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { ChangeNotCommittedError, Core } from "../core/backlog.ts";
+import { ChangeNotCommittedError, Core } from "../core/memaster.ts";
 import { McpServer } from "../mcp/server.ts";
 import { registerDocumentTools } from "../mcp/tools/documents/index.ts";
 import { registerTaskTools } from "../mcp/tools/tasks/index.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createTestDirOutsideRepository, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
@@ -20,7 +20,7 @@ let TEST_DIR: string;
 const CLI_PATH = getTestCliPath();
 const COMMIT_FAILED = "but committing the change failed:";
 
-async function backlog(...args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+async function memaster(...args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
 	const result = await $`bun ${[CLI_PATH, ...args]}`.cwd(TEST_DIR).nothrow().quiet();
 	return { exitCode: result.exitCode, stdout: result.stdout.toString(), stderr: result.stderr.toString() };
 }
@@ -69,10 +69,10 @@ describe("a change whose commit failed, on the CLI", () => {
 		[["decision", "archive", "decision-1"], "Decision decision-1 was archived"],
 		[["decision", "restore", "decision-2"], "Decision decision-2 was restored"],
 		[["decision", "delete", "decision-2"], "Decision decision-2 was deleted"],
-	])("backlog %j says %s and that committing failed", async (command, change) => {
+	])("memaster %j says %s and that committing failed", async (command, change) => {
 		await lockIndex();
 
-		const result = await backlog(...command);
+		const result = await memaster(...command);
 
 		expect(result.exitCode).toBe(1);
 		expect(result.stderr).toStartWith(`${change}, ${COMMIT_FAILED}`);
@@ -137,7 +137,7 @@ describe("a change whose commit failed, in core and over HTTP", () => {
 	});
 
 	it("answers the task archive route with the same sentence and the moved state", async () => {
-		const server = new BacklogServer(TEST_DIR);
+		const server = new MemasterServer(TEST_DIR);
 		await server.start(0, false);
 		try {
 			await lockIndex();

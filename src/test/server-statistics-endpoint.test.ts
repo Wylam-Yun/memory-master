@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { join } from "node:path";
 import { $ } from "bun";
-import type { Core } from "../core/backlog.ts";
 import type { ContentStore } from "../core/content-store.ts";
+import type { Core } from "../core/memaster.ts";
 import { FileSystem } from "../file-system/operations.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Task } from "../types/index.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { archiveTaskFile, createUniqueTestDir, safeCleanup } from "./test-utils.ts";
 
 let testDir: string;
 let filesystem: FileSystem;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 let serverPort = 0;
 let auxiliaryWorktreeDir: string | null = null;
 
@@ -26,10 +26,10 @@ const createTask = (partial: Partial<Task>): Task => ({
 	...partial,
 });
 
-function rootConfig(projectName: string, backlogDirectory: string): string {
+function rootConfig(projectName: string, memasterDirectory: string): string {
 	return [
 		`project_name: "${projectName}"`,
-		`backlog_directory: "${backlogDirectory}"`,
+		`memaster_directory: "${memasterDirectory}"`,
 		'statuses: ["Queued", "Done"]',
 		"labels: []",
 		'priorities: ["Urgent", "Low"]',
@@ -57,7 +57,7 @@ async function requestStatistics(): Promise<StatisticsResponse> {
 }
 
 async function startStatisticsServer(): Promise<void> {
-	server = new BacklogServer(testDir);
+	server = new MemasterServer(testDir);
 	await server.start(0, false);
 	serverPort = server.getPort() ?? 0;
 	expect(serverPort).toBeGreaterThan(0);
@@ -71,11 +71,11 @@ async function restartWithStatisticsBranch(branchTask: Task): Promise<void> {
 	await filesystem.saveConfig({ ...config, checkActiveBranches: true });
 
 	await $`git init -b main`.cwd(testDir).quiet();
-	await $`git add backlog`.cwd(testDir).quiet();
+	await $`git add memaster`.cwd(testDir).quiet();
 	await $`git commit -m "Add main statistics corpus"`.cwd(testDir).quiet();
 	await $`git switch -c statistics-shadow`.cwd(testDir).quiet();
 	await filesystem.saveTask(branchTask);
-	await $`git add backlog`.cwd(testDir).quiet();
+	await $`git add memaster`.cwd(testDir).quiet();
 	await $`git commit -m "Add branch statistics task"`.cwd(testDir).quiet();
 	await $`git switch main`.cwd(testDir).quiet();
 	await startStatisticsServer();
@@ -87,7 +87,7 @@ async function addStatisticsBranchTask(task: Task): Promise<void> {
 	try {
 		const branchFilesystem = new FileSystem(auxiliaryWorktreeDir);
 		await branchFilesystem.saveTask(task);
-		await $`git add backlog`.cwd(auxiliaryWorktreeDir).quiet();
+		await $`git add memaster`.cwd(auxiliaryWorktreeDir).quiet();
 		await $`git commit -m "Move statistics branch ref"`.cwd(auxiliaryWorktreeDir).quiet();
 	} finally {
 		await $`git worktree remove --force ${auxiliaryWorktreeDir}`.cwd(testDir).quiet().nothrow();
@@ -96,11 +96,11 @@ async function addStatisticsBranchTask(task: Task): Promise<void> {
 	}
 }
 
-describe("BacklogServer statistics endpoint", () => {
+describe("MemasterServer statistics endpoint", () => {
 	beforeEach(async () => {
 		testDir = createUniqueTestDir("server-statistics");
 		filesystem = new FileSystem(testDir);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		await filesystem.saveConfig({
 			projectName: "Server Statistics",
 			statuses: ["To Do", "In Progress", "Done"],
@@ -238,13 +238,13 @@ describe("BacklogServer statistics endpoint", () => {
 		}
 	});
 
-	it("reconciles a selected backlog root before reading its statistics", async () => {
+	it("reconciles a selected memaster root before reading its statistics", async () => {
 		if (!server) throw new Error("Server not started");
 		await requestStatistics();
 
 		const rootB = new FileSystem(testDir);
-		rootB.setBacklogDirectory("root-b");
-		await rootB.ensureBacklogStructure();
+		rootB.setMemasterDirectory("root-b");
+		await rootB.ensureMemasterStructure();
 		await rootB.saveTask(createTask({ id: "TASK-10", title: "Root B queued", status: "Queued" }));
 		await rootB.saveTask(createTask({ id: "TASK-11", title: "Root B queued too", status: "Queued" }));
 		await rootB.saveTask(createTask({ id: "TASK-12", title: "Root B done", status: "Done" }));
@@ -253,9 +253,9 @@ describe("BacklogServer statistics endpoint", () => {
 		await rootB.saveDraft(createTask({ id: "DRAFT-11", title: "Root B draft too", status: "Draft" }));
 
 		const core = (server as unknown as { core: Core }).core;
-		await Bun.write(join(testDir, "backlog.config.yml"), rootConfig("Root B", "root-b"));
+		await Bun.write(join(testDir, "memaster.config.yml"), rootConfig("Root B", "root-b"));
 		core.filesystem.invalidateConfigCache();
-		expect(core.filesystem.backlogDirName).toBe("root-b");
+		expect(core.filesystem.memasterDirName).toBe("root-b");
 
 		const first = await requestStatistics();
 		expect(first).toMatchObject({

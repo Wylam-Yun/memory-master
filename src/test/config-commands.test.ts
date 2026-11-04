@@ -5,7 +5,7 @@ import { $ } from "bun";
 import { type PromptRunner, runAdvancedConfigWizard } from "../commands/advanced-config-wizard.ts";
 import { configureAdvancedSettings } from "../commands/configure-advanced-settings.ts";
 import { DEFAULT_STATUSES } from "../constants/index.ts";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } from "./test-utils.ts";
 
@@ -85,7 +85,7 @@ describe("Config commands", () => {
 			{ autoCommit: true },
 			{ enableZeroPadding: true },
 			{ paddingWidth: 4 },
-			{ editor: "backlog-test-editor" },
+			{ editor: "memaster-test-editor" },
 			{ definitionOfDoneAction: "add" },
 			{ definitionOfDoneItem: "Ship release notes" },
 			{ definitionOfDoneAction: "done" },
@@ -96,7 +96,7 @@ describe("Config commands", () => {
 
 		const { mergedConfig, installClaudeAgent, installShellCompletions } = await configureAdvancedSettings(core, {
 			promptImpl: promptStub,
-			isEditorAvailable: async (editor) => editor === "backlog-test-editor",
+			isEditorAvailable: async (editor) => editor === "memaster-test-editor",
 		});
 
 		expect(installClaudeAgent).toBe(true);
@@ -107,14 +107,14 @@ describe("Config commands", () => {
 		expect(mergedConfig.bypassGitHooks).toBe(true);
 		expect(mergedConfig.autoCommit).toBe(true);
 		expect(mergedConfig.zeroPaddedIds).toBe(4);
-		expect(mergedConfig.defaultEditor).toBe("backlog-test-editor");
+		expect(mergedConfig.defaultEditor).toBe("memaster-test-editor");
 		expect(mergedConfig.definitionOfDone).toEqual(["Ship release notes"]);
 		expect(mergedConfig.defaultPort).toBe(7007);
 		expect(mergedConfig.autoOpenBrowser).toBe(false);
 
 		const reloadedConfig = await core.filesystem.loadConfig();
 		expect(reloadedConfig?.zeroPaddedIds).toBe(4);
-		expect(reloadedConfig?.defaultEditor).toBe("backlog-test-editor");
+		expect(reloadedConfig?.defaultEditor).toBe("memaster-test-editor");
 		expect(reloadedConfig?.definitionOfDone).toEqual(["Ship release notes"]);
 		expect(reloadedConfig?.defaultPort).toBe(7007);
 		expect(reloadedConfig?.autoOpenBrowser).toBe(false);
@@ -172,7 +172,7 @@ describe("Config commands", () => {
 
 		beforeEach(() => {
 			originalEditor = process.env.EDITOR;
-			process.env.EDITOR = "backlog-env-editor";
+			process.env.EDITOR = "memaster-env-editor";
 		});
 
 		afterEach(() => {
@@ -201,7 +201,7 @@ describe("Config commands", () => {
 				isEditorAvailable: async () => true,
 			});
 
-			expect(config.defaultEditor).toBe("backlog-env-editor");
+			expect(config.defaultEditor).toBe("memaster-env-editor");
 		});
 	});
 
@@ -267,7 +267,7 @@ describe("Config commands", () => {
 		const prioritiesError = priorities.stderr.toString();
 		expect(priorities.exitCode).not.toBe(0);
 		expect(prioritiesError).toContain("priorities cannot be set directly");
-		expect(prioritiesError).toContain("backlog config get priorities");
+		expect(prioritiesError).toContain("memaster config get priorities");
 		expect(prioritiesError).not.toContain("list-priorities");
 
 		const types = await $`bun ${CLI_PATH} config set types bug`.cwd(TEST_DIR).nothrow().quiet();
@@ -385,7 +385,7 @@ describe("Config commands", () => {
 					(error: unknown) => (error instanceof Error ? error.message : String(error)),
 				);
 				expect(failure).toBeDefined();
-				expect(failure).toStartWith("Backlog could not start because");
+				expect(failure).toStartWith("Memaster could not start because");
 				expect(failure).toContain(configPath);
 				expect(failure).toContain(`invalid value for "${key}"`);
 			}
@@ -415,7 +415,7 @@ describe("Config commands", () => {
 					(error: unknown) => (error instanceof Error ? error.message : String(error)),
 				);
 				expect(failure).toBeDefined();
-				expect(failure).toStartWith("Backlog could not start because");
+				expect(failure).toStartWith("Memaster could not start because");
 				expect(failure).toContain(configPath);
 				expect(failure).toContain(`invalid value for "${key}"`);
 				expect(failure).toContain(`expected ${expected}, got ${shape}`);
@@ -479,7 +479,7 @@ describe("Config commands", () => {
 		expect(core.filesystem.parseConfig('project_name: "P"\n  statuses: ["spaced"]\n').statuses).toEqual(["spaced"]);
 	});
 
-	it("does not blame a valid list key for a malformed value under a key Backlog does not read", () => {
+	it("does not blame a valid list key for a malformed value under a key Memaster does not read", () => {
 		// Any mapping key ends the previous key's block, whatever characters its name uses. Without that,
 		// the malformed custom-setting line folds into the statuses block and startup blames statuses —
 		// an error the user cannot fix by editing the key it names.
@@ -509,7 +509,7 @@ describe("Config commands", () => {
 		const configPath = core.filesystem.configFilePath;
 		const baseConfig = await Bun.file(configPath).text();
 		const listFiles = async () =>
-			(await $`find backlog -type f`.cwd(TEST_DIR).nothrow().quiet().text()).split("\n").sort();
+			(await $`find memaster -type f`.cwd(TEST_DIR).nothrow().quiet().text()).split("\n").sort();
 
 		await Bun.write(configPath, `${baseConfig}statuses: ["To Do]\n`);
 		const before = await listFiles();
@@ -525,7 +525,7 @@ describe("Config commands", () => {
 			const result = await $`bun ${CLI_PATH} ${args}`.cwd(TEST_DIR).nothrow().quiet();
 			const stderr = result.stderr.toString();
 			expect(result.exitCode).not.toBe(0);
-			expect(stderr).toContain("Backlog could not start because");
+			expect(stderr).toContain("Memaster could not start because");
 			expect(stderr).toContain('invalid value for "statuses"');
 			expect(stderr).not.toContain("not found");
 			expect(await listFiles()).toEqual(before);
@@ -561,7 +561,7 @@ describe("Config commands", () => {
 			const result = await $`bun ${CLI_PATH} ${args}`.cwd(TEST_DIR).nothrow().quiet();
 			const stderr = result.stderr.toString();
 			expect(result.exitCode).not.toBe(0);
-			expect(stderr).toStartWith("Backlog could not start because");
+			expect(stderr).toStartWith("Memaster could not start because");
 			expect(stderr).toContain('invalid value for "statuses"');
 			expect(stderr).not.toContain("at parseConfig");
 			expect(result.stdout.toString()).not.toContain("not initialized");
@@ -591,7 +591,7 @@ describe("Config commands", () => {
 		await mkdir(initDir, { recursive: true });
 		await $`git init`.cwd(initDir).quiet();
 
-		const env = { ...process.env, EDITOR: "backlog-sentinel-editor", VISUAL: "backlog-sentinel-editor" };
+		const env = { ...process.env, EDITOR: "memaster-sentinel-editor", VISUAL: "memaster-sentinel-editor" };
 		const result =
 			await $`bun ${CLI_PATH} init "Editorless Project" --defaults --default-editor ${""} --integration-mode none`
 				.cwd(initDir)
@@ -613,7 +613,7 @@ describe("Config commands", () => {
 		await $`git init`.cwd(initDir).quiet();
 
 		// First init without the flag: the EDITOR env fallback must still apply
-		const env = { ...process.env, EDITOR: "backlog-sentinel-editor", VISUAL: "backlog-sentinel-editor" };
+		const env = { ...process.env, EDITOR: "memaster-sentinel-editor", VISUAL: "memaster-sentinel-editor" };
 		const initial = await $`bun ${CLI_PATH} init "Editor Project" --defaults --integration-mode none`
 			.cwd(initDir)
 			.env(env)
@@ -622,7 +622,7 @@ describe("Config commands", () => {
 		expect(initial.exitCode).toBe(0);
 
 		const initCore = new Core(initDir);
-		expect((await initCore.filesystem.loadConfig())?.defaultEditor).toBe("backlog-sentinel-editor");
+		expect((await initCore.filesystem.loadConfig())?.defaultEditor).toBe("memaster-sentinel-editor");
 
 		// Re-init with an explicitly empty flag: clears the editor instead of keeping the existing value
 		const reinit =
@@ -652,7 +652,7 @@ describe("defaultEditor when init runs again", () => {
 		await safeCleanup(projectDir);
 	});
 
-	const configPath = () => join(projectDir, "backlog", "config.yml");
+	const configPath = () => join(projectDir, "memaster", "config.yml");
 
 	async function runInit(editorEnv: Record<string, string>) {
 		// Only the editor variables a test names reach the CLI, never the developer's own.
@@ -677,14 +677,14 @@ describe("defaultEditor when init runs again", () => {
 
 	for (const variable of ["EDITOR", "VISUAL"]) {
 		it(`does not write ${variable} into the config after the editor was cleared`, async () => {
-			await runInit({ EDITOR: "backlog-first-editor" });
-			expect(await editorLinesInConfigFile()).toEqual(['default_editor: "backlog-first-editor"']);
+			await runInit({ EDITOR: "memaster-first-editor" });
+			expect(await editorLinesInConfigFile()).toEqual(['default_editor: "memaster-first-editor"']);
 
 			const cleared = await $`bun ${CLI_PATH} config set defaultEditor ${""}`.cwd(projectDir).nothrow().quiet();
 			expect(cleared.exitCode).toBe(0);
 			expect(await editorLinesInConfigFile()).toEqual([]);
 
-			await runInit({ [variable]: "backlog-second-editor" });
+			await runInit({ [variable]: "memaster-second-editor" });
 			expect(await editorLinesInConfigFile()).toEqual([]);
 			expect(await configGetEditor()).toBe("defaultEditor is not set");
 		});
@@ -694,17 +694,17 @@ describe("defaultEditor when init runs again", () => {
 		await runInit({});
 		await appendFile(configPath(), 'default_editor: ""\n');
 
-		await runInit({ EDITOR: "backlog-second-editor" });
-		expect(await Bun.file(configPath()).text()).not.toContain("backlog-second-editor");
+		await runInit({ EDITOR: "memaster-second-editor" });
+		expect(await Bun.file(configPath()).text()).not.toContain("memaster-second-editor");
 		expect(await configGetEditor()).toBe("defaultEditor is not set");
 	});
 
 	it("keeps the editor a first init took from VISUAL when init runs again", async () => {
-		await runInit({ VISUAL: "backlog-first-editor" });
-		expect(await editorLinesInConfigFile()).toEqual(['default_editor: "backlog-first-editor"']);
+		await runInit({ VISUAL: "memaster-first-editor" });
+		expect(await editorLinesInConfigFile()).toEqual(['default_editor: "memaster-first-editor"']);
 
-		await runInit({ EDITOR: "backlog-second-editor", VISUAL: "backlog-second-editor" });
-		expect(await editorLinesInConfigFile()).toEqual(['default_editor: "backlog-first-editor"']);
-		expect(await configGetEditor()).toBe("backlog-first-editor");
+		await runInit({ EDITOR: "memaster-second-editor", VISUAL: "memaster-second-editor" });
+		expect(await editorLinesInConfigFile()).toEqual(['default_editor: "memaster-first-editor"']);
+		expect(await configGetEditor()).toBe("memaster-first-editor");
 	});
 });

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } from "./test-utils.ts";
 
@@ -100,7 +100,7 @@ describe("Definition of Done CLI", () => {
 		expect(result.exitCode).toBe(1);
 		expect(output).toContain("Definition of Done item #99 not found");
 		expect(output).toContain("Available indexes: #1-#2.");
-		expect(output).toContain("backlog task view TASK-1 --plain");
-		expect(output).toContain("backlog task edit TASK-1 --help");
+		expect(output).toContain("memaster task view TASK-1 --plain");
+		expect(output).toContain("memaster task edit TASK-1 --help");
 	});
 });

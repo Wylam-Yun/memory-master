@@ -21,7 +21,7 @@ function occupiedLocalIds(
 }
 
 /**
- * The folders a document file can be in, relative to the backlog directory. An archived document
+ * The folders a document file can be in, relative to the memaster directory. An archived document
  * keeps its ID, so both folders are read wherever document IDs are counted.
  */
 const DOCUMENT_FOLDERS = [DEFAULT_DIRECTORIES.DOCS, DEFAULT_DIRECTORIES.ARCHIVE_DOCS] as const;
@@ -48,7 +48,7 @@ export async function generateNextDocId(core: Core): Promise<string> {
 	// Skip remote operations if disabled
 	if (config?.remoteOperations === false) {
 		if (process.env.DEBUG) {
-			console.log("Remote operations disabled - generating ID from local documents only");
+			console.warn("Remote operations disabled - generating ID from local documents only");
 		}
 	} else {
 		// A failed fetch must not skip the branch scan below, which still sees the local branches.
@@ -62,14 +62,14 @@ export async function generateNextDocId(core: Core): Promise<string> {
 	}
 
 	try {
-		const backlogDir = core.filesystem.backlogDirName;
+		const memasterDir = core.filesystem.memasterDirName;
 		const branches = await core.gitOps.listAllBranches();
 
 		// Load files from all branches in parallel
 		const branchFilePromises = branches.map(async (branch) => {
 			const files: string[] = [];
 			for (const folder of DOCUMENT_FOLDERS) {
-				files.push(...(await core.gitOps.listFilesInTree(branch, `${backlogDir}/${folder}`)));
+				files.push(...(await core.gitOps.listFilesInTree(branch, `${memasterDir}/${folder}`)));
 			}
 			return files
 				.map((file) => {
@@ -113,7 +113,7 @@ export async function generateNextDecisionId(core: Core): Promise<string> {
 	// Skip remote operations if disabled
 	if (config?.remoteOperations === false) {
 		if (process.env.DEBUG) {
-			console.log("Remote operations disabled - generating ID from local decisions only");
+			console.warn("Remote operations disabled - generating ID from local decisions only");
 		}
 	} else {
 		// A failed fetch must not skip the branch scan below, which still sees the local branches.
@@ -127,14 +127,14 @@ export async function generateNextDecisionId(core: Core): Promise<string> {
 	}
 
 	try {
-		const backlogDir = core.filesystem.backlogDirName;
+		const memasterDir = core.filesystem.memasterDirName;
 		const branches = await core.gitOps.listAllBranches();
 
 		// Load files from all branches in parallel
 		const branchFilePromises = branches.map(async (branch) => {
 			const files: string[] = [];
 			for (const folder of DECISION_FOLDERS) {
-				files.push(...(await core.gitOps.listFilesInTree(branch, `${backlogDir}/${folder}`)));
+				files.push(...(await core.gitOps.listFilesInTree(branch, `${memasterDir}/${folder}`)));
 			}
 			return files
 				.map((file) => {

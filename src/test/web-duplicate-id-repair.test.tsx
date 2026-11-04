@@ -28,16 +28,16 @@ function makePlan(overrides: Partial<DuplicateRepairPlan> = {}): DuplicateRepair
 			{
 				id: "TASK-1",
 				tasks: [
-					makeTask("TASK-1", "Alpha", "backlog/tasks/task-1 - Alpha.md"),
-					makeTask("TASK-01", "Beta", "backlog/tasks/task-01 - Beta.md"),
+					makeTask("TASK-1", "Alpha", "memaster/tasks/task-1 - Alpha.md"),
+					makeTask("TASK-01", "Beta", "memaster/tasks/task-01 - Beta.md"),
 				],
 			},
 		],
 		crossBranchFindings: [],
 		changes: [
 			{
-				sourcePath: "backlog/tasks/task-01 - Beta.md",
-				targetPath: "backlog/tasks/task-2 - Beta.md",
+				sourcePath: "memaster/tasks/task-01 - Beta.md",
+				targetPath: "memaster/tasks/task-2 - Beta.md",
 				oldId: "TASK-01",
 				newId: "TASK-2",
 				title: "Beta",
@@ -47,7 +47,7 @@ function makePlan(overrides: Partial<DuplicateRepairPlan> = {}): DuplicateRepair
 		],
 		references: [
 			{
-				path: "backlog/docs/guide.md",
+				path: "memaster/docs/guide.md",
 				line: 12,
 				text: "See TASK-1 before continuing.",
 				ids: ["TASK-1"],
@@ -114,9 +114,9 @@ describe("DuplicateIdWarning", () => {
 
 		await click(buttonWithText(container, "Review repair"));
 		expect(container.textContent).toContain("Repair duplicate task IDs");
-		expect(container.textContent).toContain("backlog/tasks/task-01 - Beta.md");
-		expect(container.textContent).toContain("backlog/tasks/task-2 - Beta.md");
-		expect(container.textContent).toContain("backlog/docs/guide.md:12");
+		expect(container.textContent).toContain("memaster/tasks/task-01 - Beta.md");
+		expect(container.textContent).toContain("memaster/tasks/task-2 - Beta.md");
+		expect(container.textContent).toContain("memaster/docs/guide.md:12");
 		expect(container.textContent).toContain("not changed automatically");
 	});
 
@@ -196,7 +196,7 @@ describe("DuplicateIdWarning", () => {
 				references: [],
 				referenceScanComplete: false,
 				repairable: false,
-				blockedReasons: ["Reference scan could not read backlog/docs/private.md"],
+				blockedReasons: ["Reference scan could not read memaster/docs/private.md"],
 			}),
 		);
 		await click(buttonWithText(container, "Review repair"));

@@ -2,13 +2,13 @@
  * MCP Command Group - Model Context Protocol CLI commands.
  *
  * This simplified command set focuses on the stdio transport, which is the
- * only supported transport for Backlog.md's local MCP integration.
+ * only supported transport for Memaster's local MCP integration.
  */
 
 import type { Command } from "commander";
 import { isConfigValueError } from "../file-system/operations.ts";
 import { createMcpServer } from "../mcp/server.ts";
-import { findBacklogRoot } from "../utils/find-backlog-root.ts";
+import { findMemasterRoot } from "../utils/find-memaster-root.ts";
 import { resolveRuntimeCwd } from "../utils/runtime-cwd.ts";
 
 type StartOptions = {
@@ -34,12 +34,12 @@ function registerStartCommand(mcpCmd: Command): void {
 		.command("start")
 		.description("Start the MCP server using stdio transport")
 		.option("-d, --debug", "Enable debug logging", false)
-		.option("--cwd <path>", "Directory to resolve Backlog root from (overrides BACKLOG_CWD)")
+		.option("--cwd <path>", "Directory to resolve Memaster root from (overrides MEMASTER_CWD)")
 		.action(async (options: StartOptions) => {
 			try {
 				const runtimeCwd = await resolveRuntimeCwd({ cwd: options.cwd });
-				const projectRoot = (await findBacklogRoot(runtimeCwd.cwd)) ?? runtimeCwd.cwd;
-				// An explicit --cwd/BACKLOG_CWD pins the root; an inferred process.cwd()
+				const projectRoot = (await findMemasterRoot(runtimeCwd.cwd)) ?? runtimeCwd.cwd;
+				// An explicit --cwd/MEMASTER_CWD pins the root; an inferred process.cwd()
 				// lets the server follow the client's workspace roots instead.
 				const pinned = runtimeCwd.source !== "process";
 				const server = await createMcpServer(projectRoot, { debug: options.debug, pinned });
@@ -51,7 +51,7 @@ function registerStartCommand(mcpCmd: Command): void {
 					if (runtimeCwd.source !== "process") {
 						console.error(`Using MCP start directory from ${runtimeCwd.sourceLabel}: ${runtimeCwd.cwd}`);
 					}
-					console.error("Backlog.md MCP server started (stdio transport)");
+					console.error("Memaster MCP server started (stdio transport)");
 				}
 
 				let shutdownTriggered = false;
@@ -99,7 +99,7 @@ function registerStartCommand(mcpCmd: Command): void {
 					process.once("SIGPIPE", () => shutdown("SIGPIPE"));
 				}
 			} catch (error) {
-				// A config value Backlog refuses to read already names the file, the key, and the fix,
+				// A config value Memaster refuses to read already names the file, the key, and the fix,
 				// so it is reported as written instead of behind a startup summary.
 				if (isConfigValueError(error)) {
 					console.error(error.message);

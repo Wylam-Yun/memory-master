@@ -282,7 +282,7 @@ describe("CLI task ID resolution with a custom ID prefix", () => {
 			const output = `${result.stdout.toString()}${result.stderr.toString()}`;
 			// The colliding identity is named, not the bare input the user typed.
 			expect(output).toContain("Task ID BACK-1 is ambiguous");
-			expect(output).toContain("backlog doctor");
+			expect(output).toContain("memaster doctor");
 		}
 
 		expect((await core.filesystem.loadTask("BACK-2"))?.dependencies ?? []).toEqual([]);

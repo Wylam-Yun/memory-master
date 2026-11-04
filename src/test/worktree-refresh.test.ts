@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import type { Task } from "../types/index.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
@@ -62,7 +62,7 @@ describe("worktree task refresh", () => {
 			checkActiveBranches: true,
 			remoteOperations: false,
 		});
-		await $`git add backlog/config.yml`.cwd(TEST_DIR).quiet();
+		await $`git add memaster/config.yml`.cwd(TEST_DIR).quiet();
 		await $`git commit -m "Configure active branch scanning"`.cwd(TEST_DIR).quiet();
 
 		mainCore = new Core(TEST_DIR, { enableWatchers: true });
@@ -180,7 +180,7 @@ describe("worktree task refresh", () => {
 			checkActiveBranches: true,
 			remoteOperations: false,
 		});
-		await $`git add backlog/config.yml`.cwd(TEST_DIR).quiet();
+		await $`git add memaster/config.yml`.cwd(TEST_DIR).quiet();
 		await $`git commit -m "Configure branch loading"`.cwd(TEST_DIR).quiet();
 
 		expect(await mainCore.queryTasks({ includeCrossBranch: true })).toEqual([]);

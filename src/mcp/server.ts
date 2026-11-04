@@ -19,10 +19,10 @@ import {
 	type ServerNotification,
 	type ServerRequest,
 } from "@modelcontextprotocol/sdk/types.js";
-import { Core } from "../core/backlog.ts";
-import type { BacklogConfig } from "../types/index.ts";
+import { Core } from "../core/memaster.ts";
+import type { MemasterConfig } from "../types/index.ts";
 import { getPackageName } from "../utils/app-info.ts";
-import { resolveBacklogDirectory } from "../utils/backlog-directory.ts";
+import { resolveMemasterDirectory } from "../utils/memaster-directory.ts";
 import { getVersion } from "../utils/version.ts";
 import { registerInitRequiredResource } from "./resources/init-required/index.ts";
 import { registerWorkflowResources } from "./resources/workflow/index.ts";
@@ -47,17 +47,17 @@ import type {
 /**
  * Minimal MCP server implementation for stdio transport.
  *
- * The Backlog.md MCP server is intentionally local-only and exposes tools,
+ * The Memaster MCP server is intentionally local-only and exposes tools,
  * resources, and prompts through the stdio transport so that desktop editors
  * (e.g. Claude Code) can interact with a project without network exposure.
  */
 const APP_NAME = getPackageName();
 const INSTRUCTIONS =
-	"At the beginning of each session, list the available resources and read the first one to understand how to use Backlog.md for task management. Additional detailed guides are available as resources when needed.";
+	"At the beginning of each session, list the available resources and read the first one to understand how to use Memaster for task management. Additional detailed guides are available as resources when needed.";
 
 type ServerInitOptions = {
 	debug?: boolean;
-	/** When true (from --cwd/BACKLOG_CWD), the root is fixed and client roots are never consulted. */
+	/** When true (from --cwd/MEMASTER_CWD), the root is fixed and client roots are never consulted. */
 	pinned?: boolean;
 };
 
@@ -120,7 +120,7 @@ export class McpServer extends Core {
 	 * returns to the launch-directory project instead of init-required.
 	 *
 	 * The first request-scoped handler invocation can query MCP roots to look
-	 * for a valid backlog project. If found, the server reinitializes the Core,
+	 * for a valid memaster project. If found, the server reinitializes the Core,
 	 * registers the full toolset, and notifies the client. Subsequent requests
 	 * reuse the cached resolution until the client reports roots changes.
 	 */
@@ -137,7 +137,7 @@ export class McpServer extends Core {
 			console.error(message);
 		}
 		// Also send via MCP logging protocol when transport is connected
-		this.server.sendLoggingMessage({ level: "info", logger: "backlog", data: message }).catch(() => {});
+		this.server.sendLoggingMessage({ level: "info", logger: "memaster", data: message }).catch(() => {});
 	}
 
 	private async ensureRootsResolved(extra?: ServerRequestExtra): Promise<void> {
@@ -178,7 +178,7 @@ export class McpServer extends Core {
 
 				// Only check the root itself — don't walk up the tree, as that
 				// could match an unrelated ancestor project outside the workspace.
-				const resolution = resolveBacklogDirectory(rootPath);
+				const resolution = resolveMemasterDirectory(rootPath);
 				if (!resolution.configPath) continue;
 
 				if (await this.upgradeToProject(rootPath, options)) {
@@ -200,7 +200,7 @@ export class McpServer extends Core {
 							.map((path) => `\`${path}\``)
 							.join(", ")
 					: "no usable file roots";
-			this.log(`No valid backlog project found in MCP roots: ${checkedRoots}`, options);
+			this.log(`No valid memaster project found in MCP roots: ${checkedRoots}`, options);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			this.log(`Roots discovery failed: ${message}`, options);
@@ -240,12 +240,12 @@ export class McpServer extends Core {
 
 		const previousProjectRoot = this.filesystem.rootDir;
 		this.reinitializeProjectRoot(projectRoot);
-		let config: BacklogConfig | null;
+		let config: MemasterConfig | null;
 		try {
 			await this.ensureConfigLoaded();
 			config = await this.filesystem.loadConfig();
 		} catch (error) {
-			// A root whose config Backlog refuses to read is unusable like one with no config at all:
+			// A root whose config Memaster refuses to read is unusable like one with no config at all:
 			// restore the previous root and keep examining the remaining roots instead of aborting.
 			this.reinitializeProjectRoot(previousProjectRoot);
 			this.log(`Skipping root ${projectRoot}: ${error instanceof Error ? error.message : String(error)}`, options);
@@ -298,7 +298,7 @@ export class McpServer extends Core {
 		await this.server.sendResourceListChanged();
 		await this.server.sendPromptListChanged();
 
-		this.log("MCP server reverted to fallback mode (workspace no longer has a backlog project).", options);
+		this.log("MCP server reverted to fallback mode (workspace no longer has a memaster project).", options);
 	}
 
 	private setupHandlers(): void {
@@ -511,7 +511,7 @@ export class McpServer extends Core {
 /**
  * Factory that bootstraps a fully configured MCP server instance.
  *
- * If backlog is not initialized in the project directory, the server will start
+ * If memaster is not initialized in the project directory, the server will start
  * in fallback mode with roots discovery enabled — the first request-scoped MCP
  * handler can then query client roots to find the correct project.
  */

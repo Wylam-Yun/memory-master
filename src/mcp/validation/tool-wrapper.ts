@@ -1,4 +1,4 @@
-import { handleBacklogToolError, McpValidationError } from "../errors/mcp-errors.ts";
+import { handleMemasterToolError, McpValidationError } from "../errors/mcp-errors.ts";
 import type { CallToolResult, McpToolHandler } from "../types.ts";
 import type { JsonSchema, ValidationResult } from "./validators.ts";
 import { validateInput } from "./validators.ts";
@@ -60,7 +60,7 @@ export function createValidatedTool<T extends Record<string, unknown>>(
 					});
 				}
 
-				return handleBacklogToolError(error);
+				return handleMemasterToolError(error);
 			}
 		},
 	};

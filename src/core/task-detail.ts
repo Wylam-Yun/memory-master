@@ -2,7 +2,7 @@ import type { Task } from "../types/index.ts";
 import { buildDependencyGraph, type DependencyGraph } from "../utils/dependency-graph.ts";
 import { createReadinessGraph, getTaskReadiness, type TaskReadiness } from "../utils/readiness.ts";
 import { canonicalTaskId } from "../utils/task-id.ts";
-import type { Core } from "./backlog.ts";
+import type { Core } from "./memaster.ts";
 
 /**
  * The records a read is allowed to resolve relationships against, loaded once and shared by every

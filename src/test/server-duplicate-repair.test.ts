@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
 import type { DuplicateRepairPlan, DuplicateRepairResult } from "../core/duplicate-task-repair.ts";
+import { Core } from "../core/memaster.ts";
 import { serializeTask } from "../markdown/serializer.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { SearchResult, Task } from "../types/index.ts";
 import { createUniqueTestDir, retry, safeCleanup, sleep, withTimeout } from "./test-utils.ts";
 
 let testDir: string;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 let serverPort = 0;
 let setupCore: Core;
 
@@ -34,12 +34,12 @@ beforeEach(async () => {
 	testDir = createUniqueTestDir("server-duplicate-repair");
 	await mkdir(testDir, { recursive: true });
 	setupCore = new Core(testDir);
-	setupCore.filesystem.setBacklogDirectory("planning/custom-backlog");
+	setupCore.filesystem.setMemasterDirectory("planning/custom-memaster");
 	setupCore.filesystem.setConfigLocation("root");
-	await setupCore.filesystem.ensureBacklogStructure();
+	await setupCore.filesystem.ensureMemasterStructure();
 	await setupCore.filesystem.saveConfig({
 		projectName: "Server duplicate repair",
-		backlogDirectory: "planning/custom-backlog",
+		memasterDirectory: "planning/custom-memaster",
 		statuses: ["To Do", "In Progress", "Done"],
 		labels: [],
 		milestones: [],
@@ -55,7 +55,7 @@ beforeEach(async () => {
 		serializeTask(makeTask("TASK-001", "Gamma")),
 	);
 
-	server = new BacklogServer(testDir);
+	server = new MemasterServer(testDir);
 	await server.start(0, false);
 	serverPort = server.getPort() ?? 0;
 	await retry(async () => {
@@ -226,7 +226,7 @@ describe("duplicate repair server boundary", () => {
 			body: JSON.stringify({ title: "Changed" }),
 		});
 		expect(update.status).toBe(409);
-		expect(await update.text()).toContain("backlog doctor");
+		expect(await update.text()).toContain("memaster doctor");
 	});
 
 	it("keeps custom-root content and search services live while repair, config, and reads overlap", async () => {

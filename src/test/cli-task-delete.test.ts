@@ -16,17 +16,17 @@ import {
 let TEST_DIR: string;
 const CLI_PATH = getTestCliPath();
 
-/** Run `backlog task <args>` in the test project and return what a caller of the CLI sees. */
+/** Run `memaster task <args>` in the test project and return what a caller of the CLI sees. */
 async function task(...args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
 	const result = await $`bun ${[CLI_PATH, "task", ...args]}`.cwd(TEST_DIR).nothrow().quiet();
 	return { exitCode: result.exitCode, stdout: result.stdout.toString(), stderr: result.stderr.toString() };
 }
 
 async function taskFiles(folder: "tasks" | "archive/tasks" | "drafts"): Promise<string[]> {
-	return (await readdir(join(TEST_DIR, "backlog", folder))).sort();
+	return (await readdir(join(TEST_DIR, "memaster", folder))).sort();
 }
 
-describe("backlog task delete", () => {
+describe("memaster task delete", () => {
 	beforeEach(async () => {
 		TEST_DIR = await createTestDirOutsideRepository("test-cli-task-delete");
 		await initializeFilesystemTestProject(new Core(TEST_DIR), "Delete Test Project");
@@ -57,7 +57,7 @@ describe("backlog task delete", () => {
 
 	it("refuses a task that is not archived and leaves it unchanged", async () => {
 		await task("create", "Still on the board");
-		const path = join(TEST_DIR, "backlog", "tasks", "task-1 - Still-on-the-board.md");
+		const path = join(TEST_DIR, "memaster", "tasks", "task-1 - Still-on-the-board.md");
 		const before = await Bun.file(path).text();
 
 		const refused = await task("delete", "1");
@@ -149,7 +149,7 @@ describe("backlog task delete", () => {
 	});
 
 	describe("with a subtask that was demoted to a draft", () => {
-		const draftPath = () => join(TEST_DIR, "backlog", "drafts", "draft-1 - Child.md");
+		const draftPath = () => join(TEST_DIR, "memaster", "drafts", "draft-1 - Child.md");
 
 		beforeEach(async () => {
 			await task("create", "Parent");
@@ -184,7 +184,7 @@ describe("backlog task delete", () => {
 
 		it("is still refused and names the draft when another draft cannot be read", async () => {
 			// Reading this draft fails, which must not hide the demoted subtask next to it.
-			const damagedPath = join(TEST_DIR, "backlog", "drafts", "draft-2 - Bad.md");
+			const damagedPath = join(TEST_DIR, "memaster", "drafts", "draft-2 - Bad.md");
 			await Bun.write(damagedPath, "---\nid: DRAFT-2\ntitle: Bad\ndependencies:\n  - { nested: true }\n---\n");
 			const draftBefore = await Bun.file(draftPath()).text();
 
@@ -217,7 +217,7 @@ describe("backlog task delete", () => {
 	it("fails closed when more than one record claims the ID", async () => {
 		await task("create", "Archived claimant");
 		await task("archive", "1");
-		const boardClaimant = join(TEST_DIR, "backlog", "tasks", "task-01 - Board-claimant.md");
+		const boardClaimant = join(TEST_DIR, "memaster", "tasks", "task-01 - Board-claimant.md");
 		await Bun.write(
 			boardClaimant,
 			serializeTask({
@@ -311,7 +311,7 @@ describe("backlog task delete", () => {
 	it("removes a symlinked archived task as a link and leaves the file it points to", async () => {
 		await task("create", "Linked record");
 		await task("archive", "1");
-		const linkPath = join(TEST_DIR, "backlog", "archive", "tasks", "task-1 - Linked-record.md");
+		const linkPath = join(TEST_DIR, "memaster", "archive", "tasks", "task-1 - Linked-record.md");
 		const targetDirectory = join(TEST_DIR, "elsewhere");
 		const targetPath = join(targetDirectory, "linked-record.md");
 		await mkdir(targetDirectory);
@@ -328,7 +328,7 @@ describe("backlog task delete", () => {
 	});
 });
 
-describe("backlog task delete with auto-commit", () => {
+describe("memaster task delete with auto-commit", () => {
 	const base = { status: "To Do", assignee: [], createdDate: "2025-01-01", labels: [] };
 	const lastCommit = async () => (await $`git log -1 --format=%s`.cwd(TEST_DIR).text()).trim();
 
@@ -360,11 +360,11 @@ describe("backlog task delete with auto-commit", () => {
 
 		expect(deleted.exitCode).toBe(0);
 		expect(deleted.stdout).toContain("Removed references to TASK-1 from TASK-2");
-		expect(await lastCommit()).toBe("backlog: Delete task TASK-1");
+		expect(await lastCommit()).toBe("memaster: Delete task TASK-1");
 		const committed = (await $`git show --name-status --format= HEAD`.cwd(TEST_DIR).text()).trim().split("\n").sort();
 		expect(committed).toEqual([
-			"D\tbacklog/archive/tasks/task-1 - Target.md",
-			"M\tbacklog/tasks/task-2 - Depends-on-the-target.md",
+			"D\tmemaster/archive/tasks/task-1 - Target.md",
+			"M\tmemaster/tasks/task-2 - Depends-on-the-target.md",
 		]);
 		expect((await $`git status --porcelain`.cwd(TEST_DIR).text()).trim()).toBe("");
 	});
@@ -405,9 +405,9 @@ describe("backlog task delete with auto-commit", () => {
 			core.gitOps.commitFiles = originalCommit;
 		}
 
-		expect(await lastCommit()).toBe("backlog: Delete task TASK-3");
+		expect(await lastCommit()).toBe("memaster: Delete task TASK-3");
 		expect((await $`git show --name-status --format= HEAD`.cwd(TEST_DIR).text()).trim()).toBe(
-			"D\tbacklog/archive/tasks/task-3 - Same-name.md",
+			"D\tmemaster/archive/tasks/task-3 - Same-name.md",
 		);
 		expect(createError).toBeInstanceOf(Error);
 		expect((createError as Error).message).toContain(CREATE_LOCK_ERROR_MESSAGE);
@@ -416,7 +416,7 @@ describe("backlog task delete with auto-commit", () => {
 		const created = await creator.createTaskFromInput({ title: target.title }, false);
 		expect(created.task.id).toBe(target.id);
 		expect(created.task.filePath).toBe(target.filePath);
-		expect((await $`git ls-tree -r --name-only HEAD backlog/tasks`.cwd(TEST_DIR).text()).trim()).not.toContain(
+		expect((await $`git ls-tree -r --name-only HEAD memaster/tasks`.cwd(TEST_DIR).text()).trim()).not.toContain(
 			"task-3 - Same-name.md",
 		);
 	});
@@ -444,10 +444,10 @@ describe("backlog task delete with auto-commit", () => {
 			core.withCreateLock = original;
 		}
 
-		expect(await lastCommit()).toBe(`backlog: Delete task ${target.id}`);
+		expect(await lastCommit()).toBe(`memaster: Delete task ${target.id}`);
 		expect((await $`git show --name-status --format= HEAD`.cwd(TEST_DIR).text()).trim().split("\n").sort()).toEqual([
-			"D\tbacklog/archive/tasks/task-3 - Late-create-target.md",
-			"M\tbacklog/tasks/task-2.1 - Late-dependent.md",
+			"D\tmemaster/archive/tasks/task-3 - Late-create-target.md",
+			"M\tmemaster/tasks/task-2.1 - Late-dependent.md",
 		]);
 		expect((await $`git status --porcelain`.cwd(TEST_DIR).text()).trim()).toBe("");
 		const replacement = await task("create", "Unrelated replacement", "--plain");
@@ -481,10 +481,10 @@ describe("backlog task delete with auto-commit", () => {
 		const view = await task("view", target.id, "--plain");
 		expect(view.exitCode).toBe(1);
 		expect(view.stderr).toContain(`Task ${target.id} not found.`);
-		expect(await lastCommit()).toBe(autoCommit ? "backlog: Delete task TASK-3" : "Archive before release failure");
+		expect(await lastCommit()).toBe(autoCommit ? "memaster: Delete task TASK-3" : "Archive before release failure");
 		if (autoCommit) {
 			expect((await $`git show --name-status --format= HEAD`.cwd(TEST_DIR).text()).trim()).toBe(
-				"D\tbacklog/archive/tasks/task-3 - Release-failure.md",
+				"D\tmemaster/archive/tasks/task-3 - Release-failure.md",
 			);
 			expect((await $`git status --porcelain`.cwd(TEST_DIR).text()).trim()).toBe("");
 		}
@@ -511,7 +511,7 @@ describe("backlog task delete with auto-commit", () => {
 			status: "Draft",
 			dependencies: ["TASK-1"],
 		});
-		await rename(savedPath, join(TEST_DIR, "backlog", "drafts", "draft-1 - Old-title.md"));
+		await rename(savedPath, join(TEST_DIR, "memaster", "drafts", "draft-1 - Old-title.md"));
 		await $`git add -A`.cwd(TEST_DIR).quiet();
 		await $`git commit -m "Add a draft"`.cwd(TEST_DIR).quiet();
 
@@ -519,16 +519,16 @@ describe("backlog task delete with auto-commit", () => {
 
 		expect(deleted.exitCode).toBe(0);
 		expect(deleted.stdout).toBe("Deleted task TASK-1\nRemoved references to TASK-1 from TASK-2, DRAFT-1\n");
-		expect(await lastCommit()).toBe("backlog: Delete task TASK-1");
+		expect(await lastCommit()).toBe("memaster: Delete task TASK-1");
 		const committed = (await $`git show --name-status --no-renames --format= HEAD`.cwd(TEST_DIR).text())
 			.trim()
 			.split("\n")
 			.sort();
 		expect(committed).toEqual([
-			"A\tbacklog/drafts/draft-1 - Linked-draft.md",
-			"D\tbacklog/archive/tasks/task-1 - Target.md",
-			"D\tbacklog/drafts/draft-1 - Old-title.md",
-			"M\tbacklog/tasks/task-2 - Depends-on-the-target.md",
+			"A\tmemaster/drafts/draft-1 - Linked-draft.md",
+			"D\tmemaster/archive/tasks/task-1 - Target.md",
+			"D\tmemaster/drafts/draft-1 - Old-title.md",
+			"M\tmemaster/tasks/task-2 - Depends-on-the-target.md",
 		]);
 		expect((await $`git status --porcelain`.cwd(TEST_DIR).text()).trim()).toBe("");
 	});
@@ -577,11 +577,11 @@ describe("backlog task delete with auto-commit", () => {
 		const deleted = await task("delete", "3");
 
 		expect(deleted.exitCode).toBe(0);
-		expect(await lastCommit()).toBe("backlog: Delete task TASK-3");
+		expect(await lastCommit()).toBe("memaster: Delete task TASK-3");
 		const committed = (await $`git show --name-status --format= HEAD`.cwd(TEST_DIR).text()).trim();
-		expect(committed).toBe("D\tbacklog/tasks/task-3 - Archived-without-a-commit.md");
-		expect((await $`git ls-tree -r --name-only HEAD backlog/tasks`.cwd(TEST_DIR).text()).trim()).toBe(
-			"backlog/tasks/task-2 - Depends-on-the-target.md",
+		expect(committed).toBe("D\tmemaster/tasks/task-3 - Archived-without-a-commit.md");
+		expect((await $`git ls-tree -r --name-only HEAD memaster/tasks`.cwd(TEST_DIR).text()).trim()).toBe(
+			"memaster/tasks/task-2 - Depends-on-the-target.md",
 		);
 		expect((await $`git status --porcelain`.cwd(TEST_DIR).text()).trim()).toBe("");
 	});

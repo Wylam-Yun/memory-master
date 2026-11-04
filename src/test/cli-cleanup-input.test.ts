@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import {
 	createTestDirOutsideRepository,
@@ -20,7 +20,7 @@ const ESCAPE = "\x1b";
 
 let testDir: string;
 
-/** `backlog cleanup` the way a script runs it: no terminal, and whatever the script feeds to stdin. */
+/** `memaster cleanup` the way a script runs it: no terminal, and whatever the script feeds to stdin. */
 async function cleanupWithoutTerminal(stdin: "ignore" | Blob): Promise<{ exitCode: number; output: string }> {
 	const child = Bun.spawn([process.execPath, CLI_PATH, "cleanup"], {
 		cwd: testDir,
@@ -31,7 +31,7 @@ async function cleanupWithoutTerminal(stdin: "ignore" | Blob): Promise<{ exitCod
 	try {
 		const [exitCode, stdout, stderr] = await withTimeout(
 			Promise.all([child.exited, new Response(child.stdout).text(), new Response(child.stderr).text()]),
-			"backlog cleanup",
+			"memaster cleanup",
 			8_000,
 		);
 		return { exitCode, output: stdout + stderr };
@@ -43,15 +43,15 @@ async function cleanupWithoutTerminal(stdin: "ignore" | Blob): Promise<{ exitCod
 
 async function folders(): Promise<{ tasks: string[]; archive: string[] }> {
 	return {
-		tasks: await readdir(join(testDir, "backlog", "tasks")),
-		archive: await readdir(join(testDir, "backlog", "archive", "tasks")),
+		tasks: await readdir(join(testDir, "memaster", "tasks")),
+		archive: await readdir(join(testDir, "memaster", "archive", "tasks")),
 	};
 }
 
-describe("backlog cleanup and the terminal it needs", () => {
+describe("memaster cleanup and the terminal it needs", () => {
 	beforeEach(async () => {
 		// Outside the repository: cleanup archives tasks, and a run that outlives this directory must
-		// not find the repository's own backlog.
+		// not find the repository's own memaster.
 		testDir = await createTestDirOutsideRepository("test-cli-cleanup-input");
 		const core = new Core(testDir);
 		await initializeFilesystemTestProject(core, "Cleanup Input Project");

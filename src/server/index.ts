@@ -2,15 +2,15 @@ import net from "node:net";
 import { dirname, isAbsolute, join } from "node:path";
 import type { Server, ServerWebSocket } from "bun";
 import { DEFAULT_STATUSES } from "../constants/index.ts";
-import { CONTENT_RECORD_WORDS, Core, formatCleanupResult, RecordRefusedError } from "../core/backlog.ts";
 import type { ContentStore } from "../core/content-store.ts";
 import { initializeProject } from "../core/init.ts";
+import { CONTENT_RECORD_WORDS, Core, formatCleanupResult, RecordRefusedError } from "../core/memaster.ts";
 import type { SearchService } from "../core/search-service.ts";
 import { getTaskStatistics } from "../core/statistics.ts";
 import { loadTaskDetail } from "../core/task-detail.ts";
 import { isCreateLockError, isTaskLockError } from "../file-system/operations.ts";
 import { AmbiguousDecisionSectionError } from "../markdown/structured-sections.ts";
-import { BacklogToolError } from "../mcp/errors/mcp-errors.ts";
+import { MemasterToolError } from "../mcp/errors/mcp-errors.ts";
 import { MilestoneHandlers } from "../mcp/tools/milestones/handlers.ts";
 import {
 	type ContentRecordKind,
@@ -54,7 +54,7 @@ function isDraftId(taskId: string): boolean {
 
 /**
  * Lookups stay local on every surface, but the CLI's hint ends by telling the reader to open
- * 'backlog browser' - nonsensical once the rejected save already happened there. Same fact,
+ * 'memaster browser' - nonsensical once the rejected save already happened there. Same fact,
  * addressed to a reader who is already in the browser.
  */
 const WEB_TASK_LOOKUP_HINT =
@@ -220,7 +220,7 @@ export function markHtmlBundleNoStore(bundle: Bun.HTMLBundle): Bun.HTMLBundle {
 }
 
 const spaIndexHtml = markHtmlBundleNoStore(indexHtml);
-const BUNDLE_ASSET_DIR_ENV = "BACKLOG_BUNDLE_ASSET_DIR";
+const BUNDLE_ASSET_DIR_ENV = "MEMASTER_BUNDLE_ASSET_DIR";
 const BROWSER_HOST = "127.0.0.1";
 const MIN_PORT = 1;
 const MAX_PORT = 65535;
@@ -247,7 +247,7 @@ export async function findNextAvailablePort(startPort: number, maxPort = MAX_POR
 	return null;
 }
 
-export class BacklogServer {
+export class MemasterServer {
 	private core: Core;
 	private server: Server<unknown> | null = null;
 	private runtimeWorkingDirectory: string | null = null;
@@ -531,7 +531,7 @@ export class BacklogServer {
 					"/api/search": {
 						GET: async (req: Request) => await this.handleSearch(req),
 					},
-					// Serve files placed under backlog/assets at /assets/<relative-path>
+					// Serve files placed under memaster/assets at /assets/<relative-path>
 					"/assets/*": {
 						GET: async (req: Request) => await this.handleAssetRequest(req),
 					},
@@ -577,7 +577,7 @@ export class BacklogServer {
 				throw error;
 			}
 			const url = `http://${BROWSER_HOST}:${finalPort}`;
-			console.log(`🚀 Backlog.md browser interface running at ${url}`);
+			console.log(`🚀 Memaster browser interface running at ${url}`);
 			console.log(`📊 Project: ${this.projectName}`);
 			const stopKey = process.platform === "darwin" ? "Cmd+C" : "Ctrl+C";
 			console.log(`⏹️  Press ${stopKey} to stop the server`);
@@ -673,16 +673,16 @@ export class BacklogServer {
 			const prefix = "/assets/";
 			if (!pathname.startsWith(prefix)) return new Response("Not Found", { status: 404 });
 
-			// Path relative to backlog/assets
+			// Path relative to memaster/assets
 			const relPath = pathname.slice(prefix.length);
 
 			// disallow traversal
 			if (relPath.includes("..")) return new Response("Not Found", { status: 404 });
 
-			// derive backlog root from docsDir (parent of backlog/docs)
+			// derive memaster root from docsDir (parent of memaster/docs)
 			const docsDir = this.core.filesystem.docsDir;
-			const backlogRoot = dirname(docsDir);
-			const assetsRoot = join(backlogRoot, "assets");
+			const memasterRoot = dirname(docsDir);
+			const assetsRoot = join(memasterRoot, "assets");
 			const filePath = join(assetsRoot, relPath);
 
 			if (!filePath.startsWith(assetsRoot)) return new Response("Not Found", { status: 404 });
@@ -1608,11 +1608,11 @@ export class BacklogServer {
 		try {
 			body = JSON.parse(text);
 		} catch {
-			throw new BacklogToolError("Request body must be valid JSON.", "VALIDATION_ERROR");
+			throw new MemasterToolError("Request body must be valid JSON.", "VALIDATION_ERROR");
 		}
 
 		if (!body || typeof body !== "object" || Array.isArray(body)) {
-			throw new BacklogToolError("Request body must be a JSON object.", "VALIDATION_ERROR");
+			throw new MemasterToolError("Request body must be a JSON object.", "VALIDATION_ERROR");
 		}
 
 		return body as Record<string, unknown>;
@@ -1627,7 +1627,7 @@ export class BacklogServer {
 
 	private milestoneMutationErrorResponse(error: unknown, context: string): Response {
 		const status =
-			error instanceof BacklogToolError
+			error instanceof MemasterToolError
 				? error.code === "NOT_FOUND"
 					? 404
 					: error.code === "VALIDATION_ERROR"
@@ -1639,7 +1639,7 @@ export class BacklogServer {
 			console.error(context, error);
 		}
 		return Response.json(
-			{ error: message, code: error instanceof BacklogToolError ? error.code : "INTERNAL_ERROR" },
+			{ error: message, code: error instanceof MemasterToolError ? error.code : "INTERNAL_ERROR" },
 			{ status },
 		);
 	}
@@ -1965,7 +1965,7 @@ export class BacklogServer {
 
 	private async handleCleanupExecute(req: Request): Promise<Response> {
 		try {
-			// The browser posts the IDs its preview showed, as `backlog cleanup` passes the IDs it listed,
+			// The browser posts the IDs its preview showed, as `memaster cleanup` passes the IDs it listed,
 			// so a task that became eligible after the preview is not archived.
 			const body = (await req.json().catch(() => null)) as { taskIds?: unknown } | null;
 			const taskIds = body?.taskIds;
@@ -2032,22 +2032,22 @@ export class BacklogServer {
 	private async handleGetStatus(): Promise<Response> {
 		try {
 			const config = await this.core.filesystem.loadConfig();
-			const backlogResolution = this.core.filesystem.resolveBacklogDirectoryInfo();
+			const memasterResolution = this.core.filesystem.resolveMemasterDirectoryInfo();
 			return Response.json({
 				initialized: !!config,
 				projectPath: this.core.filesystem.rootDir,
-				backlogDirectory: backlogResolution.backlogDir,
-				backlogDirectorySource: backlogResolution.source,
-				configLocation: backlogResolution.configSource,
-				rootConfigPath: backlogResolution.rootConfigPath,
+				memasterDirectory: memasterResolution.memasterDir,
+				memasterDirectorySource: memasterResolution.source,
+				configLocation: memasterResolution.configSource,
+				rootConfigPath: memasterResolution.rootConfigPath,
 			});
 		} catch (error) {
 			console.error("Error getting status:", error);
 			return Response.json({
 				initialized: false,
 				projectPath: this.core.filesystem.rootDir,
-				backlogDirectory: null,
-				backlogDirectorySource: null,
+				memasterDirectory: null,
+				memasterDirectorySource: null,
 				configLocation: null,
 				rootConfigPath: null,
 			});
@@ -2058,12 +2058,12 @@ export class BacklogServer {
 		try {
 			const body = await req.json();
 			const projectName = typeof body.projectName === "string" ? body.projectName.trim() : "";
-			const backlogDirectory = typeof body.backlogDirectory === "string" ? body.backlogDirectory.trim() : undefined;
-			const backlogDirectorySource =
-				body.backlogDirectorySource === "backlog" ||
-				body.backlogDirectorySource === ".backlog" ||
-				body.backlogDirectorySource === "custom"
-					? body.backlogDirectorySource
+			const memasterDirectory = typeof body.memasterDirectory === "string" ? body.memasterDirectory.trim() : undefined;
+			const memasterDirectorySource =
+				body.memasterDirectorySource === "memaster" ||
+				body.memasterDirectorySource === ".memaster" ||
+				body.memasterDirectorySource === "custom"
+					? body.memasterDirectorySource
 					: undefined;
 			const configLocation =
 				body.configLocation === "folder" || body.configLocation === "root" ? body.configLocation : undefined;
@@ -2094,8 +2094,8 @@ export class BacklogServer {
 			// Call shared core init function
 			const result = await initializeProject(this.core, {
 				projectName,
-				backlogDirectory,
-				backlogDirectorySource,
+				memasterDirectory,
+				memasterDirectorySource,
 				configLocation,
 				integrationMode: integrationMode || "none",
 				mcpClients,

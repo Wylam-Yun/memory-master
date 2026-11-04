@@ -1,7 +1,7 @@
 import { DEFAULT_TASK_TYPES } from "../constants/index.ts";
-import type { BacklogConfig } from "../types/index.ts";
+import type { MemasterConfig } from "../types/index.ts";
 
-type TaskTypeConfig = Pick<BacklogConfig, "types"> | readonly string[] | null | undefined;
+type TaskTypeConfig = Pick<MemasterConfig, "types"> | readonly string[] | null | undefined;
 
 function normalizeTaskTypeValue(value: string | null | undefined): string | undefined {
 	const normalized = String(value ?? "")
@@ -13,7 +13,7 @@ function normalizeTaskTypeValue(value: string | null | undefined): string | unde
 export function getTaskTypeValues(configOrTypes?: TaskTypeConfig): string[] {
 	const configuredTypes: readonly string[] = Array.isArray(configOrTypes)
 		? configOrTypes
-		: ((configOrTypes as Pick<BacklogConfig, "types"> | null | undefined)?.types ?? []);
+		: ((configOrTypes as Pick<MemasterConfig, "types"> | null | undefined)?.types ?? []);
 	const values: string[] = [];
 	const seen = new Set<string>();
 

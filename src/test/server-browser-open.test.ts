@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import { resolveBrowserLaunchCommand } from "../utils/browser-launch.ts";
 import { createUniqueTestDir, safeCleanup } from "./test-utils.ts";
 
@@ -11,7 +11,7 @@ type BrowserLauncher = {
 	openBrowser(url: string): Promise<void>;
 };
 
-describe("BacklogServer browser launch", () => {
+describe("MemasterServer browser launch", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("server-browser-open");
 		await mkdir(TEST_DIR, { recursive: true });
@@ -24,18 +24,18 @@ describe("BacklogServer browser launch", () => {
 	it.skipIf(process.platform === "win32")("uses a non-empty BROWSER command before xdg-open on Linux", async () => {
 		const browserHelper = join(TEST_DIR, "browser helper");
 		const capturePath = join(TEST_DIR, "opened-url.txt");
-		await writeFile(browserHelper, '#!/bin/sh\nprintf "%s" "$1" > "$BACKLOG_BROWSER_CAPTURE"\n');
+		await writeFile(browserHelper, '#!/bin/sh\nprintf "%s" "$1" > "$MEMASTER_BROWSER_CAPTURE"\n');
 		await chmod(browserHelper, 0o755);
 
 		const originalPlatform = process.platform;
 		const originalBrowser = process.env.BROWSER;
-		const originalCapture = process.env.BACKLOG_BROWSER_CAPTURE;
+		const originalCapture = process.env.MEMASTER_BROWSER_CAPTURE;
 		Object.defineProperty(process, "platform", { value: "linux" });
 		process.env.BROWSER = browserHelper;
-		process.env.BACKLOG_BROWSER_CAPTURE = capturePath;
+		process.env.MEMASTER_BROWSER_CAPTURE = capturePath;
 
 		try {
-			const server = new BacklogServer(TEST_DIR) as unknown as BrowserLauncher;
+			const server = new MemasterServer(TEST_DIR) as unknown as BrowserLauncher;
 			const url = "http://localhost:6420/?filter=To%20Do&label=a;b";
 			await server.openBrowser(url);
 
@@ -48,9 +48,9 @@ describe("BacklogServer browser launch", () => {
 				process.env.BROWSER = originalBrowser;
 			}
 			if (originalCapture === undefined) {
-				delete process.env.BACKLOG_BROWSER_CAPTURE;
+				delete process.env.MEMASTER_BROWSER_CAPTURE;
 			} else {
-				process.env.BACKLOG_BROWSER_CAPTURE = originalCapture;
+				process.env.MEMASTER_BROWSER_CAPTURE = originalCapture;
 			}
 		}
 	});
@@ -90,7 +90,7 @@ describe("BacklogServer browser launch", () => {
 		const log = spyOn(console, "log").mockImplementation(() => {});
 
 		try {
-			const server = new BacklogServer(TEST_DIR) as unknown as BrowserLauncher;
+			const server = new MemasterServer(TEST_DIR) as unknown as BrowserLauncher;
 			await expect(server.openBrowser("http://localhost:6420")).resolves.toBeUndefined();
 
 			expect(warn).toHaveBeenCalledTimes(1);

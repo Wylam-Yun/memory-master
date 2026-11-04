@@ -1,5 +1,5 @@
-import { type Core, createRuntimeCore } from "../core/backlog.ts";
-import type { BacklogConfig } from "../types/index.ts";
+import { type Core, createRuntimeCore } from "../core/memaster.ts";
+import type { MemasterConfig } from "../types/index.ts";
 import { getPriorityValues } from "../utils/priority-config.ts";
 import { getProjectValues } from "../utils/project-config.ts";
 import { getTaskTypeValues } from "../utils/task-type-config.ts";
@@ -47,7 +47,7 @@ export async function getArchivedTaskIds(): Promise<string[]> {
  */
 export async function getStatuses(): Promise<string[]> {
 	return await withCore(async (core) => {
-		const config: BacklogConfig | null = await core.filesystem.loadConfig();
+		const config: MemasterConfig | null = await core.filesystem.loadConfig();
 		const statuses = config?.statuses;
 		if (Array.isArray(statuses) && statuses.length > 0) {
 			return statuses;
@@ -61,7 +61,7 @@ export async function getStatuses(): Promise<string[]> {
  */
 export async function getPriorities(): Promise<string[]> {
 	return await withCore(async (core) => {
-		const config: BacklogConfig | null = await core.filesystem.loadConfig();
+		const config: MemasterConfig | null = await core.filesystem.loadConfig();
 		return getPriorityValues(config);
 	}, getPriorityValues());
 }
@@ -71,7 +71,7 @@ export async function getPriorities(): Promise<string[]> {
  */
 export async function getTaskTypes(): Promise<string[]> {
 	return await withCore(async (core) => {
-		const config: BacklogConfig | null = await core.filesystem.loadConfig();
+		const config: MemasterConfig | null = await core.filesystem.loadConfig();
 		return getTaskTypeValues(config);
 	}, getTaskTypeValues());
 }
@@ -81,7 +81,7 @@ export async function getTaskTypes(): Promise<string[]> {
  */
 export async function getProjects(): Promise<string[]> {
 	return await withCore(async (core) => {
-		const config: BacklogConfig | null = await core.filesystem.loadConfig();
+		const config: MemasterConfig | null = await core.filesystem.loadConfig();
 		return getProjectValues(config);
 	}, []);
 }

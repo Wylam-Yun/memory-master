@@ -20,25 +20,25 @@ export function getMcpClientSetupCommand(client: McpClientSetupKey, serverName: 
 			return {
 				label: "Claude Code",
 				command: "claude",
-				args: ["mcp", "add", "-s", "user", serverName, "--", "backlog", "mcp", "start"],
+				args: ["mcp", "add", "-s", "user", serverName, "--", "memaster", "mcp", "start"],
 			};
 		case "codex":
 			return {
 				label: "OpenAI Codex",
 				command: "codex",
-				args: ["mcp", "add", serverName, "--", "backlog", "mcp", "start"],
+				args: ["mcp", "add", serverName, "--", "memaster", "mcp", "start"],
 			};
 		case "gemini":
 			return {
 				label: "Gemini CLI",
 				command: "gemini",
-				args: ["mcp", "add", "-s", "user", serverName, "backlog", "mcp", "start"],
+				args: ["mcp", "add", "-s", "user", serverName, "memaster", "mcp", "start"],
 			};
 		case "kiro":
 			return {
 				label: "Kiro",
 				command: "kiro-cli",
-				args: ["mcp", "add", "--scope", "global", "--name", serverName, "--command", "backlog", "--args", "mcp,start"],
+				args: ["mcp", "add", "--scope", "global", "--name", serverName, "--command", "memaster", "--args", "mcp,start"],
 			};
 	}
 }

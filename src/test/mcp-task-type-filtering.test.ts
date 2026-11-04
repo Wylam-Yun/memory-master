@@ -18,7 +18,7 @@ describe("MCP task type filtering adapter", () => {
 	beforeEach(async () => {
 		testDir = createUniqueTestDir("mcp-task-type-filtering");
 		server = new McpServer(testDir, "Test instructions");
-		await server.filesystem.ensureBacklogStructure();
+		await server.filesystem.ensureMemasterStructure();
 		await initializeFilesystemTestProject(server, "MCP Type Filter Project");
 
 		const config = await server.filesystem.loadConfig();

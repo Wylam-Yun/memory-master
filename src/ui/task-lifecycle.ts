@@ -1,4 +1,4 @@
-import type { Core } from "../core/backlog.ts";
+import type { Core } from "../core/memaster.ts";
 import { isReadOnlyTask, type Task } from "../types/index.ts";
 import { taskNotFoundMessage } from "../utils/task-path.ts";
 

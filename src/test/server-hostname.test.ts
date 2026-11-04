@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { FileSystem } from "../file-system/operations.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import { closeServer, createUniqueTestDir, listenOnEphemeralPort, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 
 type ServerInternals = {
 	server: { hostname?: string } | null;
@@ -14,7 +14,7 @@ type ServerInternals = {
 	};
 };
 
-function internals(instance: BacklogServer): ServerInternals {
+function internals(instance: MemasterServer): ServerInternals {
 	return instance as unknown as ServerInternals;
 }
 
@@ -24,11 +24,11 @@ async function unusedLoopbackPort(): Promise<number> {
 	return port;
 }
 
-describe("BacklogServer loopback binding", () => {
+describe("MemasterServer loopback binding", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("server-hostname");
 		const filesystem = new FileSystem(TEST_DIR);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		await filesystem.saveConfig({
 			projectName: "Server Hostname",
 			statuses: ["To Do", "In Progress", "Done"],
@@ -57,14 +57,14 @@ describe("BacklogServer loopback binding", () => {
 		});
 
 		try {
-			server = new BacklogServer(TEST_DIR);
+			server = new MemasterServer(TEST_DIR);
 			internals(server).openBrowser = async (url) => {
 				openedUrl = url;
 			};
 			await server.start(port, true);
 
 			expect(internals(server).server?.hostname).toBe("127.0.0.1");
-			expect(logs).toContain(`🚀 Backlog.md browser interface running at http://127.0.0.1:${port}`);
+			expect(logs).toContain(`🚀 Memaster browser interface running at http://127.0.0.1:${port}`);
 			expect(openedUrl).toBe(`http://127.0.0.1:${port}`);
 		} finally {
 			logSpy.mockRestore();
@@ -80,14 +80,14 @@ describe("BacklogServer loopback binding", () => {
 		});
 
 		try {
-			server = new BacklogServer(TEST_DIR);
+			server = new MemasterServer(TEST_DIR);
 			internals(server).openBrowser = async () => {
 				opened = true;
 			};
 			await server.start(port, false);
 
 			expect(opened).toBe(false);
-			expect(logs).toContain(`🚀 Backlog.md browser interface running at http://127.0.0.1:${port}`);
+			expect(logs).toContain(`🚀 Memaster browser interface running at http://127.0.0.1:${port}`);
 			expect(logs).toContain("💡 Open your browser and navigate to the URL above");
 			expect(logs).not.toContain("🌐 Opening browser...");
 		} finally {
@@ -106,7 +106,7 @@ describe("BacklogServer loopback binding", () => {
 			markLoadStarted = resolve;
 		});
 
-		server = new BacklogServer(TEST_DIR);
+		server = new MemasterServer(TEST_DIR);
 		const originalGetContentStore = internals(server).core.getContentStore.bind(internals(server).core);
 		internals(server).core.getContentStore = async () => {
 			markLoadStarted();

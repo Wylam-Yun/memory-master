@@ -103,16 +103,16 @@ describe("formatDuplicateTaskIdWarning", () => {
 			{
 				id: "TASK-1",
 				tasks: [
-					makeTaskWithPath("TASK-1", "A", "/repo/backlog/tasks/task-1 - A.md"),
-					makeTaskWithPath("TASK-1", "B", "/repo/backlog/tasks/task-1 - B.md"),
+					makeTaskWithPath("TASK-1", "A", "/repo/memaster/tasks/task-1 - A.md"),
+					makeTaskWithPath("TASK-1", "B", "/repo/memaster/tasks/task-1 - B.md"),
 				],
 			},
 		];
 		const warning = formatDuplicateTaskIdWarning(groups);
 		expect(warning).toContain("TASK-1");
-		expect(warning).toContain("/repo/backlog/tasks/task-1 - A.md");
-		expect(warning).toContain("/repo/backlog/tasks/task-1 - B.md");
-		expect(warning).toContain("backlog doctor");
+		expect(warning).toContain("/repo/memaster/tasks/task-1 - A.md");
+		expect(warning).toContain("/repo/memaster/tasks/task-1 - B.md");
+		expect(warning).toContain("memaster doctor");
 		expect(warning).not.toContain("prompt");
 		expect(warning).not.toContain("agent");
 	});
@@ -120,7 +120,7 @@ describe("formatDuplicateTaskIdWarning", () => {
 	it("provides a concise TUI summary", () => {
 		const groups = [{ id: "TASK-1", tasks: [makeTask("TASK-1", "A"), makeTask("TASK-01", "B")] }];
 		expect(formatDuplicateTaskIdSummary(groups)).toBe(
-			"Duplicate task IDs detected: TASK-1. Run 'backlog doctor' to preview a safe repair.",
+			"Duplicate task IDs detected: TASK-1. Run 'memaster doctor' to preview a safe repair.",
 		);
 	});
 });

@@ -341,8 +341,8 @@ describe("in-place data refresh", () => {
 				{
 					id: "TASK-1",
 					tasks: [
-						{ ...(tasks[0] as Task), filePath: "backlog/tasks/task-1 - A.md" } as Task,
-						{ ...(tasks[0] as Task), title: "Duplicate", filePath: "backlog/tasks/task-01 - B.md" } as Task,
+						{ ...(tasks[0] as Task), filePath: "memaster/tasks/task-1 - A.md" } as Task,
+						{ ...(tasks[0] as Task), title: "Duplicate", filePath: "memaster/tasks/task-01 - B.md" } as Task,
 					],
 				},
 			],

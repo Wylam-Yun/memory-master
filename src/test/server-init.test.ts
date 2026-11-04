@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
-import { BacklogServer } from "../server/index.ts";
+import { Core } from "../core/memaster.ts";
+import { MemasterServer } from "../server/index.ts";
 import { createUniqueTestDir, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
@@ -22,7 +22,7 @@ function initRequest(body: Record<string, unknown>): Request {
 	});
 }
 
-describe("BacklogServer init endpoint", () => {
+describe("MemasterServer init endpoint", () => {
 	beforeEach(() => {
 		TEST_DIR = createUniqueTestDir("server-init");
 	});
@@ -32,7 +32,7 @@ describe("BacklogServer init endpoint", () => {
 	});
 
 	it("parses string false filesystemOnly without enabling filesystem-only mode", async () => {
-		const server = new BacklogServer(TEST_DIR) as unknown as InitHandler;
+		const server = new MemasterServer(TEST_DIR) as unknown as InitHandler;
 		const response = await server.handleInit(initRequest({ filesystemOnly: "false" }));
 
 		expect(response.status).toBe(200);
@@ -44,7 +44,7 @@ describe("BacklogServer init endpoint", () => {
 	});
 
 	it("rejects reserved task prefixes before writing config", async () => {
-		const server = new BacklogServer(TEST_DIR) as unknown as InitHandler;
+		const server = new MemasterServer(TEST_DIR) as unknown as InitHandler;
 		const response = await server.handleInit(
 			initRequest({
 				advancedConfig: { taskPrefix: "draft" },
@@ -54,11 +54,11 @@ describe("BacklogServer init endpoint", () => {
 
 		expect(response.status).toBe(400);
 		expect(body.error).toContain("reserved for drafts, docs, or decisions");
-		expect(await Bun.file(join(TEST_DIR, "backlog", "config.yml")).exists()).toBe(false);
+		expect(await Bun.file(join(TEST_DIR, "memaster", "config.yml")).exists()).toBe(false);
 	});
 
 	it("accepts string true filesystemOnly for loose init callers", async () => {
-		const server = new BacklogServer(TEST_DIR) as unknown as InitHandler;
+		const server = new MemasterServer(TEST_DIR) as unknown as InitHandler;
 		const response = await server.handleInit(initRequest({ filesystemOnly: "true" }));
 
 		expect(response.status).toBe(200);

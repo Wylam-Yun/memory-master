@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { FileSystem } from "../file-system/operations.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import { createUniqueTestDir, retry, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
 let filesystem: FileSystem;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 let serverPort = 0;
 
 async function fetchWithTimeout(path: string, timeoutMs = 1000): Promise<Response> {
@@ -20,11 +20,11 @@ async function fetchWithTimeout(path: string, timeoutMs = 1000): Promise<Respons
 	}
 }
 
-describe("BacklogServer asset serving", () => {
+describe("MemasterServer asset serving", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("server-assets");
 		filesystem = new FileSystem(TEST_DIR);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 
 		// ensure config so server starts cleanly
 		await filesystem.saveConfig({
@@ -36,9 +36,9 @@ describe("BacklogServer asset serving", () => {
 			remoteOperations: false,
 		});
 
-		// create backlog/assets and nested dirs
-		const backlogRoot = dirname(filesystem.docsDir);
-		const assetsDir = join(backlogRoot, "assets");
+		// create memaster/assets and nested dirs
+		const memasterRoot = dirname(filesystem.docsDir);
+		const assetsDir = join(memasterRoot, "assets");
 		await mkdir(join(assetsDir, "images"), { recursive: true });
 		await mkdir(join(assetsDir, "docs"), { recursive: true });
 
@@ -46,7 +46,7 @@ describe("BacklogServer asset serving", () => {
 		await Bun.write(join(assetsDir, "images", "test.png"), "PNGTEST");
 		await Bun.write(join(assetsDir, "docs", "readme.txt"), "Hello assets\n");
 
-		server = new BacklogServer(TEST_DIR);
+		server = new MemasterServer(TEST_DIR);
 		await server.start(0, false);
 		const port = server.getPort();
 		expect(port).not.toBeNull();

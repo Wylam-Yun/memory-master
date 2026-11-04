@@ -151,7 +151,7 @@ describe("MermaidMarkdown", () => {
 	});
 
 	it("does not auto-link task IDs inside fenced code blocks", () => {
-		const html = renderMarkdown("Run this:\n\n```bash\nbacklog task view TASK-100\n```\n\nThen open BACK-123.");
+		const html = renderMarkdown("Run this:\n\n```bash\nmemaster task view TASK-100\n```\n\nThen open BACK-123.");
 
 		expect(taskLinks(html)).toEqual(["/tasks/BACK-123"]);
 	});
@@ -163,13 +163,13 @@ describe("MermaidMarkdown", () => {
 	});
 
 	it("does not auto-link an ID-shaped tail of a longer identifier", () => {
-		const html = renderMarkdown("Branch my-task-123 and path backlog/tasks/TASK-123 stay plain.");
+		const html = renderMarkdown("Branch my-task-123 and path memaster/tasks/TASK-123 stay plain.");
 
 		expect(taskLinks(html)).toEqual([]);
 	});
 
 	it("does not auto-link IDs inside Windows-style paths", () => {
-		const html = renderMarkdown("File backlog\\tasks\\BACK-123 - Title.md stays plain.");
+		const html = renderMarkdown("File memaster\\tasks\\BACK-123 - Title.md stays plain.");
 
 		expect(taskLinks(html)).toEqual([]);
 	});

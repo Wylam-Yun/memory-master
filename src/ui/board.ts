@@ -6,7 +6,7 @@ import {
 	generateKanbanBoardWithMetadata,
 	generateMilestoneGroupedBoard,
 } from "../board.ts";
-import { type Core, createRuntimeCore } from "../core/backlog.ts";
+import { type Core, createRuntimeCore } from "../core/memaster.ts";
 import type { LabelMatchMode, Milestone, Task, TaskCreateInput } from "../types/index.ts";
 import { copyToClipboard } from "../utils/clipboard.ts";
 import { areLabelSelectionsEqual, collectAvailableLabels } from "../utils/label-filter.ts";
@@ -2046,7 +2046,7 @@ export async function renderBoardTui(
 		};
 
 		// Shift+H writes the shared hideEmptyColumns setting, so the board, the browser
-		// board and `backlog config` all read the same preference.
+		// board and `memaster config` all read the same preference.
 		screen.key(["S-h"], () => {
 			if (popupOpen || filterPopupOpen || modalOpen || currentFocus === "filters" || moveOp) return;
 			// Ignore toggles while a write is in flight: overlapping load/save

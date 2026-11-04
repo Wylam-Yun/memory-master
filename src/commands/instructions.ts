@@ -17,7 +17,7 @@ function isInstructionGuideKey(value: string): value is InstructionGuideKey {
 }
 
 function guideCommand(guide: WorkflowGuideDefinition): string {
-	return `backlog instructions ${guide.key}`;
+	return `memaster instructions ${guide.key}`;
 }
 
 function quoteCommand(command: string): string {
@@ -30,11 +30,11 @@ function commandLine(command: string, description: string): string {
 
 export function formatInstructionGuideIndex(): string {
 	const lines: string[] = [
-		"Backlog.md instructions",
+		"Memaster instructions",
 		"",
 		"Start here:",
-		commandLine("backlog instructions overview", "Required first read before answering any user request"),
-		commandLine("backlog <command> --help", "Show options, fields, and examples"),
+		commandLine("memaster instructions overview", "Required first read before answering any user request"),
+		commandLine("memaster <command> --help", "Show options, fields, and examples"),
 		"",
 		"Guides:",
 	];
@@ -55,16 +55,16 @@ export function formatInstructionGuideMarkdown(markdown: string): string {
 
 export function registerInstructionsCommand(program: Command): void {
 	addHelpSchema(program.command("instructions [guide]"), {
-		reads: "Backlog.md workflow guides",
+		reads: "Memaster workflow guides",
 		required: [],
 		optional: [
 			{ name: "guide", type: choiceType(INSTRUCTION_GUIDE_KEYS), description: "Workflow guide to print" },
 			{ name: "--list", type: "Boolean", description: "List available instruction guides" },
 		],
 		output: "Guide index, or markdown guide text when a guide is selected",
-		examples: ["backlog instructions", "backlog instructions overview", "backlog instructions task-execution"],
+		examples: ["memaster instructions", "memaster instructions overview", "memaster instructions task-execution"],
 	})
-		.description("show Backlog.md workflow instructions")
+		.description("show Memaster workflow instructions")
 		.option("--list", "list available instruction guides")
 		.action((guide: string | undefined, options: InstructionsOptions) => {
 			if (options.list || guide === undefined) {
@@ -75,7 +75,7 @@ export function registerInstructionsCommand(program: Command): void {
 			if (!isInstructionGuideKey(guide)) {
 				console.error(`Unknown instruction guide: ${guide}`);
 				console.error(`Valid guides: ${INSTRUCTION_GUIDE_KEYS.join(", ")}`);
-				console.error("Run `backlog instructions` to see available guides.");
+				console.error("Run `memaster instructions` to see available guides.");
 				process.exit(1);
 			}
 

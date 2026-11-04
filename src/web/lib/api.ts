@@ -2,10 +2,10 @@ import type { DuplicateRepairPlan, DuplicateRepairResult } from "../../core/dupl
 import type { TaskStatistics } from "../../core/statistics.ts";
 import type { TaskDetail } from "../../core/task-detail.ts";
 import type {
-	BacklogConfig,
 	Decision,
 	DecisionUpdateInput,
 	Document,
+	MemasterConfig,
 	Milestone,
 	SearchPriorityFilter,
 	SearchResult,
@@ -83,8 +83,8 @@ export type TaskUpdateRequest = Omit<Partial<Task>, "milestone" | "dueDate" | "p
 export interface InitializationStatus {
 	initialized: boolean;
 	projectPath: string;
-	backlogDirectory?: string | null;
-	backlogDirectorySource?: "backlog" | ".backlog" | "custom" | null;
+	memasterDirectory?: string | null;
+	memasterDirectorySource?: "memaster" | ".memaster" | "custom" | null;
 	configLocation?: "folder" | "root" | null;
 	rootConfigPath?: string | null;
 }
@@ -427,7 +427,7 @@ export class ApiClient {
 		return response.json();
 	}
 
-	async fetchConfig(): Promise<BacklogConfig> {
+	async fetchConfig(): Promise<MemasterConfig> {
 		const response = await fetch(`${API_BASE}/config`);
 		if (!response.ok) {
 			throw new Error("Failed to fetch config");
@@ -435,7 +435,7 @@ export class ApiClient {
 		return response.json();
 	}
 
-	async updateConfig(config: BacklogConfig): Promise<BacklogConfig> {
+	async updateConfig(config: MemasterConfig): Promise<MemasterConfig> {
 		const response = await fetch(`${API_BASE}/config`, {
 			method: "PUT",
 			headers: {
@@ -671,8 +671,8 @@ export class ApiClient {
 
 	async initializeProject(options: {
 		projectName: string;
-		backlogDirectory?: string;
-		backlogDirectorySource?: "backlog" | ".backlog" | "custom";
+		memasterDirectory?: string;
+		memasterDirectorySource?: "memaster" | ".memaster" | "custom";
 		configLocation?: "folder" | "root";
 		integrationMode: "mcp" | "cli" | "none";
 		mcpClients?: ("claude" | "codex" | "gemini" | "kiro" | "guide")[];

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, setSystemTime } from "bun:test";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { parseFrontmatter } from "../markdown/frontmatter.ts";
 import { parseTask } from "../markdown/parser.ts";
 import { formatUtcDateForDisplay } from "../utils/utc-date-display.ts";
@@ -78,7 +78,7 @@ describe("stored UTC timestamps", () => {
 		] as const;
 		for (const [index, [created, publicDate]] of values.entries()) {
 			const id = index + 1;
-			const path = join(testDir, "backlog", "tasks", `task-${id} - Legacy.md`);
+			const path = join(testDir, "memaster", "tasks", `task-${id} - Legacy.md`);
 			const original = `---\nid: TASK-${id}\ntitle: Legacy\nstatus: To Do\ncreated_date: ${created}\ndue_date: '2026-10-20'\n---\n`;
 			await Bun.write(path, original);
 			const { task } = JSON.parse(await cli("task", "view", String(id), "--json"));
@@ -126,7 +126,7 @@ describe("stored UTC timestamps", () => {
 	it("keeps a comment before an unquoted timestamp outside the stored date value", async () => {
 		for (const [index, created] of ["2026-10-19T00:00:00Z", "2026-10-19T01:23:00Z"].entries()) {
 			const id = String(index + 1);
-			const path = join(testDir, "backlog", "tasks", `task-${id} - Commented.md`);
+			const path = join(testDir, "memaster", "tasks", `task-${id} - Commented.md`);
 			const original = `---\nid: TASK-${id}\ntitle: Commented\nstatus: To Do\ncreated_date: # created at\n  ${created}\n---\n`;
 			await Bun.write(path, original);
 			expect(JSON.parse(await cli("task", "view", id, "--json")).task.createdAt).toBe(created);

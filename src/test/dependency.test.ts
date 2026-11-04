@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import type { Task } from "../types/index.ts";
 import { taskIdsEqual } from "../utils/task-path.ts";
 
@@ -12,7 +12,7 @@ describe("Task Dependencies", () => {
 	let core: Core;
 
 	beforeEach(async () => {
-		tempDir = mkdtempSync(join(tmpdir(), "backlog-dependency-test-"));
+		tempDir = mkdtempSync(join(tmpdir(), "memaster-dependency-test-"));
 
 		// Initialize git repository first using the same pattern as other tests
 		await $`git init -b main`.cwd(tempDir).quiet();
@@ -417,7 +417,7 @@ describe("Self-referential and cyclic dependencies", () => {
 	let core: Core;
 
 	beforeEach(async () => {
-		tempDir = mkdtempSync(join(tmpdir(), "backlog-dependency-cycle-test-"));
+		tempDir = mkdtempSync(join(tmpdir(), "memaster-dependency-cycle-test-"));
 		await $`git init -b main`.cwd(tempDir).quiet();
 		core = new Core(tempDir);
 		await initializeTestProject(core, "test-project");
@@ -532,7 +532,7 @@ describe("Self-referential and cyclic dependencies", () => {
 		expect(completed?.filePath).toBeDefined();
 		if (!completed?.filePath) return;
 		await Bun.write(
-			join(tempDir, "backlog", "tasks", "task-3 - Contested twin.md"),
+			join(tempDir, "memaster", "tasks", "task-3 - Contested twin.md"),
 			await Bun.file(completed.filePath).text(),
 		);
 

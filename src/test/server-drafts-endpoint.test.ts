@@ -1,15 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { FileSystem } from "../file-system/operations.ts";
 import { serializeTask } from "../markdown/serializer.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Task } from "../types/index.ts";
 import { createUniqueTestDir, retry, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
 let core: Core;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 let serverPort = 0;
 
 async function request(path: string, init?: RequestInit): Promise<Response> {
@@ -24,11 +24,11 @@ async function put(path: string, body: unknown): Promise<Response> {
 	});
 }
 
-describe("BacklogServer draft task endpoints", () => {
+describe("MemasterServer draft task endpoints", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("server-drafts");
 		const filesystem = new FileSystem(TEST_DIR);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		await filesystem.saveConfig({
 			projectName: "Server Drafts",
 			statuses: ["To Do", "In Progress", "Done"],
@@ -41,7 +41,7 @@ describe("BacklogServer draft task endpoints", () => {
 
 		core = new Core(TEST_DIR);
 
-		server = new BacklogServer(TEST_DIR);
+		server = new MemasterServer(TEST_DIR);
 		await server.start(0, false);
 		const port = server.getPort();
 		expect(port).not.toBeNull();

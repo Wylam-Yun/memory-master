@@ -13,11 +13,11 @@ describe("CLI parent shorthand option", () => {
 	let testDir: string;
 
 	beforeAll(async () => {
-		testDir = await mkdtemp(join(tmpdir(), "backlog-test-"));
+		testDir = await mkdtemp(join(tmpdir(), "memaster-test-"));
 
 		// Initialize git repository first to avoid interactive prompts
 
-		// Initialize backlog project using Core (simulating CLI)
+		// Initialize memaster project using Core (simulating CLI)
 		const core = new Core(testDir);
 		await initializeFilesystemTestProject(core, "Test Project");
 	});
@@ -38,7 +38,7 @@ describe("CLI parent shorthand option", () => {
 		expect(createSubtaskShort.exitCode).toBe(0);
 
 		// Find the created subtask file
-		const tasksDir = join(testDir, "backlog", "tasks");
+		const tasksDir = join(testDir, "memaster", "tasks");
 		const files = await readdir(tasksDir);
 		const subtaskFiles = files.filter((f) => f.startsWith("task-1.1 - ") && f.endsWith(".md"));
 		expect(subtaskFiles.length).toBe(1);

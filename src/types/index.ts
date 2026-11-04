@@ -8,7 +8,7 @@ export type TaskStatus = string;
 export type LabelMatchMode = "any" | "all";
 
 /**
- * Entity types in the backlog system.
+ * Entity types in the memaster system.
  * Used for ID generation and prefix resolution.
  */
 export enum EntityType {
@@ -264,7 +264,7 @@ export interface Milestone {
  * The record kinds that are files of their own folder, with an archive folder beside it: documents
  * and decisions. Archive, restore and delete are written once for them, keyed by this kind; tasks
  * and drafts have their own operations. A new kind needs an entry in `CONTENT_RECORD_WORDS` and a
- * case in `Core.contentRecords` (both in src/core/backlog.ts) and in
+ * case in `Core.contentRecords` (both in src/core/memaster.ts) and in
  * `FileSystem.contentRecordStorage`.
  */
 export type ContentRecordKind = "document" | "decision";
@@ -380,7 +380,7 @@ export interface PrefixConfig {
 	task: string;
 }
 
-export interface BacklogConfig {
+export interface MemasterConfig {
 	projectName: string;
 	/** Assignees applied to new tasks when none are provided. Empty or unset means no default. */
 	defaultAssignee?: string[];
@@ -414,8 +414,8 @@ export interface BacklogConfig {
 	bypassGitHooks?: boolean;
 	checkActiveBranches?: boolean; // Check task states across active branches (default: true)
 	activeBranchDays?: number; // How many days a branch is considered active (default: 30)
-	/** Project-relative backlog folder when config is stored at project root in backlog.config.yml. */
-	backlogDirectory?: string;
+	/** Project-relative memaster folder when config is stored at project root in memaster.config.yml. */
+	memasterDirectory?: string;
 	/** Global callback command to run on any task status change. Supports $TASK_ID, $OLD_STATUS, $NEW_STATUS, $TASK_TITLE variables. */
 	onStatusChange?: string;
 	/** ID prefix configuration for tasks and drafts. Defaults to { task: "task", draft: "draft" } */

@@ -2,10 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { isTaskLockError } from "../file-system/operations.ts";
 import { serializeTask } from "../markdown/serializer.ts";
-import type { BacklogConfig, Task } from "../types/index.ts";
+import type { MemasterConfig, Task } from "../types/index.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
 function createMockScreen(): Parameters<Core["editTaskInTui"]>[1] {
@@ -44,7 +44,7 @@ describe("Core.editTaskInTui draft resolution", () => {
 		if (!config) {
 			throw new Error("Expected config to be initialized");
 		}
-		const updated: BacklogConfig = { ...config, defaultEditor: editorCommand };
+		const updated: MemasterConfig = { ...config, defaultEditor: editorCommand };
 		await core.filesystem.saveConfig(updated);
 	};
 
@@ -366,7 +366,7 @@ process.exit(0);
 	});
 
 	it("fails closed when the selected row shares a numeric id with another draft", async () => {
-		const draftsDir = join(testDir, "backlog", "drafts");
+		const draftsDir = join(testDir, "memaster", "drafts");
 		const draftFile = (filename: string, id: string, title: string) =>
 			Bun.write(
 				join(draftsDir, filename),
@@ -407,7 +407,7 @@ process.exit(0);
 	});
 
 	it("fails closed when a draft id is requested without row context and twins exist", async () => {
-		const draftsDir = join(testDir, "backlog", "drafts");
+		const draftsDir = join(testDir, "memaster", "drafts");
 		await Bun.write(
 			join(draftsDir, "draft-1 - Alpha.md"),
 			serializeTask({

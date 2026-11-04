@@ -57,7 +57,7 @@ describe("SearchService", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("search-service");
 		filesystem = new FileSystem(TEST_DIR);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		store = new ContentStore(filesystem);
 		search = new SearchService(store);
 	});

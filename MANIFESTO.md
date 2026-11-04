@@ -1,6 +1,6 @@
-# The Backlog.md Manifesto
+# The Memaster Manifesto
 
-Backlog.md is a Markdown-native task manager for humans and AI agents. It makes work
+Memaster is a Markdown-native task manager for humans and AI agents. It makes work
 explicit before, during, and after execution by keeping scope, plans, acceptance
 criteria, notes, and outcomes in durable plain-text files.
 
@@ -11,7 +11,7 @@ judgment remain the point of the system.
 
 ## The First Users
 
-**Humans and agents are both first-class users.** Backlog.md must remain useful without
+**Humans and agents are both first-class users.** Memaster must remain useful without
 an AI agent, and agent workflows must operate on the same task model that humans can
 inspect and control.
 
@@ -57,7 +57,7 @@ ordinary tools and useful without a hosted service.
 The product has several interfaces, but they must express one coherent model.
 
 1. **The CLI is canonical.** It defines the complete, scriptable workflow for humans and agents.
-2. **CLI instructions are the canonical agent workflow.** They are the default way to teach an agent how to use Backlog.md.
+2. **CLI instructions are the canonical agent workflow.** They are the default way to teach an agent how to use Memaster.
 3. **The TUI and browser are human-facing views over the same semantics.** They should make common work clear and pleasant without inventing incompatible behavior.
 4. **MCP is a legacy, optional adapter.** It may remain useful for clients that prefer it, but features must not be designed MCP-first or exist only through MCP.
 
@@ -94,7 +94,7 @@ sound, and dangerous actions must be understandable before they run.
 
 ## Boundaries
 
-Backlog.md is not:
+Memaster is not:
 
 - an agent-only orchestration system;
 - a hosted project-management service that owns user data;

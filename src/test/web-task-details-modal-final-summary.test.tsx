@@ -459,7 +459,7 @@ describe("Web task popup Final Summary display", () => {
 					<TaskDetailsModal
 						isOpen={true}
 						onClose={() => {}}
-						availableStatuses={["Backlog", "To Do", "In Progress", "Done"]}
+						availableStatuses={["Memaster", "To Do", "In Progress", "Done"]}
 						definitionOfDoneDefaults={["Refreshed default"]}
 					/>
 				</ThemeProvider>,

@@ -1,4 +1,4 @@
-import { type BacklogConfig, EntityType, type PrefixConfig } from "../types/index.ts";
+import { EntityType, type MemasterConfig, type PrefixConfig } from "../types/index.ts";
 
 /**
  * Default prefix configuration for tasks.
@@ -196,7 +196,7 @@ export function buildFilenameIdRegex(prefix: string): RegExp {
  *
  * @example
  * const regex = buildPathIdRegex("task");
- * "backlog/tasks/task-123 - Title.md".match(regex) // => ["task-123", "123"]
+ * "memaster/tasks/task-123 - Title.md".match(regex) // => ["task-123", "123"]
  * "task-5.2.1 - Subtask.md".match(regex) // => ["task-5.2.1", "5.2.1"]
  */
 export function buildPathIdRegex(prefix: string): RegExp {
@@ -460,7 +460,7 @@ export function escapeRegex(str: string): string {
  * Only tasks have configurable prefixes (via config); other types use hardcoded prefixes.
  *
  * @param type - The entity type
- * @param config - Optional backlog config (only used for Task type)
+ * @param config - Optional memaster config (only used for Task type)
  * @returns The prefix string for the entity type
  *
  * @example
@@ -470,7 +470,7 @@ export function escapeRegex(str: string): string {
  * getPrefixForType(EntityType.Document) // => "doc"
  * getPrefixForType(EntityType.Decision) // => "decision"
  */
-export function getPrefixForType(type: EntityType, config?: BacklogConfig): string {
+export function getPrefixForType(type: EntityType, config?: MemasterConfig): string {
 	switch (type) {
 		case EntityType.Task:
 			return config?.prefixes?.task ?? DEFAULT_PREFIX_CONFIG.task;

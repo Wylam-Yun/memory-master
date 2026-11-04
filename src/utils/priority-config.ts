@@ -1,4 +1,4 @@
-import type { BacklogConfig } from "../types/index.ts";
+import type { MemasterConfig } from "../types/index.ts";
 
 export const DEFAULT_PRIORITY_OPTIONS = [
 	{ label: "High", value: "high" },
@@ -20,11 +20,11 @@ export function normalizePriorityValue(value: string | null | undefined): string
 }
 
 export function getPriorityOptions(
-	configOrPriorities?: Pick<BacklogConfig, "priorities"> | readonly string[] | null,
+	configOrPriorities?: Pick<MemasterConfig, "priorities"> | readonly string[] | null,
 ): PriorityOption[] {
 	const configuredPriorities: readonly string[] = Array.isArray(configOrPriorities)
 		? configOrPriorities
-		: ((configOrPriorities as Pick<BacklogConfig, "priorities"> | null | undefined)?.priorities ?? []);
+		: ((configOrPriorities as Pick<MemasterConfig, "priorities"> | null | undefined)?.priorities ?? []);
 	const options: PriorityOption[] = [];
 	const seen = new Set<string>();
 
@@ -44,20 +44,20 @@ export function getPriorityOptions(
 }
 
 export function getPriorityValues(
-	configOrPriorities?: Pick<BacklogConfig, "priorities"> | readonly string[] | null,
+	configOrPriorities?: Pick<MemasterConfig, "priorities"> | readonly string[] | null,
 ): string[] {
 	return getPriorityOptions(configOrPriorities).map((option) => option.value);
 }
 
 export function getPriorityLabels(
-	configOrPriorities?: Pick<BacklogConfig, "priorities"> | readonly string[] | null,
+	configOrPriorities?: Pick<MemasterConfig, "priorities"> | readonly string[] | null,
 ): string[] {
 	return getPriorityOptions(configOrPriorities).map((option) => option.label);
 }
 
 export function resolvePriorityValue(
 	value: string | null | undefined,
-	configOrPriorities?: Pick<BacklogConfig, "priorities"> | readonly string[] | null,
+	configOrPriorities?: Pick<MemasterConfig, "priorities"> | readonly string[] | null,
 ): string | undefined {
 	const normalized = normalizePriorityValue(value);
 	if (!normalized) {
@@ -69,7 +69,7 @@ export function resolvePriorityValue(
 
 export function formatPriorityLabel(
 	value: string | null | undefined,
-	configOrPriorities?: Pick<BacklogConfig, "priorities"> | readonly string[] | null,
+	configOrPriorities?: Pick<MemasterConfig, "priorities"> | readonly string[] | null,
 ): string {
 	const normalized = normalizePriorityValue(value);
 	if (!normalized) {
@@ -87,7 +87,7 @@ export function formatPriorityLabel(
 
 export function getPriorityRank(
 	value: string | null | undefined,
-	configOrPriorities?: Pick<BacklogConfig, "priorities"> | readonly string[] | null,
+	configOrPriorities?: Pick<MemasterConfig, "priorities"> | readonly string[] | null,
 ): number {
 	const normalized = normalizePriorityValue(value);
 	if (!normalized) {
@@ -99,7 +99,7 @@ export function getPriorityRank(
 }
 
 export function formatValidPriorityValues(
-	configOrPriorities?: Pick<BacklogConfig, "priorities"> | readonly string[] | null,
+	configOrPriorities?: Pick<MemasterConfig, "priorities"> | readonly string[] | null,
 ): string {
 	return getPriorityLabels(configOrPriorities).join(", ");
 }

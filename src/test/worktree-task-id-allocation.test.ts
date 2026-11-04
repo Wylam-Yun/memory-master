@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import type { Task } from "../types/index.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
@@ -87,7 +87,7 @@ describe("task ID allocation across git worktrees", () => {
 		await featureCore.createTaskFromInput({ title: "Archived on the branch" }, false);
 		expect(await featureCore.archiveTask("task-1", false)).toBe(true);
 		// A branch written before finished work moved into the archive folder keeps it here.
-		const leftoverDirectory = join(featureCore.fs.backlogDir, "completed");
+		const leftoverDirectory = join(featureCore.fs.memasterDir, "completed");
 		await mkdir(leftoverDirectory, { recursive: true });
 		await Bun.write(
 			join(leftoverDirectory, "task-2 - Finished-on-the-branch.md"),
@@ -170,7 +170,7 @@ describe("task ID allocation across git worktrees", () => {
 		if (!config) throw new Error("Expected initialized config");
 		config.prefixes = { task: "OPS" };
 		await mainCore.fs.saveConfig(config);
-		const repoRoot = await mainCore.gitOps.stageBacklogDirectory(mainCore.filesystem.backlogDirName);
+		const repoRoot = await mainCore.gitOps.stageMemasterDirectory(mainCore.filesystem.memasterDirName);
 		await mainCore.gitOps.commitChanges("test: set custom task prefix", repoRoot);
 
 		const sibling = await addWorktree(mainRepo, testDir, "feature-prefix");

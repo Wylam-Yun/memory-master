@@ -1,5 +1,5 @@
-import type { VacatedTaskResult } from "../../../core/backlog.ts";
 import { findLocalDuplicateTaskIds } from "../../../core/duplicate-task-repair.ts";
+import type { VacatedTaskResult } from "../../../core/memaster.ts";
 import { loadTaskDetail, loadTaskListItems } from "../../../core/task-detail.ts";
 import { isCreateLockError, isTaskLockError } from "../../../file-system/operations.ts";
 import { isWorkingCopyTask, type SearchPriorityFilter, type Task, type TaskListFilter } from "../../../types/index.ts";
@@ -17,7 +17,7 @@ import { taskNotFoundMessage } from "../../../utils/task-path.ts";
 import { applyTaskFilters, createTaskSearchIndex } from "../../../utils/task-search.ts";
 import { sectionTasks, sortTasks } from "../../../utils/task-sorting.ts";
 import { formatUtcDateForDisplay } from "../../../utils/utc-date-display.ts";
-import { BacklogToolError, runCoreOperation } from "../../errors/mcp-errors.ts";
+import { MemasterToolError, runCoreOperation } from "../../errors/mcp-errors.ts";
 import type { McpServer } from "../../server.ts";
 import type { CallToolResult } from "../../types.ts";
 import { formatTaskCallResult } from "../../utils/task-response.ts";
@@ -106,7 +106,7 @@ export class TaskHandlers {
 	private async loadTaskOrThrow(id: string): Promise<Task> {
 		const task = await this.core.getTask(id);
 		if (!task) {
-			throw new BacklogToolError(taskNotFoundMessage(id), "TASK_NOT_FOUND");
+			throw new MemasterToolError(taskNotFoundMessage(id), "TASK_NOT_FOUND");
 		}
 		return task;
 	}
@@ -115,7 +115,7 @@ export class TaskHandlers {
 		try {
 			const rawOrdinal = (args as { ordinal?: unknown }).ordinal;
 			if (rawOrdinal === null) {
-				throw new BacklogToolError("Ordinal must be a non-negative number.", "VALIDATION_ERROR");
+				throw new MemasterToolError("Ordinal must be a non-negative number.", "VALIDATION_ERROR");
 			}
 
 			const acceptanceCriteria =
@@ -153,18 +153,18 @@ export class TaskHandlers {
 			return await formatTaskCallResult(await loadTaskDetail(this.core, createdTask));
 		} catch (error) {
 			if (isCreateLockError(error)) {
-				throw new BacklogToolError(error.message, "OPERATION_FAILED");
+				throw new MemasterToolError(error.message, "OPERATION_FAILED");
 			}
 			if (error instanceof Error) {
-				throw new BacklogToolError(error.message, "VALIDATION_ERROR");
+				throw new MemasterToolError(error.message, "VALIDATION_ERROR");
 			}
-			throw new BacklogToolError(String(error), "VALIDATION_ERROR");
+			throw new MemasterToolError(String(error), "VALIDATION_ERROR");
 		}
 	}
 
 	async listTasks(args: TaskListArgs = {}): Promise<CallToolResult> {
 		if (args.assignee && args.unassigned) {
-			throw new BacklogToolError("unassigned cannot be combined with assignee.", "VALIDATION_ERROR");
+			throw new MemasterToolError("unassigned cannot be combined with assignee.", "VALIDATION_ERROR");
 		}
 		const config = await this.core.filesystem.loadConfig();
 		const priorities = config?.priorities;
@@ -321,7 +321,7 @@ export class TaskHandlers {
 		const query = args.query?.trim() ?? "";
 		const modifiedFiles = args.modifiedFiles?.map((file) => file.trim()).filter((file) => file.length > 0);
 		if (!query && (!modifiedFiles || modifiedFiles.length === 0) && !args.type?.length && !args.project?.length) {
-			throw new BacklogToolError(
+			throw new MemasterToolError(
 				"Search query, modifiedFiles, type filter, or project filter is required",
 				"VALIDATION_ERROR",
 			);
@@ -417,7 +417,7 @@ export class TaskHandlers {
 
 		const task = await this.core.getTaskWithSubtasks(args.id);
 		if (!task) {
-			throw new BacklogToolError(taskNotFoundMessage(args.id), "TASK_NOT_FOUND");
+			throw new MemasterToolError(taskNotFoundMessage(args.id), "TASK_NOT_FOUND");
 		}
 		// Task detail is the only MCP result read through the detail path, so it is the only one that
 		// carries the graph. The edit and lifecycle confirmations stay as short as they were.
@@ -429,7 +429,7 @@ export class TaskHandlers {
 		if (draft) {
 			const success = await this.core.archiveDraft(draft.id);
 			if (!success) {
-				throw new BacklogToolError(`Failed to archive task: ${args.id}`, "OPERATION_FAILED");
+				throw new MemasterToolError(`Failed to archive task: ${args.id}`, "OPERATION_FAILED");
 			}
 
 			return await formatTaskCallResult(await loadTaskDetail(this.core, draft), [`Archived draft ${draft.id}.`]);
@@ -437,7 +437,7 @@ export class TaskHandlers {
 
 		const task = await this.loadTaskOrThrow(args.id);
 		if (!(await runCoreOperation(() => this.core.archiveTask(task.id)))) {
-			throw new BacklogToolError(taskNotFoundMessage(args.id), "TASK_NOT_FOUND");
+			throw new MemasterToolError(taskNotFoundMessage(args.id), "TASK_NOT_FOUND");
 		}
 
 		const refreshed = (await this.core.getTask(task.id)) ?? task;
@@ -448,7 +448,7 @@ export class TaskHandlers {
 		const task = await this.loadTaskOrThrow(args.id);
 		const deletion = await runCoreOperation(() => this.core.deleteTask(task.id));
 		if (!deletion.success) {
-			throw new BacklogToolError(taskNotFoundMessage(args.id), "TASK_NOT_FOUND");
+			throw new MemasterToolError(taskNotFoundMessage(args.id), "TASK_NOT_FOUND");
 		}
 
 		const cleanupMessage = formatDependencyCleanupMessage(task.id, deletion.cleanedTaskIds);
@@ -459,7 +459,7 @@ export class TaskHandlers {
 	async restoreTask(args: { id: string }): Promise<CallToolResult> {
 		const task = await this.loadTaskOrThrow(args.id);
 		if (!(await runCoreOperation(() => this.core.restoreTask(task.id)))) {
-			throw new BacklogToolError(taskNotFoundMessage(args.id), "TASK_NOT_FOUND");
+			throw new MemasterToolError(taskNotFoundMessage(args.id), "TASK_NOT_FOUND");
 		}
 
 		const refreshed = (await this.core.getTask(task.id)) ?? task;
@@ -473,12 +473,12 @@ export class TaskHandlers {
 			demotion = await this.core.demoteTask(task.id, false);
 		} catch (error) {
 			if (isCreateLockError(error)) {
-				throw new BacklogToolError(error.message, "OPERATION_FAILED");
+				throw new MemasterToolError(error.message, "OPERATION_FAILED");
 			}
 			throw error;
 		}
 		if (!demotion.success) {
-			throw new BacklogToolError(`Failed to demote task: ${args.id}`, "OPERATION_FAILED");
+			throw new MemasterToolError(`Failed to demote task: ${args.id}`, "OPERATION_FAILED");
 		}
 
 		const refreshed = (await this.core.getTask(task.id)) ?? task;
@@ -493,7 +493,7 @@ export class TaskHandlers {
 		try {
 			const rawOrdinal = (args as { ordinal?: unknown }).ordinal;
 			if (rawOrdinal === null) {
-				throw new BacklogToolError("Ordinal must be a non-negative number.", "VALIDATION_ERROR");
+				throw new MemasterToolError("Ordinal must be a non-negative number.", "VALIDATION_ERROR");
 			}
 
 			const updateInput = buildTaskUpdateInput(args);
@@ -508,12 +508,12 @@ export class TaskHandlers {
 			);
 		} catch (error) {
 			if (isTaskLockError(error)) {
-				throw new BacklogToolError(error.message, "OPERATION_FAILED");
+				throw new MemasterToolError(error.message, "OPERATION_FAILED");
 			}
 			if (error instanceof Error) {
-				throw new BacklogToolError(error.message, "VALIDATION_ERROR");
+				throw new MemasterToolError(error.message, "VALIDATION_ERROR");
 			}
-			throw new BacklogToolError(String(error), "VALIDATION_ERROR");
+			throw new MemasterToolError(String(error), "VALIDATION_ERROR");
 		}
 	}
 }

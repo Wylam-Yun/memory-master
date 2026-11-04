@@ -10,7 +10,7 @@ let TEST_DIR: string;
 let mcpServer: McpServer;
 
 const READ_ONLY_MESSAGE =
-	"Document doc-1 is archived. Archived documents are read-only. Restore it first: backlog doc restore doc-1";
+	"Document doc-1 is archived. Archived documents are read-only. Restore it first: memaster doc restore doc-1";
 const ARCHIVED_LINE = "This document is archived and read-only.";
 
 type ToolResult = { isError: boolean; text: string; code?: string };
@@ -23,8 +23,8 @@ async function call(name: string, args: Record<string, unknown>): Promise<ToolRe
 	return { isError: result.isError === true, text: first?.text ?? "", code: structured?.code };
 }
 
-const docsPath = (...segments: string[]) => join(TEST_DIR, "backlog", "docs", ...segments);
-const archivePath = (...segments: string[]) => join(TEST_DIR, "backlog", "archive", "docs", ...segments);
+const docsPath = (...segments: string[]) => join(TEST_DIR, "memaster", "docs", ...segments);
+const archivePath = (...segments: string[]) => join(TEST_DIR, "memaster", "archive", "docs", ...segments);
 
 async function exists(path: string): Promise<boolean> {
 	return (await lstat(path).catch(() => null)) !== null;
@@ -90,13 +90,13 @@ describe("MCP document_archive", () => {
 
 	it("moves the file unchanged and names the tasks and drafts that list it as documentation", async () => {
 		const name = await createDocument("API Guidelines");
-		const path = `backlog/docs/${name}`;
+		const path = `memaster/docs/${name}`;
 		const before = await readFile(docsPath(name), "utf8");
 		await mcpServer.createTaskFromInput({ title: "Names the file", documentation: [path] });
 		await mcpServer.createTaskFromInput({ title: "Names a URL", documentation: [`https://example.com/${path}`] });
 		await mcpServer.createTaskFromInput({ title: "Draft", status: "Draft", documentation: [`./${path}#usage`] });
-		const tasksBefore = await readFolder(join(TEST_DIR, "backlog", "tasks"));
-		const draftsBefore = await readFolder(join(TEST_DIR, "backlog", "drafts"));
+		const tasksBefore = await readFolder(join(TEST_DIR, "memaster", "tasks"));
+		const draftsBefore = await readFolder(join(TEST_DIR, "memaster", "drafts"));
 
 		const archived = await call("document_archive", { id: "1" });
 
@@ -105,8 +105,8 @@ describe("MCP document_archive", () => {
 		expect(archived.text).toBe("Archived document doc-1.\nStill listed as documentation by: TASK-1, DRAFT-1.");
 		expect(await exists(docsPath(name))).toBe(false);
 		expect(await readFile(archivePath(name), "utf8")).toBe(before);
-		expect(await readFolder(join(TEST_DIR, "backlog", "tasks"))).toEqual(tasksBefore);
-		expect(await readFolder(join(TEST_DIR, "backlog", "drafts"))).toEqual(draftsBefore);
+		expect(await readFolder(join(TEST_DIR, "memaster", "tasks"))).toEqual(tasksBefore);
+		expect(await readFolder(join(TEST_DIR, "memaster", "drafts"))).toEqual(draftsBefore);
 	});
 
 	it("returns only the confirmation when no task names the file", async () => {
@@ -179,7 +179,7 @@ describe("MCP document_archive", () => {
 		expect(taken.isError).toBe(true);
 		expect(taken.code).toBe("VALIDATION_ERROR");
 		expect(taken.text).toContain(
-			`Document doc-2 cannot be archived: the archive already has a file at backlog/archive/docs/${second}.`,
+			`Document doc-2 cannot be archived: the archive already has a file at memaster/archive/docs/${second}.`,
 		);
 		expect(await exists(docsPath(second))).toBe(true);
 
@@ -196,8 +196,8 @@ describe("MCP document_archive", () => {
 			expect(ambiguous.isError).toBe(true);
 			expect(ambiguous.code).toBe("AMBIGUOUS_ID");
 			expect(ambiguous.text).toContain("Document ID doc-1 is ambiguous; 2 files match:");
-			expect(ambiguous.text).toContain(`  - backlog/archive/docs/${first}`);
-			expect(ambiguous.text).toContain(`  - backlog/docs/${first}`);
+			expect(ambiguous.text).toContain(`  - memaster/archive/docs/${first}`);
+			expect(ambiguous.text).toContain(`  - memaster/docs/${first}`);
 		}
 		expect(await exists(docsPath(first))).toBe(true);
 		expect(await exists(archivePath(first))).toBe(true);
@@ -224,9 +224,9 @@ describe("MCP document_archive", () => {
 		const archived = await call("document_archive", { id: "doc-1" });
 
 		expect(archived.isError).toBe(false);
-		expect((await $`git log -1 --format=%s`.cwd(TEST_DIR).text()).trim()).toBe("backlog: Archive document doc-1");
+		expect((await $`git log -1 --format=%s`.cwd(TEST_DIR).text()).trim()).toBe("memaster: Archive document doc-1");
 		expect((await $`git show --name-status --format= HEAD`.cwd(TEST_DIR).text()).trim()).toBe(
-			`R100\tbacklog/docs/${name}\tbacklog/archive/docs/${name}`,
+			`R100\tmemaster/docs/${name}\tmemaster/archive/docs/${name}`,
 		);
 		expect((await $`git status --porcelain`.cwd(TEST_DIR).text()).trim()).toBe("");
 	});

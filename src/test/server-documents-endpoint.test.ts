@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { join } from "node:path";
 import { FileSystem } from "../file-system/operations.ts";
 import { serializeDecision, serializeDocument } from "../markdown/serializer.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Document } from "../types/index.ts";
 import { createUniqueTestDir, retry, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 let serverPort = 0;
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -18,11 +18,11 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
 	return response.json();
 }
 
-describe("BacklogServer document endpoints", () => {
+describe("MemasterServer document endpoints", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("server-documents");
 		const filesystem = new FileSystem(TEST_DIR);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		await filesystem.saveConfig({
 			projectName: "Server Documents",
 			statuses: ["To Do", "In Progress", "Done"],
@@ -32,7 +32,7 @@ describe("BacklogServer document endpoints", () => {
 			remoteOperations: false,
 		});
 
-		server = new BacklogServer(TEST_DIR);
+		server = new MemasterServer(TEST_DIR);
 		await server.start(0, false);
 		const port = server.getPort();
 		expect(port).not.toBeNull();
@@ -227,7 +227,7 @@ describe("BacklogServer document endpoints", () => {
 async function startServerWithColliding(secondDocumentId: string, secondDecisionId: string): Promise<void> {
 	TEST_DIR = createUniqueTestDir("server-content-identity");
 	const filesystem = new FileSystem(TEST_DIR);
-	await filesystem.ensureBacklogStructure();
+	await filesystem.ensureMemasterStructure();
 	await filesystem.saveConfig({
 		projectName: "Server Content Identity",
 		statuses: ["To Do", "In Progress", "Done"],
@@ -255,7 +255,7 @@ async function startServerWithColliding(secondDocumentId: string, secondDecision
 	await Bun.write(join(filesystem.decisionsDir, "decision-1 - Alpha.md"), decision("decision-1", "Alpha"));
 	await Bun.write(join(filesystem.decisionsDir, "decision-01 - Beta.md"), decision(secondDecisionId, "Beta"));
 
-	server = new BacklogServer(TEST_DIR);
+	server = new MemasterServer(TEST_DIR);
 	await server.start(0, false);
 	const port = server.getPort();
 	expect(port).not.toBeNull();
@@ -274,7 +274,7 @@ async function stopServer(): Promise<void> {
 	await safeCleanup(TEST_DIR);
 }
 
-describe("BacklogServer ambiguous content identity", () => {
+describe("MemasterServer ambiguous content identity", () => {
 	beforeEach(async () => {
 		await startServerWithColliding("doc-01", "decision-01");
 	});
@@ -323,7 +323,7 @@ describe("BacklogServer ambiguous content identity", () => {
 	});
 });
 
-describe("BacklogServer identical raw content IDs", () => {
+describe("MemasterServer identical raw content IDs", () => {
 	beforeEach(async () => {
 		await startServerWithColliding("doc-1", "decision-1");
 	});

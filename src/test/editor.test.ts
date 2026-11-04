@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { BacklogConfig } from "../types/index.ts";
+import type { MemasterConfig } from "../types/index.ts";
 import { isEditorAvailable, openInEditor, resolveEditor } from "../utils/editor.ts";
 import { createUniqueTestDir, safeCleanup } from "./test-utils.ts";
 
@@ -25,7 +25,7 @@ describe("Editor utilities", () => {
 	describe("resolveEditor", () => {
 		it("should prioritize EDITOR environment variable over config defaultEditor", () => {
 			process.env.EDITOR = "vim";
-			const config: BacklogConfig = {
+			const config: MemasterConfig = {
 				projectName: "Test",
 				statuses: ["To Do", "Done"],
 				labels: [],
@@ -40,7 +40,7 @@ describe("Editor utilities", () => {
 
 		it("should use config defaultEditor when EDITOR environment variable is not set", () => {
 			delete process.env.EDITOR;
-			const config: BacklogConfig = {
+			const config: MemasterConfig = {
 				projectName: "Test",
 				statuses: ["To Do", "Done"],
 				labels: [],
@@ -55,7 +55,7 @@ describe("Editor utilities", () => {
 
 		it("should use EDITOR environment variable when config has no defaultEditor", () => {
 			process.env.EDITOR = "vim";
-			const config: BacklogConfig = {
+			const config: MemasterConfig = {
 				projectName: "Test",
 				statuses: ["To Do", "Done"],
 				labels: [],
@@ -69,7 +69,7 @@ describe("Editor utilities", () => {
 
 		it("should use platform default when neither config nor env var is set", () => {
 			delete process.env.EDITOR;
-			const config: BacklogConfig = {
+			const config: MemasterConfig = {
 				projectName: "Test",
 				statuses: ["To Do", "Done"],
 				labels: [],
@@ -145,7 +145,7 @@ describe("Editor utilities", () => {
 			// Use echo as a safe test command that exists on all platforms
 			// Clear EDITOR env var so config.defaultEditor is used
 			delete process.env.EDITOR;
-			const config: BacklogConfig = {
+			const config: MemasterConfig = {
 				projectName: "Test",
 				statuses: ["To Do", "Done"],
 				labels: [],
@@ -161,7 +161,7 @@ describe("Editor utilities", () => {
 		it("should handle editor command failure gracefully", async () => {
 			// Clear EDITOR env var so config.defaultEditor is used
 			delete process.env.EDITOR;
-			const config: BacklogConfig = {
+			const config: MemasterConfig = {
 				projectName: "Test",
 				statuses: ["To Do", "Done"],
 				labels: [],
@@ -187,7 +187,7 @@ describe("Editor utilities", () => {
 			`;
 			await Bun.write(scriptPath, scriptContent);
 
-			const config: BacklogConfig = {
+			const config: MemasterConfig = {
 				projectName: "Test",
 				statuses: ["To Do", "Done"],
 				labels: [],
@@ -210,7 +210,7 @@ describe("Editor utilities", () => {
 			// Use echo with an argument as a simple test that exits immediately
 			// Clear EDITOR env var so config.defaultEditor is used
 			delete process.env.EDITOR;
-			const config: BacklogConfig = {
+			const config: MemasterConfig = {
 				projectName: "Test",
 				statuses: ["To Do", "Done"],
 				labels: [],

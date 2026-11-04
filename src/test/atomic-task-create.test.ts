@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { CREATE_LOCK_ERROR_MESSAGE } from "../file-system/operations.ts";
 import type { Task } from "../types";
 import { initializeTestProject, withTimeout } from "./test-utils.ts";
@@ -35,7 +35,7 @@ describe("atomic task creation", () => {
 		originalGlobalLockEnv = process.env.USE_GLOBAL_TASK_ID_LOCK;
 		delete process.env.USE_GLOBAL_TASK_ID_LOCK;
 
-		testDir = await mkdtemp(join(tmpdir(), "backlog-atomic-create-"));
+		testDir = await mkdtemp(join(tmpdir(), "memaster-atomic-create-"));
 		const core = new Core(testDir);
 		await initializeTestProject(core, "Atomic Create Test", false);
 
@@ -222,7 +222,7 @@ describe("atomic task creation", () => {
 		const releaseFirstWrite = createDeferred<void>();
 		let writeEntries = 0;
 		const originalWrite = Bun.write;
-		const milestonePathPrefix = `${testDir}/backlog/milestones/`.replace(/\\/g, "/");
+		const milestonePathPrefix = `${testDir}/memaster/milestones/`.replace(/\\/g, "/");
 
 		Bun.write = (async (...args: Parameters<typeof Bun.write>) => {
 			const targetPath = String(args[0]).replace(/\\/g, "/");

@@ -1,7 +1,7 @@
 import { stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { $ } from "bun";
-import { resolveBacklogDirectory } from "./backlog-directory.ts";
+import { resolveMemasterDirectory } from "./memaster-directory.ts";
 
 /**
  * Check if a file exists
@@ -16,29 +16,29 @@ async function fileExists(path: string): Promise<boolean> {
 }
 
 /**
- * Finds the Backlog.md project root by walking up the directory tree.
+ * Finds the Memaster project root by walking up the directory tree.
  *
  * Search order:
- * 1. Walk up from startDir looking for a supported backlog directory or `backlog.json` file
+ * 1. Walk up from startDir looking for a supported memaster directory or `memaster.json` file
  * 2. If not found, fall back to git repository root (via `git rev-parse --show-toplevel`)
- * 3. Return null if no Backlog.md project found
+ * 3. Return null if no Memaster project found
  *
  * @param startDir - The directory to start searching from (typically process.cwd())
- * @returns The project root path, or null if no Backlog.md project found
+ * @returns The project root path, or null if no Memaster project found
  */
-export async function findBacklogRoot(startDir: string): Promise<string | null> {
+export async function findMemasterRoot(startDir: string): Promise<string | null> {
 	let current = startDir;
 
-	// Walk up the directory tree looking for a backlog config or backlog.json
+	// Walk up the directory tree looking for a memaster config or memaster.json
 	while (current !== dirname(current)) {
-		const backlogResolution = resolveBacklogDirectory(current);
-		if (backlogResolution.configPath) {
+		const memasterResolution = resolveMemasterDirectory(current);
+		if (memasterResolution.configPath) {
 			return current;
 		}
 
-		// Check for backlog.json file
-		const backlogJson = join(current, "backlog.json");
-		if (await fileExists(backlogJson)) {
+		// Check for memaster.json file
+		const memasterJson = join(current, "memaster.json");
+		if (await fileExists(memasterJson)) {
 			return current;
 		}
 
@@ -51,11 +51,11 @@ export async function findBacklogRoot(startDir: string): Promise<string | null> 
 		const gitRoot = result.stdout.toString().trim();
 
 		if (gitRoot) {
-			// Verify the git root has a backlog setup
-			const backlogJson = join(gitRoot, "backlog.json");
+			// Verify the git root has a memaster setup
+			const memasterJson = join(gitRoot, "memaster.json");
 
-			const backlogResolution = resolveBacklogDirectory(gitRoot);
-			if (backlogResolution.configPath || (await fileExists(backlogJson))) {
+			const memasterResolution = resolveMemasterDirectory(gitRoot);
+			if (memasterResolution.configPath || (await fileExists(memasterJson))) {
 				return gitRoot;
 			}
 		}
@@ -70,7 +70,7 @@ export async function findBacklogRoot(startDir: string): Promise<string | null> 
 let cachedProjectRoot: string | null | undefined;
 
 /**
- * Gets the Backlog.md project root, with caching for performance.
+ * Gets the Memaster project root, with caching for performance.
  * Call clearProjectRootCache() to reset the cache if needed.
  */
 export async function getProjectRoot(startDir: string): Promise<string | null> {
@@ -78,7 +78,7 @@ export async function getProjectRoot(startDir: string): Promise<string | null> {
 		return cachedProjectRoot;
 	}
 
-	cachedProjectRoot = await findBacklogRoot(startDir);
+	cachedProjectRoot = await findMemasterRoot(startDir);
 	return cachedProjectRoot;
 }
 

@@ -20,19 +20,19 @@ let OUTSIDE_DIR: string;
 const CLI_PATH = getTestCliPath();
 
 const READ_ONLY_MESSAGE = (id: string) =>
-	`Document ${id} is archived. Archived documents are read-only. Restore it first: backlog doc restore ${id}`;
+	`Document ${id} is archived. Archived documents are read-only. Restore it first: memaster doc restore ${id}`;
 const ARCHIVED_LINE = "This document is archived and read-only.";
 
-/** Run `backlog <args>` in the test project and return what a caller of the CLI sees. */
-async function backlog(...args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+/** Run `memaster <args>` in the test project and return what a caller of the CLI sees. */
+async function memaster(...args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
 	const result = await $`bun ${[CLI_PATH, ...args]}`.cwd(TEST_DIR).nothrow().quiet();
 	return { exitCode: result.exitCode, stdout: result.stdout.toString(), stderr: result.stderr.toString() };
 }
 
-const docsPath = (...segments: string[]) => join(TEST_DIR, "backlog", "docs", ...segments);
-const archivePath = (...segments: string[]) => join(TEST_DIR, "backlog", "archive", "docs", ...segments);
+const docsPath = (...segments: string[]) => join(TEST_DIR, "memaster", "docs", ...segments);
+const archivePath = (...segments: string[]) => join(TEST_DIR, "memaster", "archive", "docs", ...segments);
 
-/** Create a document through core, as `backlog doc create` does, and return its file name. */
+/** Create a document through core, as `memaster doc create` does, and return its file name. */
 async function createDocument(title: string, subPath?: string, content = `Body of ${title}`): Promise<string> {
 	const document = await new Core(TEST_DIR).createDocumentFromInput({ title, path: subPath, content });
 	return (document.path ?? "").split("/").pop() ?? "";
@@ -61,7 +61,7 @@ async function snapshot(dir: string): Promise<Record<string, string>> {
 	return entries;
 }
 
-const backlogSnapshot = () => snapshot(join(TEST_DIR, "backlog"));
+const memasterSnapshot = () => snapshot(join(TEST_DIR, "memaster"));
 
 beforeEach(async () => {
 	TEST_DIR = await createTestDirOutsideRepository("test-cli-doc-archive");
@@ -73,7 +73,7 @@ afterEach(async () => {
 	await safeCleanup(OUTSIDE_DIR);
 });
 
-describe("backlog doc archive", () => {
+describe("memaster doc archive", () => {
 	beforeEach(async () => {
 		await initializeFilesystemTestProject(new Core(TEST_DIR), "Doc Archive Project");
 	});
@@ -85,7 +85,7 @@ describe("backlog doc archive", () => {
 		// The archive folder for documents does not exist until the first document is archived.
 		expect(await exists(archivePath())).toBe(false);
 
-		const archived = await backlog("doc", "archive", "doc-1");
+		const archived = await memaster("doc", "archive", "doc-1");
 
 		expect(archived.exitCode).toBe(0);
 		// No task names the file, so the confirmation is the only line.
@@ -99,9 +99,9 @@ describe("backlog doc archive", () => {
 		await createDocument("First");
 		await createDocument("Second");
 		const name = await createDocument("Third");
-		expect((await backlog("doc", "view", id, "--plain")).exitCode).toBe(0);
+		expect((await memaster("doc", "view", id, "--plain")).exitCode).toBe(0);
 
-		const archived = await backlog("doc", "archive", id);
+		const archived = await memaster("doc", "archive", id);
 
 		expect(archived.exitCode).toBe(0);
 		expect(archived.stdout).toBe("Archived document doc-3\n");
@@ -115,16 +115,16 @@ describe("backlog doc archive", () => {
 		const original = await readFile(docsPath("guides", name), "utf8");
 		await mkdir(archivePath("guides"), { recursive: true });
 		await writeFile(archivePath("guides", name), original.replace("id: doc-1", "id: doc-9"));
-		const before = await backlogSnapshot();
+		const before = await memasterSnapshot();
 
-		const refused = await backlog("doc", "archive", "1");
+		const refused = await memaster("doc", "archive", "1");
 
 		expect(refused.exitCode).toBe(1);
 		expect(refused.stderr).toBe(
-			`Document doc-1 cannot be archived: the archive already has a file at backlog/archive/docs/guides/${name}.\n`,
+			`Document doc-1 cannot be archived: the archive already has a file at memaster/archive/docs/guides/${name}.\n`,
 		);
 		expect(refused.stdout).toBe("");
-		expect(await backlogSnapshot()).toEqual(before);
+		expect(await memasterSnapshot()).toEqual(before);
 	});
 
 	it.skipIf(isWindows())("treats a link whose target is missing as a file at the destination", async () => {
@@ -132,39 +132,39 @@ describe("backlog doc archive", () => {
 		await mkdir(archivePath(), { recursive: true });
 		// No folder listing returns this link, so only the move itself can find the path taken.
 		await symlink(join(OUTSIDE_DIR, "never-created.md"), archivePath(name));
-		const before = await backlogSnapshot();
+		const before = await memasterSnapshot();
 
-		const refused = await backlog("doc", "archive", "1");
+		const refused = await memaster("doc", "archive", "1");
 
 		expect(refused.exitCode).toBe(1);
-		expect(refused.stderr).toContain(`the archive already has a file at backlog/archive/docs/${name}.`);
-		expect(await backlogSnapshot()).toEqual(before);
+		expect(refused.stderr).toContain(`the archive already has a file at memaster/archive/docs/${name}.`);
+		expect(await memasterSnapshot()).toEqual(before);
 		expect(await readdir(OUTSIDE_DIR)).toEqual([]);
 	});
 
 	it("refuses a document that is already archived with the read-only message", async () => {
 		await createDocument("Archived once");
-		expect((await backlog("doc", "archive", "1")).exitCode).toBe(0);
-		const before = await backlogSnapshot();
+		expect((await memaster("doc", "archive", "1")).exitCode).toBe(0);
+		const before = await memasterSnapshot();
 
-		const again = await backlog("doc", "archive", "1");
+		const again = await memaster("doc", "archive", "1");
 
 		expect(again.exitCode).toBe(1);
 		expect(again.stderr).toBe(`${READ_ONLY_MESSAGE("doc-1")}\n`);
 		expect(again.stdout).toBe("");
-		expect(await backlogSnapshot()).toEqual(before);
+		expect(await memasterSnapshot()).toEqual(before);
 	});
 
 	it("reports an ID that no document claims as not found and changes nothing", async () => {
 		await createDocument("Only document");
-		const before = await backlogSnapshot();
+		const before = await memasterSnapshot();
 
-		const missing = await backlog("doc", "archive", "9");
+		const missing = await memaster("doc", "archive", "9");
 
 		expect(missing.exitCode).toBe(1);
 		expect(missing.stderr).toBe("Document not found: 9\n");
 		expect(missing.stdout).toBe("");
-		expect(await backlogSnapshot()).toEqual(before);
+		expect(await memasterSnapshot()).toEqual(before);
 		expect(await exists(archivePath())).toBe(false);
 	});
 
@@ -173,11 +173,11 @@ describe("backlog doc archive", () => {
 		// A file of the same name in the archive that claims the same ID.
 		await mkdir(archivePath(), { recursive: true });
 		await writeFile(archivePath(name), await readFile(docsPath(name)));
-		const before = await backlogSnapshot();
+		const before = await memasterSnapshot();
 
-		const archive = await backlog("doc", "archive", "1");
-		const view = await backlog("doc", "view", "1", "--plain");
-		const update = await backlog("doc", "update", "1", "--title", "Changed");
+		const archive = await memaster("doc", "archive", "1");
+		const view = await memaster("doc", "view", "1", "--plain");
+		const update = await memaster("doc", "update", "1", "--title", "Changed");
 
 		for (const refused of [archive, view, update]) {
 			expect(refused.exitCode).toBe(1);
@@ -186,14 +186,14 @@ describe("backlog doc archive", () => {
 			expect(refused.stderr).toBe(
 				[
 					"Document ID doc-1 is ambiguous; 2 files match:",
-					`  - backlog/archive/docs/${name}`,
-					`  - backlog/docs/${name}`,
-					"Run 'backlog doctor' to review the conflicting files.",
+					`  - memaster/archive/docs/${name}`,
+					`  - memaster/docs/${name}`,
+					"Run 'memaster doctor' to review the conflicting files.",
 					"",
 				].join("\n"),
 			);
 		}
-		expect(await backlogSnapshot()).toEqual(before);
+		expect(await memasterSnapshot()).toEqual(before);
 	});
 
 	it("has doctor report an ID claimed in both folders as a duplicate document ID", async () => {
@@ -201,15 +201,15 @@ describe("backlog doc archive", () => {
 		await mkdir(archivePath("guides"), { recursive: true });
 		await writeFile(archivePath("guides", name), await readFile(docsPath("guides", name)));
 
-		const doctor = await backlog("doctor");
+		const doctor = await memaster("doctor");
 
 		expect(doctor.exitCode).toBe(1);
 		expect(doctor.stdout).toContain(
 			[
 				"Duplicate document IDs (diagnostic only):",
 				"  doc-1:",
-				`    - backlog/archive/docs/guides/${name}`,
-				`    - backlog/docs/guides/${name}`,
+				`    - memaster/archive/docs/guides/${name}`,
+				`    - memaster/docs/guides/${name}`,
 			].join("\n"),
 		);
 	});
@@ -217,9 +217,9 @@ describe("backlog doc archive", () => {
 	it("keeps the ID of an archived document reserved", async () => {
 		await createDocument("Stays");
 		await createDocument("Goes to the archive");
-		expect((await backlog("doc", "archive", "2")).exitCode).toBe(0);
+		expect((await memaster("doc", "archive", "2")).exitCode).toBe(0);
 
-		const created = await backlog("doc", "create", "Created afterwards");
+		const created = await memaster("doc", "create", "Created afterwards");
 
 		expect(created.exitCode).toBe(0);
 		expect(created.stdout).toContain("Created document doc-3\n");
@@ -228,12 +228,12 @@ describe("backlog doc archive", () => {
 
 	it("counts the ID in an archived file's frontmatter when its name carries no number", async () => {
 		const name = await createDocument("Renamed by hand");
-		expect((await backlog("doc", "archive", "1")).exitCode).toBe(0);
+		expect((await memaster("doc", "archive", "1")).exitCode).toBe(0);
 		const archived = (await readFile(archivePath(name), "utf8")).replace("id: doc-1", "id: doc-7");
 		await writeFile(archivePath("notes.md"), archived);
 		await rename(archivePath(name), join(OUTSIDE_DIR, name));
 
-		const created = await backlog("doc", "create", "Next");
+		const created = await memaster("doc", "create", "Next");
 
 		expect(created.stdout).toContain("Created document doc-8\n");
 	});
@@ -242,33 +242,33 @@ describe("backlog doc archive", () => {
 		await mkdir(archivePath(), { recursive: true });
 		await writeFile(archivePath("doc-9 - Broken.md"), "---\nid: [unclosed\n---\n");
 
-		const created = await backlog("doc", "create", "Next");
+		const created = await memaster("doc", "create", "Next");
 
 		expect(created.stdout).toContain("Created document doc-10\n");
 	});
 
 	it("keeps an archived document read-only for doc update", async () => {
 		await createDocument("Read-only while archived", "guides");
-		expect((await backlog("doc", "archive", "1")).exitCode).toBe(0);
-		const before = await backlogSnapshot();
+		expect((await memaster("doc", "archive", "1")).exitCode).toBe(0);
+		const before = await memasterSnapshot();
 
-		const update = await backlog("doc", "update", "doc-1", "--title", "Must not change", "--content", "New body");
+		const update = await memaster("doc", "update", "doc-1", "--title", "Must not change", "--content", "New body");
 
 		expect(update.exitCode).toBe(1);
 		expect(update.stderr).toBe(`${READ_ONLY_MESSAGE("doc-1")}\n`);
 		expect(update.stdout).toBe("");
 		// Nothing was rewritten in the archive and nothing was written back under the docs folder.
-		expect(await backlogSnapshot()).toEqual(before);
+		expect(await memasterSnapshot()).toEqual(before);
 	});
 
 	it("still shows an archived document with doc view, with a line saying it is archived", async () => {
 		const name = await createDocument("Kept for reference", "guides", "The body that stays readable.");
-		const plainBeforeArchive = await backlog("doc", "view", "1", "--plain");
+		const plainBeforeArchive = await memaster("doc", "view", "1", "--plain");
 		expect(plainBeforeArchive.stdout).not.toContain(ARCHIVED_LINE);
-		expect((await backlog("doc", "archive", "1")).exitCode).toBe(0);
+		expect((await memaster("doc", "archive", "1")).exitCode).toBe(0);
 		const stored = await readFile(archivePath("guides", name), "utf8");
 
-		const view = await backlog("doc", "view", "doc-1", "--plain");
+		const view = await memaster("doc", "view", "doc-1", "--plain");
 
 		expect(view.exitCode).toBe(0);
 		// The document is printed as before the archive, under the line that says it is archived.
@@ -279,7 +279,7 @@ describe("backlog doc archive", () => {
 
 	it.skipIf(!HAS_PSEUDO_TERMINAL)("shows the archived line in the interactive viewer too", async () => {
 		await createDocument("Viewed in a terminal");
-		expect((await backlog("doc", "archive", "1")).exitCode).toBe(0);
+		expect((await memaster("doc", "archive", "1")).exitCode).toBe(0);
 
 		// The viewer stays open until a key closes it: "q" is typed once the end of the line is drawn.
 		const viewer = await runCliInPseudoTerminal(CLI_PATH, ["doc", "view", "doc-1"], TEST_DIR, {
@@ -296,11 +296,11 @@ describe("backlog doc archive", () => {
 	it("leaves an archived document out of doc list, doc search and search", async () => {
 		await createDocument("Retired runbook", undefined, "Runbook steps nobody follows any more.");
 		await createDocument("Current runbook", undefined, "Runbook steps in use.");
-		expect((await backlog("doc", "archive", "1")).exitCode).toBe(0);
+		expect((await memaster("doc", "archive", "1")).exitCode).toBe(0);
 
-		const list = await backlog("doc", "list", "--plain");
-		const docSearch = await backlog("doc", "search", "runbook");
-		const search = await backlog("search", "runbook", "--plain");
+		const list = await memaster("doc", "list", "--plain");
+		const docSearch = await memaster("doc", "search", "runbook");
+		const search = await memaster("search", "runbook", "--plain");
 
 		for (const output of [list, docSearch, search]) {
 			expect(output.exitCode).toBe(0);
@@ -313,41 +313,41 @@ describe("backlog doc archive", () => {
 	it.skipIf(isWindows())("keeps file links across document stores out of lists and lookups", async () => {
 		const retired = await createDocument("Retired runbook");
 		const current = await createDocument("Current runbook");
-		expect((await backlog("doc", "archive", "1")).exitCode).toBe(0);
+		expect((await memaster("doc", "archive", "1")).exitCode).toBe(0);
 		await symlink(archivePath(retired), docsPath("retired-alias.md"));
 		await symlink(docsPath(current), archivePath("current-alias.md"));
-		const before = await backlogSnapshot();
+		const before = await memasterSnapshot();
 
 		for (const args of [
 			["doc", "list", "--plain"],
 			["doc", "search", "runbook"],
 			["search", "runbook", "--plain"],
 		]) {
-			const output = await backlog(...args);
+			const output = await memaster(...args);
 			expect(output.exitCode).toBe(0);
 			expect(output.stdout).toContain("Current runbook");
 			expect(output.stdout).not.toContain("Retired runbook");
 		}
-		const archivedView = await backlog("doc", "view", "doc-001");
+		const archivedView = await memaster("doc", "view", "doc-001");
 		expect(archivedView.exitCode).toBe(0);
 		expect(archivedView.stdout).toContain(ARCHIVED_LINE);
-		const activeView = await backlog("doc", "view", "2");
+		const activeView = await memaster("doc", "view", "2");
 		expect(activeView.exitCode).toBe(0);
 		expect(activeView.stdout).not.toContain(ARCHIVED_LINE);
 		for (const args of [
 			["doc", "archive", "doc-1"],
 			["doc", "update", "1", "--content", "Changed"],
 		]) {
-			const refused = await backlog(...args);
+			const refused = await memaster(...args);
 			expect(refused.exitCode).toBe(1);
 			expect(refused.stderr).toContain(READ_ONLY_MESSAGE("doc-1"));
 		}
-		expect(await backlogSnapshot()).toEqual(before);
+		expect(await memasterSnapshot()).toEqual(before);
 	});
 
 	it("prints the tasks and drafts whose documentation names the moved file and changes none of them", async () => {
 		const name = await createDocument("API Guidelines", "guides");
-		const path = `backlog/docs/guides/${name}`;
+		const path = `memaster/docs/guides/${name}`;
 		const core = new Core(TEST_DIR);
 		const createTask = async (title: string, documentation: string, status?: string) =>
 			(await core.createTaskFromInput({ title, documentation: [documentation], status })).task.id;
@@ -366,22 +366,22 @@ describe("backlog doc archive", () => {
 		expect(await core.archiveTask("TASK-8", false)).toBe(true);
 		expect(await createTask("Draft", path, "Draft")).toBe("DRAFT-1");
 		const recordsBefore = {
-			tasks: await snapshot(join(TEST_DIR, "backlog", "tasks")),
-			archivedTasks: await snapshot(join(TEST_DIR, "backlog", "archive", "tasks")),
-			drafts: await snapshot(join(TEST_DIR, "backlog", "drafts")),
+			tasks: await snapshot(join(TEST_DIR, "memaster", "tasks")),
+			archivedTasks: await snapshot(join(TEST_DIR, "memaster", "archive", "tasks")),
+			drafts: await snapshot(join(TEST_DIR, "memaster", "drafts")),
 		};
 		expect(Object.keys(recordsBefore.tasks)).toHaveLength(7);
 
-		const archived = await backlog("doc", "archive", "doc-1");
+		const archived = await memaster("doc", "archive", "doc-1");
 
 		expect(archived.exitCode).toBe(0);
 		expect(archived.stdout).toBe(
 			"Archived document doc-1\nStill listed as documentation by: TASK-1, TASK-2, TASK-3, TASK-8, DRAFT-1\n",
 		);
 		expect({
-			tasks: await snapshot(join(TEST_DIR, "backlog", "tasks")),
-			archivedTasks: await snapshot(join(TEST_DIR, "backlog", "archive", "tasks")),
-			drafts: await snapshot(join(TEST_DIR, "backlog", "drafts")),
+			tasks: await snapshot(join(TEST_DIR, "memaster", "tasks")),
+			archivedTasks: await snapshot(join(TEST_DIR, "memaster", "archive", "tasks")),
+			drafts: await snapshot(join(TEST_DIR, "memaster", "drafts")),
 		}).toEqual(recordsBefore);
 	});
 
@@ -390,44 +390,44 @@ describe("backlog doc archive", () => {
 		const core = new Core(TEST_DIR);
 		const draft = await core.createTaskFromInput({
 			title: "Draft",
-			documentation: [`backlog/docs/${name}`],
+			documentation: [`memaster/docs/${name}`],
 			status: "Draft",
 		});
 		expect(draft.task.id).toBe("DRAFT-1");
 		// Reading this draft fails, which must not hide the draft next to it.
 		await Bun.write(
-			join(TEST_DIR, "backlog", "drafts", "draft-2 - Bad.md"),
+			join(TEST_DIR, "memaster", "drafts", "draft-2 - Bad.md"),
 			"---\nid: DRAFT-2\ntitle: Bad\ndependencies:\n  - { nested: true }\n---\n",
 		);
 
-		const archived = await backlog("doc", "archive", "doc-1");
+		const archived = await memaster("doc", "archive", "doc-1");
 
 		expect(archived.exitCode).toBe(0);
 		expect(archived.stdout).toBe("Archived document doc-1\nStill listed as documentation by: DRAFT-1\n");
 	});
 
 	it("lists archive in doc help and describes the command with an example", async () => {
-		const docHelp = await backlog("doc", "--help");
+		const docHelp = await memaster("doc", "--help");
 		expect(docHelp.stdout).toMatch(/^\s+archive <docId>\s+move a document into the archive/m);
 
-		const help = await backlog("doc", "archive", "--help");
+		const help = await memaster("doc", "archive", "--help");
 
 		expect(help.exitCode).toBe(0);
-		expect(help.stdout).toContain("Usage: backlog doc archive [options] <docId>");
+		expect(help.stdout).toContain("Usage: memaster doc archive [options] <docId>");
 		expect(help.stdout).toContain("- docId: Document ID - Document to archive");
-		expect(help.stdout).toContain("to the same relative path under backlog/archive/docs");
+		expect(help.stdout).toContain("to the same relative path under memaster/archive/docs");
 		expect(help.stdout).toContain("Its ID stays reserved");
-		expect(help.stdout).toContain("Examples:\n  backlog doc archive doc-1");
+		expect(help.stdout).toContain("Examples:\n  memaster doc archive doc-1");
 	});
 
 	it("is described in the shipped guides and in CLI-INSTRUCTIONS.md", async () => {
-		const executionGuide = (await backlog("instructions", "task-execution")).stdout;
+		const executionGuide = (await memaster("instructions", "task-execution")).stdout;
 		const cliInstructions = await readFile(join(import.meta.dir, "..", "..", "CLI-INSTRUCTIONS.md"), "utf8");
 
 		for (const guide of [executionGuide, AGENT_GUIDELINES, cliInstructions]) {
-			expect(guide).toContain("backlog doc archive doc-1");
+			expect(guide).toContain("memaster doc archive doc-1");
 			// Where the file goes, what happens to the ID, and what an archived document still allows.
-			expect(guide).toContain("backlog/archive/docs/");
+			expect(guide).toContain("memaster/archive/docs/");
 			expect(guide).toMatch(/ID stays reserved/);
 			expect(guide).toMatch(/stays viewable/);
 			expect(guide).toContain("read-only");
@@ -438,34 +438,34 @@ describe("backlog doc archive", () => {
 	});
 });
 
-describe("backlog doc archive in a project with another backlog folder", () => {
+describe("memaster doc archive in a project with another memaster folder", () => {
 	it("uses that folder for the archive, for the documentation match and in its messages", async () => {
 		const core = new Core(TEST_DIR);
-		await initializeFilesystemTestProject(core, "Hidden Backlog Folder", ".backlog");
+		await initializeFilesystemTestProject(core, "Hidden Memaster Folder", ".memaster");
 		const first = (await core.createDocumentFromInput({ title: "First", path: "guides", content: "" })).path ?? "";
 		const second = (await core.createDocumentFromInput({ title: "Second", content: "" })).path ?? "";
-		await core.createTaskFromInput({ title: "Names the file", documentation: [`.backlog/docs/${first}`] });
+		await core.createTaskFromInput({ title: "Names the file", documentation: [`.memaster/docs/${first}`] });
 		// The same path under the default folder name is another file.
-		await core.createTaskFromInput({ title: "Other folder name", documentation: [`backlog/docs/${first}`] });
+		await core.createTaskFromInput({ title: "Other folder name", documentation: [`memaster/docs/${first}`] });
 
-		const archived = await backlog("doc", "archive", "doc-1");
+		const archived = await memaster("doc", "archive", "doc-1");
 
 		expect(archived.exitCode).toBe(0);
 		expect(archived.stdout).toBe("Archived document doc-1\nStill listed as documentation by: TASK-1\n");
-		expect(await exists(join(TEST_DIR, ".backlog", "archive", "docs", first))).toBe(true);
-		expect(await exists(join(TEST_DIR, ".backlog", "docs", first))).toBe(false);
+		expect(await exists(join(TEST_DIR, ".memaster", "archive", "docs", first))).toBe(true);
+		expect(await exists(join(TEST_DIR, ".memaster", "docs", first))).toBe(false);
 
 		// A taken destination is named with the folder the project uses.
-		await writeFile(join(TEST_DIR, ".backlog", "archive", "docs", second), "taken");
-		const refused = await backlog("doc", "archive", "doc-2");
+		await writeFile(join(TEST_DIR, ".memaster", "archive", "docs", second), "taken");
+		const refused = await memaster("doc", "archive", "doc-2");
 		expect(refused.exitCode).toBe(1);
 		expect(refused.stderr).toBe(
-			`Document doc-2 cannot be archived: the archive already has a file at .backlog/archive/docs/${second}.\n`,
+			`Document doc-2 cannot be archived: the archive already has a file at .memaster/archive/docs/${second}.\n`,
 		);
 	});
 });
 
-describe.skipIf(isWindows())("backlog doc archive with symbolic links", () => {
+describe.skipIf(isWindows())("memaster doc archive with symbolic links", () => {
 	beforeEach(async () => {
 		await initializeFilesystemTestProject(new Core(TEST_DIR), "Doc Archive Links Project");
 	});
@@ -475,13 +475,13 @@ describe.skipIf(isWindows())("backlog doc archive with symbolic links", () => {
 		["a relative link", (target: string) => relative(docsPath(), target)],
 	])("moves a document file that is %s as a link to the same target", async (_label, linkText) => {
 		const name = await createDocument("Linked document");
-		// The document's file is a link to a file kept outside the backlog folder.
+		// The document's file is a link to a file kept outside the memaster folder.
 		const targetPath = join(OUTSIDE_DIR, "linked-document.md");
 		await rename(docsPath(name), targetPath);
 		await symlink(linkText(targetPath), docsPath(name));
 		const targetContent = await readFile(targetPath, "utf8");
 
-		const archived = await backlog("doc", "archive", "1");
+		const archived = await memaster("doc", "archive", "1");
 
 		expect(archived.exitCode).toBe(0);
 		expect(await exists(docsPath(name))).toBe(false);
@@ -490,11 +490,11 @@ describe.skipIf(isWindows())("backlog doc archive with symbolic links", () => {
 		expect(await realpath(linked)).toBe(await realpath(targetPath));
 		expect(await readFile(targetPath, "utf8")).toBe(targetContent);
 		// The archived link is an ordinary archived document.
-		expect((await backlog("doc", "view", "1", "--plain")).stdout).toContain("Body of Linked document");
+		expect((await memaster("doc", "view", "1", "--plain")).stdout).toContain("Body of Linked document");
 	});
 
 	it("archives a document inside a symlinked subfolder like any other document", async () => {
-		// backlog/docs/shared is a link to a folder outside the backlog folder.
+		// memaster/docs/shared is a link to a folder outside the memaster folder.
 		const sharedDir = join(OUTSIDE_DIR, "shared");
 		await mkdir(sharedDir);
 		await symlink(sharedDir, docsPath("shared"));
@@ -502,14 +502,14 @@ describe.skipIf(isWindows())("backlog doc archive with symbolic links", () => {
 		expect(await readdir(sharedDir)).toEqual([name]);
 		const before = await readFile(join(sharedDir, name));
 
-		const archived = await backlog("doc", "archive", "1");
+		const archived = await memaster("doc", "archive", "1");
 
 		expect(archived.exitCode).toBe(0);
 		expect(archived.stdout).toBe("Archived document doc-1\n");
 		expect(await readdir(sharedDir)).toEqual([]);
 		expect((await lstat(archivePath("shared"))).isDirectory()).toBe(true);
 		expect((await readFile(archivePath("shared", name))).equals(before)).toBe(true);
-		expect((await backlog("doc", "list", "--plain")).stdout).toBe("No docs found.\n");
+		expect((await memaster("doc", "list", "--plain")).stdout).toBe("No docs found.\n");
 	});
 
 	it.each([
@@ -523,14 +523,14 @@ describe.skipIf(isWindows())("backlog doc archive with symbolic links", () => {
 		// The task names the file by the path of the folder it is really in.
 		await new Core(TEST_DIR).createTaskFromInput({
 			title: "Names the document",
-			documentation: [`backlog/docs/${folder}/${name}`],
+			documentation: [`memaster/docs/${folder}/${name}`],
 		});
 
-		const search = await backlog("doc", "search", "Nested");
+		const search = await memaster("doc", "search", "Nested");
 		expect(search.stdout).toContain(`path: ${folder}/${name}`);
 		expect(search.stdout).not.toContain(link);
 
-		const archived = await backlog("doc", "archive", "doc-1");
+		const archived = await memaster("doc", "archive", "doc-1");
 
 		expect(archived.exitCode).toBe(0);
 		expect(archived.stdout).toBe("Archived document doc-1\nStill listed as documentation by: TASK-1\n");
@@ -542,43 +542,43 @@ describe.skipIf(isWindows())("backlog doc archive with symbolic links", () => {
 
 	it.each([
 		["the docs folder", () => docsPath()],
-		["the backlog folder", () => join(TEST_DIR, "backlog")],
+		["the memaster folder", () => join(TEST_DIR, "memaster")],
 	])("is not confused by a folder link in docs that points back at %s", async (_label, loopTarget) => {
 		const stays = await createDocument("Stays", "guides");
 		const goes = await createDocument("Goes to the archive");
 		await symlink(loopTarget(), docsPath("guides", "loop"));
 
 		// Each document is listed once, although the loop makes every file reachable through more paths.
-		const list = await backlog("doc", "list", "--plain");
+		const list = await memaster("doc", "list", "--plain");
 		expect(list.exitCode).toBe(0);
 		expect(list.stdout).toBe("doc-2 - Goes to the archive\ndoc-1 - Stays\n");
-		expect((await backlog("doc", "view", "doc-1", "--plain")).exitCode).toBe(0);
+		expect((await memaster("doc", "view", "doc-1", "--plain")).exitCode).toBe(0);
 
-		const archived = await backlog("doc", "archive", "doc-2");
+		const archived = await memaster("doc", "archive", "doc-2");
 
 		expect(archived.exitCode).toBe(0);
 		expect(archived.stdout).toBe("Archived document doc-2\n");
 		expect(await exists(docsPath(goes))).toBe(false);
 		expect(await exists(archivePath(goes))).toBe(true);
 		// The archived document is archived whichever path leads to it, and the other one is untouched.
-		expect((await backlog("doc", "list", "--plain")).stdout).toBe("doc-1 - Stays\n");
-		const view = await backlog("doc", "view", "doc-2", "--plain");
+		expect((await memaster("doc", "list", "--plain")).stdout).toBe("doc-1 - Stays\n");
+		const view = await memaster("doc", "view", "doc-2", "--plain");
 		expect(view.exitCode).toBe(0);
 		expect(view.stdout).toContain(ARCHIVED_LINE);
 		expect(await exists(docsPath("guides", stays))).toBe(true);
-		expect((await backlog("doc", "create", "Next")).stdout).toContain("Created document doc-3\n");
+		expect((await memaster("doc", "create", "Next")).stdout).toContain("Created document doc-3\n");
 	});
 
 	it("is not confused by a folder link in the archive that points back at its parent", async () => {
 		await createDocument("Stays");
 		const goes = await createDocument("Goes to the archive", "guides");
-		expect((await backlog("doc", "archive", "2")).exitCode).toBe(0);
+		expect((await memaster("doc", "archive", "2")).exitCode).toBe(0);
 		await symlink(archivePath(), archivePath("guides", "loop"));
 
-		const view = await backlog("doc", "view", "doc-2", "--plain");
-		const list = await backlog("doc", "list", "--plain");
-		const again = await backlog("doc", "archive", "doc-2");
-		const other = await backlog("doc", "archive", "doc-1");
+		const view = await memaster("doc", "view", "doc-2", "--plain");
+		const list = await memaster("doc", "list", "--plain");
+		const again = await memaster("doc", "archive", "doc-2");
+		const other = await memaster("doc", "archive", "doc-1");
 
 		expect(view.exitCode).toBe(0);
 		expect(view.stdout).toContain(ARCHIVED_LINE);
@@ -591,7 +591,7 @@ describe.skipIf(isWindows())("backlog doc archive with symbolic links", () => {
 	});
 });
 
-describe("backlog doc archive in a Git repository", () => {
+describe("memaster doc archive in a Git repository", () => {
 	const git = async (...args: string[]) => (await $`git ${args}`.cwd(TEST_DIR).quiet().text()).trim();
 	const NAME = "doc-1 - API-Guidelines.md";
 
@@ -617,13 +617,13 @@ describe("backlog doc archive in a Git repository", () => {
 		await writeFile(join(TEST_DIR, "untracked.txt"), "not staged\n");
 		const commitsBefore = Number(await git("rev-list", "--count", "HEAD"));
 
-		const archived = await backlog("doc", "archive", "1");
+		const archived = await memaster("doc", "archive", "1");
 
 		expect(archived.exitCode).toBe(0);
 		expect(Number(await git("rev-list", "--count", "HEAD"))).toBe(commitsBefore + 1);
-		expect(await git("log", "-1", "--format=%s")).toBe("backlog: Archive document doc-1");
+		expect(await git("log", "-1", "--format=%s")).toBe("memaster: Archive document doc-1");
 		expect(await git("show", "--name-status", "--format=", "HEAD")).toBe(
-			`R100\tbacklog/docs/guides/${NAME}\tbacklog/archive/docs/guides/${NAME}`,
+			`R100\tmemaster/docs/guides/${NAME}\tmemaster/archive/docs/guides/${NAME}`,
 		);
 		expect(await git("status", "--porcelain")).toBe("A  staged.txt\n?? untracked.txt");
 	});
@@ -632,7 +632,7 @@ describe("backlog doc archive in a Git repository", () => {
 		await setUpRepository(false);
 		const head = await git("rev-parse", "HEAD");
 
-		const archived = await backlog("doc", "archive", "1");
+		const archived = await memaster("doc", "archive", "1");
 
 		expect(archived.exitCode).toBe(0);
 		expect(await git("rev-parse", "HEAD")).toBe(head);
@@ -646,7 +646,7 @@ describe("backlog doc archive in a Git repository", () => {
 		// Another Git process holds the index, so the move cannot be staged.
 		await writeFile(join(TEST_DIR, ".git", "index.lock"), "");
 
-		const archived = await backlog("doc", "archive", "1");
+		const archived = await memaster("doc", "archive", "1");
 
 		expect(archived.exitCode).toBe(1);
 		expect(archived.stderr).toContain("Document doc-1 was archived, but committing the change failed:");
@@ -661,13 +661,13 @@ describe("backlog doc archive in a Git repository", () => {
 		await setUpRepository(true);
 		// On another branch a second document is created and archived. Both commits stay on that branch.
 		await git("switch", "-c", "other");
-		expect((await backlog("doc", "create", "Archived elsewhere")).stdout).toContain("Created document doc-2\n");
-		expect((await backlog("doc", "archive", "2")).exitCode).toBe(0);
+		expect((await memaster("doc", "create", "Archived elsewhere")).stdout).toContain("Created document doc-2\n");
+		expect((await memaster("doc", "archive", "2")).exitCode).toBe(0);
 		expect(await git("status", "--porcelain")).toBe("");
 		await git("switch", "main");
 		expect(await exists(archivePath())).toBe(false);
 
-		const created = await backlog("doc", "create", "Created on main");
+		const created = await memaster("doc", "create", "Created on main");
 
 		expect(created.exitCode).toBe(0);
 		expect(created.stdout).toContain("Created document doc-3\n");

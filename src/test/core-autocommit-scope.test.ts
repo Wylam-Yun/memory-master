@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
@@ -32,7 +32,7 @@ describe("core auto-commit scoping", () => {
 		await $`git add UNRELATED.txt`.cwd(TEST_DIR).quiet();
 		await $`git commit -m "Add unrelated file"`.cwd(TEST_DIR).quiet();
 		await $`git rm --quiet UNRELATED.txt`.cwd(TEST_DIR).quiet();
-		await Bun.write(join(core.filesystem.backlogDir, "plans", "peer-plan.md"), "# Peer plan\n");
+		await Bun.write(join(core.filesystem.memasterDir, "plans", "peer-plan.md"), "# Peer plan\n");
 	}
 
 	async function expectOwnedCommit(...expectedPaths: string[]): Promise<void> {
@@ -43,7 +43,7 @@ describe("core auto-commit scoping", () => {
 
 		const status = await core.gitOps.getStatus();
 		expect(status).toContain("D  UNRELATED.txt");
-		expect(status).toContain("?? backlog/plans/");
+		expect(status).toContain("?? memaster/plans/");
 	}
 
 	it("decision creation commits only its decision file", async () => {
@@ -63,7 +63,7 @@ describe("core auto-commit scoping", () => {
 			true,
 		);
 
-		await expectOwnedCommit("backlog/decisions/");
+		await expectOwnedCommit("memaster/decisions/");
 	});
 
 	it("bulk task updates commit only the updated task files", async () => {
@@ -74,7 +74,7 @@ describe("core auto-commit scoping", () => {
 
 		await core.updateTasksBulk([{ ...current, ordinal: 2000 }], "Scoped bulk update", true);
 
-		await expectOwnedCommit("backlog/tasks/");
+		await expectOwnedCommit("memaster/tasks/");
 	});
 
 	it("bulk task updates commit through the exact saved legacy path", async () => {
@@ -91,7 +91,7 @@ describe("core auto-commit scoping", () => {
 
 		expect(await core.gitOps.getLastCommitMessage()).toContain("Legacy bulk update");
 		expect(await $`git show --name-only --pretty=format:`.cwd(TEST_DIR).text()).toContain(
-			"backlog/tasks/task-999 - Legacy.md",
+			"memaster/tasks/task-999 - Legacy.md",
 		);
 		expect((await $`git status --short`.cwd(TEST_DIR).text()).trim()).toBe("");
 	});
@@ -102,6 +102,6 @@ describe("core auto-commit scoping", () => {
 
 		expect(await core.archiveTask(task.id, true)).toBe(true);
 
-		await expectOwnedCommit("backlog/tasks/", "backlog/archive/tasks/");
+		await expectOwnedCommit("memaster/tasks/", "memaster/archive/tasks/");
 	});
 });

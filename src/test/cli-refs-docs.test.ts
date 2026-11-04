@@ -641,7 +641,7 @@ await import(${JSON.stringify(pathToFileURL(cliPath).href)});
 		it("persists references in task markdown file", async () => {
 			await $`bun ${cliPath} task create "Feature" --ref https://example.com --ref src/index.ts`.cwd(TEST_DIR).quiet();
 
-			const taskFile = await Bun.file(join(TEST_DIR, "backlog/tasks/task-1 - Feature.md")).text();
+			const taskFile = await Bun.file(join(TEST_DIR, "memaster/tasks/task-1 - Feature.md")).text();
 			expect(taskFile).toContain("references:");
 			expect(taskFile).toContain("https://example.com");
 			expect(taskFile).toContain("src/index.ts");
@@ -650,7 +650,7 @@ await import(${JSON.stringify(pathToFileURL(cliPath).href)});
 		it("persists documentation in task markdown file", async () => {
 			await $`bun ${cliPath} task create "Feature" --doc https://docs.example.com --doc spec.md`.cwd(TEST_DIR).quiet();
 
-			const taskFile = await Bun.file(join(TEST_DIR, "backlog/tasks/task-1 - Feature.md")).text();
+			const taskFile = await Bun.file(join(TEST_DIR, "memaster/tasks/task-1 - Feature.md")).text();
 			expect(taskFile).toContain("documentation:");
 			expect(taskFile).toContain("https://docs.example.com");
 			expect(taskFile).toContain("spec.md");
@@ -661,7 +661,7 @@ await import(${JSON.stringify(pathToFileURL(cliPath).href)});
 				.cwd(TEST_DIR)
 				.quiet();
 
-			const taskFile = await Bun.file(join(TEST_DIR, "backlog/tasks/task-1 - Feature.md")).text();
+			const taskFile = await Bun.file(join(TEST_DIR, "memaster/tasks/task-1 - Feature.md")).text();
 			expect(taskFile).toContain("modified_files:");
 			expect(taskFile).toContain("src/index.ts");
 			expect(taskFile).toContain("src/ui.ts");

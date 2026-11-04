@@ -14,7 +14,7 @@ let mcpServer: McpServer;
 async function loadConfig(server: McpServer) {
 	const config = await server.filesystem.loadConfig();
 	if (!config) {
-		throw new Error("Failed to load backlog configuration for tests");
+		throw new Error("Failed to load memaster configuration for tests");
 	}
 	return config;
 }
@@ -23,7 +23,7 @@ describe("MCP final summary", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("mcp-final-summary");
 		mcpServer = new McpServer(TEST_DIR, "Test instructions");
-		await mcpServer.filesystem.ensureBacklogStructure();
+		await mcpServer.filesystem.ensureMemasterStructure();
 
 		await initializeFilesystemTestProject(mcpServer, "MCP Final Summary Project");
 

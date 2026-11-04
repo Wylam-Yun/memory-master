@@ -228,7 +228,7 @@ describe("CLI JSON output", () => {
 			const output = JSON.parse(result.stdout.toString());
 			expect(output.schemaVersion).toBe(1);
 			expect(output.kind).toBe("task-view");
-			expect(output.task.path).toMatch(/^backlog\/tasks\/task-1 - JSON-task\.md$/);
+			expect(output.task.path).toMatch(/^memaster\/tasks\/task-1 - JSON-task\.md$/);
 			expect(output.task.archived).toBe(false);
 			expect(output.task.description).toBe("Machine-readable output");
 			expect(output.task.dependencies).toEqual(["TASK-2"]);
@@ -270,7 +270,7 @@ describe("CLI JSON output", () => {
 		const output = JSON.parse(result.stdout.toString());
 		expect(output.schemaVersion).toBe(1);
 		expect(output.task.archived).toBe(true);
-		expect(output.task.path).toMatch(/^backlog\/archive\/tasks\/task-1 - JSON-task\.md$/);
+		expect(output.task.path).toMatch(/^memaster\/archive\/tasks\/task-1 - JSON-task\.md$/);
 	});
 
 	it("serializes an absent description as null and preserves Markdown verbatim", async () => {
@@ -312,7 +312,7 @@ describe("CLI JSON output", () => {
 			id: "doc-1",
 			title: "JSON guide",
 			type: "guide",
-			path: "backlog/docs/doc-1 - JSON-guide.md",
+			path: "memaster/docs/doc-1 - JSON-guide.md",
 			tags: ["cli"],
 			createdAt: "2026-07-13",
 			updatedAt: "2026-07-14T08:00:00Z",
@@ -402,7 +402,7 @@ describe("CLI JSON output", () => {
 		// under DEBUG on every load of the archived corpus. Counting those lines counts the corpus
 		// reads one command makes.
 		await writeFile(
-			join(TEST_DIR, "backlog", "archive", "tasks", "task-99 - Broken.md"),
+			join(TEST_DIR, "memaster", "archive", "tasks", "task-99 - Broken.md"),
 			"---\nid: TASK-99\ntitle: [unclosed\nstatus: Done\n---\n\nbroken\n",
 		);
 		const corpusReads = async (args: string[]) => {
@@ -433,7 +433,7 @@ describe("CLI JSON output", () => {
 			await mkdir(customTestDir, { recursive: true });
 
 			const core = new Core(customTestDir);
-			await initializeFilesystemTestProject(core, "Custom JSON Output Test", "planning/backlog-data");
+			await initializeFilesystemTestProject(core, "Custom JSON Output Test", "planning/memaster-data");
 			await core.filesystem.saveDocument({
 				id: "doc-1",
 				title: "Custom guide",
@@ -447,7 +447,7 @@ describe("CLI JSON output", () => {
 			expect(result.stderr.toString()).toBe("");
 			const output = JSON.parse(result.stdout.toString());
 			expect(output.results).toHaveLength(1);
-			expect(output.results[0].data.path).toBe("planning/backlog-data/docs/doc-1 - Custom-guide.md");
+			expect(output.results[0].data.path).toBe("planning/memaster-data/docs/doc-1 - Custom-guide.md");
 		} finally {
 			await safeCleanup(customTestDir);
 		}

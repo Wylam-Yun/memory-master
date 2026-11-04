@@ -2,8 +2,8 @@
  * Unified view manager that handles Tab switching between task views and kanban board
  */
 
-import type { Core } from "../core/backlog.ts";
 import { findLocalDuplicateTaskIds } from "../core/duplicate-task-repair.ts";
+import type { Core } from "../core/memaster.ts";
 import type { LabelMatchMode, Milestone, Task, TaskCreateInput } from "../types/index.ts";
 import { watchConfig } from "../utils/config-watcher.ts";
 import { formatDuplicateTaskIdSummary } from "../utils/duplicate-detection.ts";

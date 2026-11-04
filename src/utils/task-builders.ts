@@ -1,4 +1,4 @@
-import type { Core } from "../core/backlog.ts";
+import type { Core } from "../core/memaster.ts";
 import type { AcceptanceCriterion, Task } from "../types/index.ts";
 import { buildDependencyGraph, findCycleThroughRoot } from "./dependency-graph.ts";
 import { AmbiguousIdError } from "./entity-id.ts";
@@ -14,7 +14,7 @@ import { AmbiguousTaskIdError, canonicalTaskId, taskIdsEqual } from "./task-path
  *
  * Several canonical identities mean the input is underspecified, because bare numbers span the
  * separate task and draft counters. Several spellings of one identity (BACK-1 and BACK-01) are the
- * duplicate-ID defect `backlog doctor` repairs.
+ * duplicate-ID defect `memaster doctor` repairs.
  */
 function resolveUniqueDependency(dependency: string, matches: Task[]): string | null {
 	const [first, ...rest] = matches;
@@ -125,14 +125,14 @@ export async function validateDependencies(
 		const ambiguous = graph.nodes.find((node) => node.state === "ambiguous" && node.dependencyDepth !== null);
 		if (ambiguous) {
 			throw new Error(
-				`Cannot verify the dependencies stay acyclic: more than one record claims ${ambiguous.id}. Run 'backlog doctor' to repair duplicate IDs first.`,
+				`Cannot verify the dependencies stay acyclic: more than one record claims ${ambiguous.id}. Run 'memaster doctor' to repair duplicate IDs first.`,
 			);
 		}
 	}
 	return { valid, invalid };
 }
 
-/** The records dependency validation and `backlog doctor` resolve dependencies against. */
+/** The records dependency validation and `memaster doctor` resolve dependencies against. */
 interface DependencyCorpus {
 	tasks: Task[];
 	drafts: Task[];
@@ -162,7 +162,7 @@ export interface DependencyDefects {
 
 /**
  * Report the self-dependencies and dependency cycles already stored in the project, for
- * `backlog doctor`. Validation refuses to create these, so any found here predate it; the report
+ * `memaster doctor`. Validation refuses to create these, so any found here predate it; the report
  * names them for human repair and changes nothing.
  *
  * Every record that can carry dependencies is checked as a root against the same corpus

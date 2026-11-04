@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Bash completion script for backlog CLI
+# Bash completion script for memaster CLI
 #
-# NOTE: This script is embedded in the backlog binary and installed automatically
-# via 'backlog completion install'. This file serves as reference documentation.
+# NOTE: This script is embedded in the memaster binary and installed automatically
+# via 'memaster completion install'. This file serves as reference documentation.
 #
 # Installation:
-#   - Recommended: backlog completion install --shell bash
-#   - Manual: Copy to /etc/bash_completion.d/backlog
-#   - Or source directly in ~/.bashrc: source /path/to/backlog.bash
+#   - Recommended: memaster completion install --shell bash
+#   - Manual: Copy to /etc/bash_completion.d/memaster
+#   - Or source directly in ~/.bashrc: source /path/to/memaster.bash
 #
 # Requirements:
 #   - Bash 3.2 or later
 #   - bash-completion package (optional but recommended)
 
-# Main completion function for backlog CLI
-_backlog() {
+# Main completion function for memaster CLI
+_memaster() {
 	# Initialize completion variables using bash-completion helper if available
 	# Falls back to manual initialization if bash-completion is not installed
 	local cur prev words cword
@@ -37,7 +37,7 @@ _backlog() {
 	# This delegates all completion logic to the TypeScript implementation
 	# Output format: one completion per line
 	local completions
-	completions=$(backlog completion __complete "$line" "$point" 2>/dev/null)
+	completions=$(memaster completion __complete "$line" "$point" 2>/dev/null)
 
 	# Check if the completion command failed
 	if [[ $? -ne 0 ]]; then
@@ -57,8 +57,8 @@ _backlog() {
 	return 0
 }
 
-# Register the completion function for the 'backlog' command
+# Register the completion function for the 'memaster' command
 # -F: use function for completion
-# _backlog: name of the completion function
-# backlog: command to complete
-complete -F _backlog backlog
+# _memaster: name of the completion function
+# memaster: command to complete
+complete -F _memaster memaster

@@ -89,7 +89,7 @@ describe("CLI milestone management", () => {
 		expect(add.exitCode).toBe(0);
 		expect(add.stdout.toString()).toContain('Created milestone "Committed Release" (m-0).');
 		expect((await core.git.getStatus()).trim()).toBe("");
-		expect(await core.git.getLastCommitMessage()).toContain("backlog: Add milestone m-0");
+		expect(await core.git.getLastCommitMessage()).toContain("memaster: Add milestone m-0");
 	});
 
 	it("renames milestones and updates local task references by default", async () => {

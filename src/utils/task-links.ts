@@ -31,7 +31,7 @@ export function isExactTaskReference(reference: string, taskId: string): boolean
 /**
  * True when an entry of a task's `documentation` list names the file at `projectPath`, a path
  * written from the project root with forward slashes such as
- * `backlog/docs/guides/doc-3 - API-Guidelines.md`.
+ * `memaster/docs/guides/doc-3 - API-Guidelines.md`.
  *
  * `documentation` holds free text: paths and URLs, not record IDs. An entry names the file when it
  * is that path, optionally with `./` in front of it or with `#` and a fragment after it. Nothing

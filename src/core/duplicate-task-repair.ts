@@ -5,8 +5,8 @@ import { type DuplicateGroup, detectDuplicateTaskIds } from "../utils/duplicate-
 import { escapeRegex, generateNextId, generateNextSubtaskId, idForFilename } from "../utils/prefix-config.ts";
 import { canonicalTaskId, isNumericTaskId } from "../utils/task-id.ts";
 import { parseStoredUtcDate } from "../utils/utc-timestamp.ts";
-import type { Core } from "./backlog.ts";
 import type { TaskCorpusSnapshot } from "./content-store.ts";
+import type { Core } from "./memaster.ts";
 import type { BranchTaskStateEntry } from "./task-loader.ts";
 
 export type DuplicateTaskLocation = "active" | "archived";
@@ -337,12 +337,12 @@ async function findReferenceReviews(core: Core, groupIds: string[]): Promise<Dup
 	let files: string[];
 	try {
 		files = await Array.fromAsync(
-			new Bun.Glob("**/*.md").scan({ cwd: core.filesystem.backlogDir, followSymlinks: true }),
+			new Bun.Glob("**/*.md").scan({ cwd: core.filesystem.memasterDir, followSymlinks: true }),
 		);
 	} catch (error) {
 		return {
 			references: [],
-			failures: [`Reference scan failed under ${core.filesystem.backlogDirName}: ${errorMessage(error)}`],
+			failures: [`Reference scan failed under ${core.filesystem.memasterDirName}: ${errorMessage(error)}`],
 		};
 	}
 
@@ -350,10 +350,10 @@ async function findReferenceReviews(core: Core, groupIds: string[]): Promise<Dup
 	const failures: string[] = [];
 	const numericTokenPattern = /\b[A-Za-z]+-\d+(?:\.\d+)*\b/g;
 	for (const file of files.sort((left, right) => left.localeCompare(right))) {
-		const projectPath = normalizeRelativePath(core.filesystem.rootDir, join(core.filesystem.backlogDir, file));
+		const projectPath = normalizeRelativePath(core.filesystem.rootDir, join(core.filesystem.memasterDir, file));
 		let content: string;
 		try {
-			content = await Bun.file(join(core.filesystem.backlogDir, file)).text();
+			content = await Bun.file(join(core.filesystem.memasterDir, file)).text();
 		} catch (error) {
 			failures.push(`Reference scan could not read ${projectPath}: ${errorMessage(error)}`);
 			continue;
@@ -521,7 +521,7 @@ async function rollbackInstalledFile(rootDir: string, installed: InstalledRepair
 	const targetProjectPath = normalizeRelativePath(rootDir, installed.targetPath);
 	let recoveryDirectory: string;
 	try {
-		recoveryDirectory = await mkdtemp(join(dirname(installed.targetPath), ".backlog-doctor-rollback-"));
+		recoveryDirectory = await mkdtemp(join(dirname(installed.targetPath), ".memaster-doctor-rollback-"));
 	} catch (error) {
 		return `Could not prepare recovery storage for ${targetProjectPath}: ${errorMessage(error)}. The target was left in place.`;
 	}
@@ -611,7 +611,7 @@ export async function applyDuplicateTaskIdRepair(
 	return await core.withCreateLock(async () => {
 		const plan = await previewDuplicateTaskIdRepair(core);
 		if (plan.fingerprint !== expectedFingerprint) {
-			throw new Error("Duplicate task files changed after the preview. Run 'backlog doctor' again before repairing.");
+			throw new Error("Duplicate task files changed after the preview. Run 'memaster doctor' again before repairing.");
 		}
 		if (!plan.repairable) {
 			throw new Error(plan.blockedReasons.join("\n") || "No duplicate task IDs are available to repair.");
@@ -635,8 +635,8 @@ export async function applyDuplicateTaskIdRepair(
 					targetPath,
 					content: replaceFrontmatterTaskId(content, change.oldId, change.newId),
 					// A valid task filename can already use the filesystem's full filename limit.
-					stagedPath: join(dirname(targetPath), `.backlog-doctor-${transactionId}-${index}.tmp`),
-					backupPath: join(dirname(sourcePath), `.backlog-doctor-${transactionId}-${index}.bak`),
+					stagedPath: join(dirname(targetPath), `.memaster-doctor-${transactionId}-${index}.tmp`),
+					backupPath: join(dirname(sourcePath), `.memaster-doctor-${transactionId}-${index}.bak`),
 				};
 			}),
 		);

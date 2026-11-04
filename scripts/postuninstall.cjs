@@ -4,12 +4,12 @@ const { spawn } = require("node:child_process");
 
 // Platform-specific packages to uninstall
 const platformPackages = [
-	"backlog.md-linux-x64",
-	"backlog.md-linux-arm64",
-	"backlog.md-darwin-x64",
-	"backlog.md-darwin-arm64",
-	"backlog.md-windows-arm64",
-	"backlog.md-windows-x64",
+	"memory-master-linux-x64",
+	"memory-master-linux-arm64",
+	"memory-master-darwin-x64",
+	"memory-master-darwin-arm64",
+	"memory-master-windows-arm64",
+	"memory-master-windows-x64",
 ];
 
 // Detect package manager

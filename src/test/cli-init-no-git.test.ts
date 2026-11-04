@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
 import { initializeProject } from "../core/init.ts";
+import { Core } from "../core/memaster.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, safeCleanup } from "./test-utils.ts";
 
@@ -133,13 +133,13 @@ describe("CLI init without Git", () => {
 		await $`git add README.md`.cwd(TEST_DIR).quiet();
 		await $`git commit -m initial`.cwd(TEST_DIR).quiet();
 
-		await $`git checkout -b stale-backlog`.cwd(TEST_DIR).quiet();
-		await mkdir(join(TEST_DIR, "backlog", "docs"), { recursive: true });
-		await mkdir(join(TEST_DIR, "backlog", "decisions"), { recursive: true });
-		await Bun.write(join(TEST_DIR, "backlog", "docs", "doc-8 - stale.md"), "# stale\n");
-		await Bun.write(join(TEST_DIR, "backlog", "decisions", "decision-8 - stale.md"), "# stale\n");
-		await $`git add backlog`.cwd(TEST_DIR).quiet();
-		await $`git commit -m "add stale backlog ids"`.cwd(TEST_DIR).quiet();
+		await $`git checkout -b stale-memaster`.cwd(TEST_DIR).quiet();
+		await mkdir(join(TEST_DIR, "memaster", "docs"), { recursive: true });
+		await mkdir(join(TEST_DIR, "memaster", "decisions"), { recursive: true });
+		await Bun.write(join(TEST_DIR, "memaster", "docs", "doc-8 - stale.md"), "# stale\n");
+		await Bun.write(join(TEST_DIR, "memaster", "decisions", "decision-8 - stale.md"), "# stale\n");
+		await $`git add memaster`.cwd(TEST_DIR).quiet();
+		await $`git commit -m "add stale memaster ids"`.cwd(TEST_DIR).quiet();
 		await $`git checkout main`.cwd(TEST_DIR).quiet();
 
 		const core = await initFilesystemOnlyProject("Nested No Git Project");

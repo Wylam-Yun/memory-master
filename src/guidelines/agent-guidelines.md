@@ -1,19 +1,19 @@
-# Instructions for the usage of Backlog.md CLI Tool
+# Instructions for the usage of Memaster CLI Tool
 
-## Backlog.md: Comprehensive Project Management Tool via CLI
+## Memaster: Comprehensive Project Management Tool via CLI
 
 ### Assistant Objective
 
-Efficiently manage all project tasks, status, and documentation using the Backlog.md CLI, ensuring all project metadata
+Efficiently manage all project tasks, status, and documentation using the Memaster CLI, ensuring all project metadata
 remains fully synchronized and up-to-date.
 
 ### Core Capabilities
 
 - ✅ **Task Management**: Create, edit, assign, prioritize, and track tasks with full metadata
-- ✅ **Search**: Fuzzy search across tasks, documents, and decisions with `backlog search`
+- ✅ **Search**: Fuzzy search across tasks, documents, and decisions with `memaster search`
 - ✅ **Acceptance Criteria**: Granular control with add/remove/check/uncheck by index
 - ✅ **Definition of Done checklists**: Per-task DoD items with add/remove/check/uncheck
-- ✅ **Board Visualization**: Terminal-based Kanban board (`backlog board`) and web UI (`backlog browser`)
+- ✅ **Board Visualization**: Terminal-based Kanban board (`memaster board`) and web UI (`memaster browser`)
 - ✅ **Git Integration**: Automatic tracking of task states across branches
 - ✅ **Dependencies**: Task relationships and subtask hierarchies
 - ✅ **Documentation & Decisions**: Structured docs and architectural decision records
@@ -23,15 +23,15 @@ remains fully synchronized and up-to-date.
 ### Why This Matters to You (AI Agent)
 
 1. **Comprehensive system** - Full project management capabilities through CLI
-2. **The CLI is the interface** - All operations go through `backlog` commands
-3. **Unified interaction model** - You can use CLI for both reading (`backlog task 1 --plain`) and writing (
-   `backlog task edit 1`)
+2. **The CLI is the interface** - All operations go through `memaster` commands
+3. **Unified interaction model** - You can use CLI for both reading (`memaster task 1 --plain`) and writing (
+   `memaster task edit 1`)
 4. **Metadata stays synchronized** - The CLI handles all the complex relationships
 
 ### Key Understanding
 
-- **Tasks** live in `backlog/tasks/` as `task-<id> - <title>.md` files
-- **You interact via CLI only**: `backlog task create`, `backlog task edit`, etc.
+- **Tasks** live in `memaster/tasks/` as `task-<id> - <title>.md` files
+- **You interact via CLI only**: `memaster task create`, `memaster task edit`, etc.
 - **Use `--plain`** for readable task context, or **use `--json`** when code needs structured fields
 - **Never bypass the CLI** - It handles Git, metadata, file naming, and relationships
 
@@ -39,11 +39,11 @@ remains fully synchronized and up-to-date.
 
 # ⚠️ CRITICAL: NEVER EDIT TASK FILES DIRECTLY. Edit Only via CLI
 
-**ALL task operations MUST use the Backlog.md CLI commands**
+**ALL task operations MUST use the Memaster CLI commands**
 
-- ✅ **DO**: Use `backlog task edit` and other CLI commands
-- ✅ **DO**: Use `backlog task create` to create new tasks
-- ✅ **DO**: Use `backlog task edit <id> --check-ac <index>` to mark acceptance criteria
+- ✅ **DO**: Use `memaster task edit` and other CLI commands
+- ✅ **DO**: Use `memaster task create` to create new tasks
+- ✅ **DO**: Use `memaster task edit <id> --check-ac <index>` to mark acceptance criteria
 - ❌ **DON'T**: Edit markdown files directly
 - ❌ **DON'T**: Manually change checkboxes in files
 - ❌ **DON'T**: Add or modify text in task files without using CLI
@@ -56,18 +56,18 @@ remains fully synchronized and up-to-date.
 
 ### 📖 **UNDERSTANDING** (What you'll see when reading)
 
-- Markdown task files live under **`backlog/tasks/`** (drafts under **`backlog/drafts/`**)
+- Markdown task files live under **`memaster/tasks/`** (drafts under **`memaster/drafts/`**)
 - Files are named: `task-<id> - <title>.md` (e.g., `task-42 - Add GraphQL resolver.md`)
-- Project documentation is in **`backlog/docs/`**
-- Project decisions are in **`backlog/decisions/`**
+- Project documentation is in **`memaster/docs/`**
+- Project decisions are in **`memaster/decisions/`**
 
 ### 🔧 **ACTING** (How to change things)
 
-- **All task operations MUST use the Backlog.md CLI tool**
+- **All task operations MUST use the Memaster CLI tool**
 - This ensures metadata is correctly updated and the project stays in sync
 - **Use `--plain`** when listing or viewing tasks for readable text. Use `--json` when consuming fields programmatically.
-- Create and update project docs through Backlog.md APIs so frontmatter and paths stay valid. For CLI users, run `backlog doc create "Title" -p guides/setup` or `backlog doc update doc-1 --content "Updated markdown"`; MCP users should use `document_create` / `document_update`.
-- Document paths are relative to `backlog/docs/`; absolute paths and `..` traversal are rejected.
+- Create and update project docs through Memaster APIs so frontmatter and paths stay valid. For CLI users, run `memaster doc create "Title" -p guides/setup` or `memaster doc update doc-1 --content "Updated markdown"`; MCP users should use `document_create` / `document_update`.
+- Document paths are relative to `memaster/docs/`; absolute paths and `..` traversal are rejected.
 
 ---
 
@@ -78,7 +78,7 @@ remains fully synchronized and up-to-date.
 ```markdown
 # DON'T DO THIS:
 
-1. Open backlog/tasks/task-7 - Feature.md in editor
+1. Open memaster/tasks/task-7 - Feature.md in editor
 2. Change "- [ ]" to "- [x]" manually
 3. Add notes, comments, or final summary directly to the file
 4. Save the file
@@ -88,11 +88,11 @@ remains fully synchronized and up-to-date.
 
 ```bash
 # DO THIS INSTEAD:
-backlog task edit 7 --check-ac 1  # Mark AC #1 as complete
-backlog task edit 7 --notes "Implementation complete"  # Add notes
-backlog task edit 7 --comment "Review question" --comment-author @agent-k  # Add comment
-backlog task edit 7 --final-summary "PR-style summary"  # Add final summary
-backlog task edit 7 -s "In Progress" -a @agent-k  # Multiple commands: change status and assign the task when you start working on the task
+memaster task edit 7 --check-ac 1  # Mark AC #1 as complete
+memaster task edit 7 --notes "Implementation complete"  # Add notes
+memaster task edit 7 --comment "Review question" --comment-author @agent-k  # Add comment
+memaster task edit 7 --final-summary "PR-style summary"  # Add final summary
+memaster task edit 7 -s "In Progress" -a @agent-k  # Multiple commands: change status and assign the task when you start working on the task
 ```
 
 ---
@@ -161,27 +161,27 @@ PR-style summary of what was implemented.
 
 | What You Want to Change | CLI Command to Use                                       |
 |-------------------------|----------------------------------------------------------|
-| Title                   | `backlog task edit 42 -t "New Title"`                    |
-| Status                  | `backlog task edit 42 -s "In Progress"`                  |
-| Status of several tasks | `backlog task edit 42 43 44 -s "In Progress"`            |
-| Assignee                | `backlog task edit 42 -a @sara`                          |
-| Labels                  | `backlog task edit 42 -l backend,api`                    |
-| Description             | `backlog task edit 42 -d "New description"`              |
-| Add AC                  | `backlog task edit 42 --ac "New criterion"`              |
-| Add DoD                 | `backlog task edit 42 --dod "Ship notes"`                |
-| Check AC #1             | `backlog task edit 42 --check-ac 1`                      |
-| Check DoD #1            | `backlog task edit 42 --check-dod 1`                     |
-| Uncheck AC #2           | `backlog task edit 42 --uncheck-ac 2`                    |
-| Uncheck DoD #2          | `backlog task edit 42 --uncheck-dod 2`                   |
-| Remove AC #3            | `backlog task edit 42 --remove-ac 3`                     |
-| Remove DoD #3           | `backlog task edit 42 --remove-dod 3`                    |
-| Add Plan                | `backlog task edit 42 --plan "1. Step one" --append-plan "2. Step two"` |
-| Add Notes (replace)     | `backlog task edit 42 --notes "What I did"`              |
-| Append Notes            | `backlog task edit 42 --append-notes "Another note"` |
-| Add Comment             | `backlog task edit 42 --comment "Review question" --comment-author @agent` |
-| Add Final Summary       | `backlog task edit 42 --final-summary "PR-style summary"` |
-| Append Final Summary    | `backlog task edit 42 --append-final-summary "Another detail"` |
-| Clear Final Summary     | `backlog task edit 42 --clear-final-summary` |
+| Title                   | `memaster task edit 42 -t "New Title"`                    |
+| Status                  | `memaster task edit 42 -s "In Progress"`                  |
+| Status of several tasks | `memaster task edit 42 43 44 -s "In Progress"`            |
+| Assignee                | `memaster task edit 42 -a @sara`                          |
+| Labels                  | `memaster task edit 42 -l backend,api`                    |
+| Description             | `memaster task edit 42 -d "New description"`              |
+| Add AC                  | `memaster task edit 42 --ac "New criterion"`              |
+| Add DoD                 | `memaster task edit 42 --dod "Ship notes"`                |
+| Check AC #1             | `memaster task edit 42 --check-ac 1`                      |
+| Check DoD #1            | `memaster task edit 42 --check-dod 1`                     |
+| Uncheck AC #2           | `memaster task edit 42 --uncheck-ac 2`                    |
+| Uncheck DoD #2          | `memaster task edit 42 --uncheck-dod 2`                   |
+| Remove AC #3            | `memaster task edit 42 --remove-ac 3`                     |
+| Remove DoD #3           | `memaster task edit 42 --remove-dod 3`                    |
+| Add Plan                | `memaster task edit 42 --plan "1. Step one" --append-plan "2. Step two"` |
+| Add Notes (replace)     | `memaster task edit 42 --notes "What I did"`              |
+| Append Notes            | `memaster task edit 42 --append-notes "Another note"` |
+| Add Comment             | `memaster task edit 42 --comment "Review question" --comment-author @agent` |
+| Add Final Summary       | `memaster task edit 42 --final-summary "PR-style summary"` |
+| Append Final Summary    | `memaster task edit 42 --append-final-summary "Another detail"` |
+| Clear Final Summary     | `memaster task edit 42 --clear-final-summary` |
 
 ---
 
@@ -193,7 +193,7 @@ PR-style summary of what was implemented.
 
 ```bash
 # Example
-backlog task create "Task title" -d "Description" --ac "First criterion" --ac "Second criterion"
+memaster task create "Task title" -d "Description" --ac "First criterion" --ac "Second criterion"
 ```
 
 ### Title (one liner)
@@ -223,46 +223,46 @@ Provide a concise summary of the task purpose and its goal. Explains the context
 # Examples
 
 # Add new criteria (MULTIPLE values allowed)
-backlog task edit 42 --ac "User can login" --ac "Session persists"
+memaster task edit 42 --ac "User can login" --ac "Session persists"
 
 # Check specific criteria by index (MULTIPLE values supported)
-backlog task edit 42 --check-ac 1 --check-ac 2 --check-ac 3  # Check multiple ACs
+memaster task edit 42 --check-ac 1 --check-ac 2 --check-ac 3  # Check multiple ACs
 # Or check them individually if you prefer:
-backlog task edit 42 --check-ac 1    # Mark #1 as complete
-backlog task edit 42 --check-ac 2    # Mark #2 as complete
+memaster task edit 42 --check-ac 1    # Mark #1 as complete
+memaster task edit 42 --check-ac 2    # Mark #2 as complete
 
 # Mixed operations in single command
-backlog task edit 42 --check-ac 1 --uncheck-ac 2 --remove-ac 3
+memaster task edit 42 --check-ac 1 --uncheck-ac 2 --remove-ac 3
 
 # ❌ STILL WRONG - These formats don't work:
-# backlog task edit 42 --check-ac 1,2,3  # No comma-separated values
-# backlog task edit 42 --check-ac 1-3    # No ranges
-# backlog task edit 42 --check 1         # Wrong flag name
+# memaster task edit 42 --check-ac 1,2,3  # No comma-separated values
+# memaster task edit 42 --check-ac 1-3    # No ranges
+# memaster task edit 42 --check 1         # Wrong flag name
 
 # Multiple operations of same type
-backlog task edit 42 --uncheck-ac 1 --uncheck-ac 2  # Uncheck multiple ACs
-backlog task edit 42 --remove-ac 2 --remove-ac 4    # Remove multiple ACs (processed high-to-low)
+memaster task edit 42 --uncheck-ac 1 --uncheck-ac 2  # Uncheck multiple ACs
+memaster task edit 42 --remove-ac 2 --remove-ac 4    # Remove multiple ACs (processed high-to-low)
 ```
 
 ### Definition of Done checklist (per-task)
 
-Definition of Done items are a second checklist in each task. Defaults come from `definition_of_done` in the project config file (`backlog/config.yml`, `.backlog/config.yml`, or `backlog.config.yml`) or from Web UI Settings, and can be disabled per task.
+Definition of Done items are a second checklist in each task. Defaults come from `definition_of_done` in the project config file (`memaster/config.yml`, `.memaster/config.yml`, or `memaster.config.yml`) or from Web UI Settings, and can be disabled per task.
 
 **Managing Definition of Done via CLI:**
 
 ```bash
 # Add DoD items (MULTIPLE values allowed)
-backlog task edit 42 --dod "Run tests" --dod "Update docs"
+memaster task edit 42 --dod "Run tests" --dod "Update docs"
 
 # Check/uncheck DoD items by index (MULTIPLE values supported)
-backlog task edit 42 --check-dod 1 --check-dod 2
-backlog task edit 42 --uncheck-dod 1
+memaster task edit 42 --check-dod 1 --check-dod 2
+memaster task edit 42 --uncheck-dod 1
 
 # Remove DoD items by index
-backlog task edit 42 --remove-dod 2
+memaster task edit 42 --remove-dod 2
 
 # Create without defaults
-backlog task create "Feature" --no-dod-defaults
+memaster task create "Feature" --no-dod-defaults
 ```
 
 **Key Principles for Good ACs:**
@@ -308,7 +308,7 @@ Before mutating a task, read its current record and confirm its status, scope, a
 it eligible to start:
 
 ```bash
-backlog task 42 --plain
+memaster task 42 --plain
 ```
 
 Only then take over the task:
@@ -318,7 +318,7 @@ Only then take over the task:
 
 ```bash
 # Example
-backlog task edit 42 -s "In Progress" -a @{myself}
+memaster task edit 42 -s "In Progress" -a @{myself}
 ```
 
 ### 5.2. Review Task References and Documentation
@@ -342,7 +342,7 @@ When you are ready, write it down in the task so that you can refer to it later.
 
 ```bash
 # Example
-backlog task edit 42 --plan "1. Research codebase for references\n2Research on internet for similar cases\n3. Implement\n4. Test"
+memaster task edit 42 --plan "1. Research codebase for references\n2Research on internet for similar cases\n3. Implement\n4. Test"
 ```
 
 ## 5.4. Implementation
@@ -357,12 +357,12 @@ Use Implementation Notes to log progress, decisions, and blockers as you work.
 Append notes progressively during implementation using `--append-notes`:
 
 ```
-backlog task edit 42 --append-notes "Investigated root cause" --append-notes "Added tests for edge case"
+memaster task edit 42 --append-notes "Investigated root cause" --append-notes "Added tests for edge case"
 ```
 
 ```bash
 # Example
-backlog task edit 42 --notes "Initial implementation done; pending integration tests"
+memaster task edit 42 --notes "Initial implementation done; pending integration tests"
 ```
 
 ### 5.6 Final Summary (PR description)
@@ -375,7 +375,7 @@ Include the key scope so someone can understand the impact without reading the w
 
 ```bash
 # Example
-backlog task edit 42 --final-summary "Implemented pattern X because Reason Y; updated files Z and W; added tests"
+memaster task edit 42 --final-summary "Implemented pattern X because Reason Y; updated files Z and W; added tests"
 ```
 
 **IMPORTANT**: Do NOT include an Implementation Plan when creating a task. The plan is added only after you start the
@@ -383,13 +383,13 @@ implementation.
 
 - Creation phase: provide Title, Description, Acceptance Criteria, and optionally labels/priority/assignee.
 - When you begin work, switch to edit, set the task in progress and assign to yourself
-  `backlog task edit <id> -s "In Progress" -a "..."`.
-- Research the current code, tests, conventions, and recent changes, then add the current plan: `backlog task edit <id> --plan "..."`.
+  `memaster task edit <id> -s "In Progress" -a "..."`.
+- Research the current code, tests, conventions, and recent changes, then add the current plan: `memaster task edit <id> --plan "..."`.
 - If the plan contains a material product, architecture, or workflow decision, or the project or user requires review,
   share it and wait for explicit approval before implementation. Routine plans can proceed when no review was requested
   and they stay within confirmed scope.
 - Append Implementation Notes during implementation using `--append-notes` as progress is made.
-- Add Final Summary only after completing the work: `backlog task edit <id> --final-summary "..."` (replace) or append using `--append-final-summary`.
+- Add Final Summary only after completing the work: `memaster task edit <id> --final-summary "..."` (replace) or append using `--append-final-summary`.
 
 ## Phase discipline: What goes where
 
@@ -399,8 +399,8 @@ implementation.
 
 **IMPORTANT**: Only implement what's in the Acceptance Criteria. If you need to do more, either:
 
-1. Update the AC first: `backlog task edit 42 --ac "New requirement"`
-2. Or create a new follow up task: `backlog task create "Additional feature"`
+1. Update the AC first: `memaster task edit 42 --ac "New requirement"`
+2. Or create a new follow up task: `memaster task create "Additional feature"`
 
 ---
 
@@ -408,18 +408,18 @@ implementation.
 
 ```bash
 # 1. Identify work
-backlog task list -s "To Do" --plain
+memaster task list -s "To Do" --plain
 
 # 2. Read task details and confirm status, scope, acceptance criteria, and dependencies
-backlog task 42 --plain
+memaster task 42 --plain
 
 # 3. Start eligible work: assign yourself & change status
-backlog task edit 42 -s "In Progress" -a @myself
+memaster task edit 42 -s "In Progress" -a @myself
 
 # 4. Research the current code, tests, conventions, and recent changes after activation
 
 # 5. Add the current implementation plan
-backlog task edit 42 --plan "1. Analyze\n2. Refactor\n3. Test"
+memaster task edit 42 --plan "1. Analyze\n2. Refactor\n3. Test"
 
 # 6. If the plan contains a material product, architecture, or workflow decision,
 #    or the project or user requires review, share it and wait for approval
@@ -427,17 +427,17 @@ backlog task edit 42 --plan "1. Analyze\n2. Refactor\n3. Test"
 # 7. Work on the task (write code, test, etc.)
 
 # 8. Mark acceptance criteria as complete (supports multiple in one command)
-backlog task edit 42 --check-ac 1 --check-ac 2 --check-ac 3  # Check all at once
+memaster task edit 42 --check-ac 1 --check-ac 2 --check-ac 3  # Check all at once
 # Or check them individually if preferred:
-# backlog task edit 42 --check-ac 1
-# backlog task edit 42 --check-ac 2
-# backlog task edit 42 --check-ac 3
+# memaster task edit 42 --check-ac 1
+# memaster task edit 42 --check-ac 2
+# memaster task edit 42 --check-ac 3
 
 # 9. Add Final Summary (PR Description)
-backlog task edit 42 --final-summary "Refactored using strategy pattern, updated tests"
+memaster task edit 42 --final-summary "Refactored using strategy pattern, updated tests"
 
 # 10. Mark task as done
-backlog task edit 42 -s Done
+memaster task edit 42 -s Done
 ```
 
 ---
@@ -448,10 +448,10 @@ A task is **Done** only when **ALL** of the following are complete:
 
 ### ✅ Via CLI Commands:
 
-1. **All acceptance criteria checked**: Use `backlog task edit <id> --check-ac <index>` for each
-2. **All Definition of Done items checked**: Use `backlog task edit <id> --check-dod <index>` for each
-3. **Final Summary added**: Use `backlog task edit <id> --final-summary "..."`
-4. **Status set to Done**: Use `backlog task edit <id> -s Done`
+1. **All acceptance criteria checked**: Use `memaster task edit <id> --check-ac <index>` for each
+2. **All Definition of Done items checked**: Use `memaster task edit <id> --check-dod <index>` for each
+3. **Final Summary added**: Use `memaster task edit <id> --final-summary "..."`
+4. **Status set to Done**: Use `memaster task edit <id> -s Done`
 
 ### ✅ Via Code/Testing:
 
@@ -466,25 +466,25 @@ A task is **Done** only when **ALL** of the following are complete:
 
 ## 8. Finding Tasks and Content with Search
 
-When users ask you to find tasks related to a topic, use the `backlog search` command with `--plain` flag:
+When users ask you to find tasks related to a topic, use the `memaster search` command with `--plain` flag:
 
 ```bash
 # Search for tasks about authentication
-backlog search "auth" --plain
+memaster search "auth" --plain
 
 # Search only in tasks (not docs/decisions)
-backlog search "login" --type task --plain
+memaster search "login" --type task --plain
 
 # Search with filters
-backlog search "api" --status "In Progress" --plain
-backlog search "bug" --priority high --plain
+memaster search "api" --status "In Progress" --plain
+memaster search "bug" --priority high --plain
 
 # Find tasks that modified a project file path
-backlog search --modified-file src/server/api.ts --plain
+memaster search --modified-file src/server/api.ts --plain
 ```
 
 **Key points:**
-- Priority values are project-configured (`priorities` in config) and are accepted case-insensitively. Use CLI/MCP help or `backlog config get priorities` when you need the exact list.
+- Priority values are project-configured (`priorities` in config) and are accepted case-insensitively. Use CLI/MCP help or `memaster config get priorities` when you need the exact list.
 - Uses fuzzy matching - finds "authentication" when searching "auth"
 - Searches task titles, descriptions, and content
 - Also searches `modified_files`; `--modified-file` applies a case-insensitive path substring filter
@@ -499,21 +499,21 @@ backlog search --modified-file src/server/api.ts --plain
 
 | Task         | ✅ DO                        | ❌ DON'T                         |
 |--------------|-----------------------------|---------------------------------|
-| View task    | `backlog task 42 --plain`   | Open and read .md file directly |
-| List tasks   | `backlog task list --plain` | Browse backlog/tasks folder     |
-| Check status | `backlog task 42 --plain`   | Look at file content            |
-| Find by topic| `backlog search "auth" --plain` | Manually grep through files |
+| View task    | `memaster task 42 --plain`   | Open and read .md file directly |
+| List tasks   | `memaster task list --plain` | Browse memaster/tasks folder     |
+| Check status | `memaster task 42 --plain`   | Look at file content            |
+| Find by topic| `memaster search "auth" --plain` | Manually grep through files |
 
 ### Modifying Tasks
 
 | Task          | ✅ DO                                 | ❌ DON'T                           |
 |---------------|--------------------------------------|-----------------------------------|
-| Check AC      | `backlog task edit 42 --check-ac 1`  | Change `- [ ]` to `- [x]` in file |
-| Add notes     | `backlog task edit 42 --notes "..."` | Type notes into .md file          |
-| Add comment   | `backlog task edit 42 --comment "..." --comment-author @agent` | Type comment into .md file |
-| Add final summary | `backlog task edit 42 --final-summary "..."` | Type summary into .md file |
-| Change status | `backlog task edit 42 -s Done`       | Edit status in frontmatter        |
-| Add AC        | `backlog task edit 42 --ac "New"`    | Add `- [ ] New` to file           |
+| Check AC      | `memaster task edit 42 --check-ac 1`  | Change `- [ ]` to `- [x]` in file |
+| Add notes     | `memaster task edit 42 --notes "..."` | Type notes into .md file          |
+| Add comment   | `memaster task edit 42 --comment "..." --comment-author @agent` | Type comment into .md file |
+| Add final summary | `memaster task edit 42 --final-summary "..."` | Type summary into .md file |
+| Change status | `memaster task edit 42 -s Done`       | Edit status in frontmatter        |
+| Add AC        | `memaster task edit 42 --ac "New"`    | Add `- [ ] New` to file           |
 
 ---
 
@@ -523,56 +523,56 @@ backlog search --modified-file src/server/api.ts --plain
 
 | Action           | Command                                                                             |
 |------------------|-------------------------------------------------------------------------------------|
-| Create task      | `backlog task create "Title"`                                                       |
-| With description | `backlog task create "Title" -d "Description"`                                      |
-| With AC          | `backlog task create "Title" --ac "Criterion 1" --ac "Criterion 2"`                 |
-| With final summary | `backlog task create "Title" --final-summary "PR-style summary"`                 |
-| With references  | `backlog task create "Title" --ref src/api.ts --ref https://github.com/issue/123`   |
-| With documentation | `backlog task create "Title" --doc https://design-docs.example.com`               |
-| With modified files | `backlog task create "Title" --modified-file src/api.ts --modified-file src/ui.ts` |
-| With all options | `backlog task create "Title" -d "Desc" -a @sara -s "To Do" -l auth --priority high --ref src/api.ts --doc docs/spec.md --modified-file src/api.ts` |
-| Create draft     | `backlog task create "Title" --draft`                                               |
-| Create subtask   | `backlog task create "Title" -p 42`                                                 |
+| Create task      | `memaster task create "Title"`                                                       |
+| With description | `memaster task create "Title" -d "Description"`                                      |
+| With AC          | `memaster task create "Title" --ac "Criterion 1" --ac "Criterion 2"`                 |
+| With final summary | `memaster task create "Title" --final-summary "PR-style summary"`                 |
+| With references  | `memaster task create "Title" --ref src/api.ts --ref https://github.com/issue/123`   |
+| With documentation | `memaster task create "Title" --doc https://design-docs.example.com`               |
+| With modified files | `memaster task create "Title" --modified-file src/api.ts --modified-file src/ui.ts` |
+| With all options | `memaster task create "Title" -d "Desc" -a @sara -s "To Do" -l auth --priority high --ref src/api.ts --doc docs/spec.md --modified-file src/api.ts` |
+| Create draft     | `memaster task create "Title" --draft`                                               |
+| Create subtask   | `memaster task create "Title" -p 42`                                                 |
 
 ### Task Modification
 
 | Action           | Command                                     |
 |------------------|---------------------------------------------|
-| Edit title       | `backlog task edit 42 -t "New Title"`       |
-| Edit description | `backlog task edit 42 -d "New description"` |
-| Change status    | `backlog task edit 42 -s "In Progress"`     |
-| Assign           | `backlog task edit 42 -a @sara`             |
-| Add labels       | `backlog task edit 42 -l backend,api`       |
-| Set priority     | `backlog task edit 42 --priority high`      |
+| Edit title       | `memaster task edit 42 -t "New Title"`       |
+| Edit description | `memaster task edit 42 -d "New description"` |
+| Change status    | `memaster task edit 42 -s "In Progress"`     |
+| Assign           | `memaster task edit 42 -a @sara`             |
+| Add labels       | `memaster task edit 42 -l backend,api`       |
+| Set priority     | `memaster task edit 42 --priority high`      |
 
 ### Acceptance Criteria Management
 
 | Action              | Command                                                                     |
 |---------------------|-----------------------------------------------------------------------------|
-| Add AC              | `backlog task edit 42 --ac "New criterion" --ac "Another"`                  |
-| Remove AC #2        | `backlog task edit 42 --remove-ac 2`                                        |
-| Remove multiple ACs | `backlog task edit 42 --remove-ac 2 --remove-ac 4`                          |
-| Check AC #1         | `backlog task edit 42 --check-ac 1`                                         |
-| Check multiple ACs  | `backlog task edit 42 --check-ac 1 --check-ac 3`                            |
-| Uncheck AC #3       | `backlog task edit 42 --uncheck-ac 3`                                       |
-| Mixed operations    | `backlog task edit 42 --check-ac 1 --uncheck-ac 2 --remove-ac 3 --ac "New"` |
+| Add AC              | `memaster task edit 42 --ac "New criterion" --ac "Another"`                  |
+| Remove AC #2        | `memaster task edit 42 --remove-ac 2`                                        |
+| Remove multiple ACs | `memaster task edit 42 --remove-ac 2 --remove-ac 4`                          |
+| Check AC #1         | `memaster task edit 42 --check-ac 1`                                         |
+| Check multiple ACs  | `memaster task edit 42 --check-ac 1 --check-ac 3`                            |
+| Uncheck AC #3       | `memaster task edit 42 --uncheck-ac 3`                                       |
+| Mixed operations    | `memaster task edit 42 --check-ac 1 --uncheck-ac 2 --remove-ac 3 --ac "New"` |
 
 ### Task Content
 
 | Action           | Command                                                  |
 |------------------|----------------------------------------------------------|
-| Add plan         | `backlog task edit 42 --plan "1. Step one" --append-plan "2. Step two"` |
-| Add notes        | `backlog task edit 42 --notes "Implementation details"`  |
-| Add comment      | `backlog task edit 42 --comment "Review question" --comment-author @agent` |
-| Add final summary | `backlog task edit 42 --final-summary "PR-style summary"` |
-| Append final summary | `backlog task edit 42 --append-final-summary "More details"` |
-| Clear final summary | `backlog task edit 42 --clear-final-summary` |
-| Add dependencies | `backlog task edit 42 --dep task-1 --dep task-2`         |
-| Replace references | `backlog task edit 42 --ref src/api.ts --ref https://github.com/issue/123` |
-| Add references   | `backlog task edit 42 --add-ref src/api.ts --add-ref https://github.com/issue/123` |
-| Remove references | `backlog task edit 42 --remove-ref src/api.ts` |
-| Replace documentation | `backlog task edit 42 --doc https://design-docs.example.com --doc docs/spec.md` |
-| Set modified files | `backlog task edit 42 --modified-file src/api.ts --modified-file src/ui.ts` |
+| Add plan         | `memaster task edit 42 --plan "1. Step one" --append-plan "2. Step two"` |
+| Add notes        | `memaster task edit 42 --notes "Implementation details"`  |
+| Add comment      | `memaster task edit 42 --comment "Review question" --comment-author @agent` |
+| Add final summary | `memaster task edit 42 --final-summary "PR-style summary"` |
+| Append final summary | `memaster task edit 42 --append-final-summary "More details"` |
+| Clear final summary | `memaster task edit 42 --clear-final-summary` |
+| Add dependencies | `memaster task edit 42 --dep task-1 --dep task-2`         |
+| Replace references | `memaster task edit 42 --ref src/api.ts --ref https://github.com/issue/123` |
+| Add references   | `memaster task edit 42 --add-ref src/api.ts --add-ref https://github.com/issue/123` |
+| Remove references | `memaster task edit 42 --remove-ref src/api.ts` |
+| Replace documentation | `memaster task edit 42 --doc https://design-docs.example.com --doc docs/spec.md` |
+| Set modified files | `memaster task edit 42 --modified-file src/api.ts --modified-file src/ui.ts` |
 
 ### Dependency Graph in Task Detail
 
@@ -586,7 +586,7 @@ transitive, and the heading counts both. Every plain task output uses this one l
 Every task appears once. `(cycle)` marks a relationship that points back into the branch above it and `(shown above)` marks a
 task already listed in the same section. `unknown task ID` means nothing visible claims that ID and `ambiguous task ID` means
 more than one record does; neither counts as satisfied, and the graph stops there rather than guessing what lies behind it. Run
-`backlog doctor` when one appears. The graph sees what task detail sees: the current checkout including archived tasks, and
+`memaster doctor` when one appears. The graph sees what task detail sees: the current checkout including archived tasks, and
 the configured cross-branch corpus in the browser. An archived task keeps its ID, so a dependency on it keeps resolving; it
 reads as completed only when it is in the final status.
 
@@ -600,15 +600,15 @@ The CLI preserves input literally — shells do not convert `\n` inside normal q
 **1. Repeat `--append-*` for each line (works in every shell, including sandboxes that block other forms):**
 
 ```bash
-backlog task edit 42 --notes "First line"
-backlog task edit 42 --append-notes "Second line"
-backlog task edit 42 --append-notes "Third line"
+memaster task edit 42 --notes "First line"
+memaster task edit 42 --append-notes "Second line"
+memaster task edit 42 --append-notes "Third line"
 ```
 
 **2. Real newlines inside double quotes (single command — pass an actual line break inside the string):**
 
 ```bash
-backlog task edit 42 --notes "First line
+memaster task edit 42 --notes "First line
 Second line
 
 Final paragraph"
@@ -621,37 +621,37 @@ The same shape works for `--desc`, `--plan`, `--comment`, `--final-summary`, and
 - Bash/Zsh (ANSI‑C quoting):
 
   ```bash
-  backlog task edit 42 --notes $'Line1\nLine2'
+  memaster task edit 42 --notes $'Line1\nLine2'
   ```
 
 - POSIX sh (command substitution + printf):
 
   ```bash
-  backlog task edit 42 --notes "$(printf 'Line1\nLine2')"
+  memaster task edit 42 --notes "$(printf 'Line1\nLine2')"
   ```
 
 - PowerShell (backtick‑n):
 
   ```powershell
-  backlog task edit 42 --notes "Line1`nLine2"
+  memaster task edit 42 --notes "Line1`nLine2"
   ```
 
-Prefer forms **1** and **2** when running under Claude Code, Codex, or any agent harness that screens commands through a tree‑sitter AST walker — those harnesses reject ANSI‑C strings, command substitutions, and heredoc forms (see issue [#595](https://github.com/MrLesk/Backlog.md/issues/595)).
+Prefer forms **1** and **2** when running under Claude Code, Codex, or any agent harness that screens commands through a tree‑sitter AST walker — those harnesses reject ANSI‑C strings, command substitutions, and heredoc forms (see issue [#595](https://github.com/Wylam-Yun/memory-master/issues/595)).
 
 Do not expect the literal sequence `\n` inside double quotes to become a newline. The CLI stores the backslash and `n` as written.
 
 ### Literal Backticks in CLI Task Text
 
-When a task title, description, acceptance criterion, note, comment, or summary needs Markdown code spans, quote the value so the shell passes the backticks literally. Unescaped backticks in double-quoted or unquoted arguments are command substitution in many shells, and Backlog.md cannot recover the original text after the shell has already executed it.
+When a task title, description, acceptance criterion, note, comment, or summary needs Markdown code spans, quote the value so the shell passes the backticks literally. Unescaped backticks in double-quoted or unquoted arguments are command substitution in many shells, and Memaster cannot recover the original text after the shell has already executed it.
 
 Prefer single-quoted CLI arguments for values that contain literal backticks:
 
 ```bash
-backlog task create 'Document `backlog init` setup' \
-  --ac 'Instructions mention `backlog init --defaults` literally'
+memaster task create 'Document `memaster init` setup' \
+  --ac 'Instructions mention `memaster init --defaults` literally'
 ```
 
-If single quotes are not practical in your shell, escape each literal backtick before running the command. Do not rely on Backlog.md to sanitize accidental command output after substitution.
+If single quotes are not practical in your shell, escape each literal backtick before running the command. Do not rely on Memaster to sanitize accidental command output after substitution.
 
 ### Implementation Notes Formatting
 
@@ -662,7 +662,7 @@ If single quotes are not practical in your shell, escape each literal backtick b
   newlines. Either repeat the flag once per line:
 
   ```bash
-  backlog task edit 42 --append-notes "- Added new API endpoint" \
+  memaster task edit 42 --append-notes "- Added new API endpoint" \
     --append-notes "- Updated tests" \
     --append-notes "- TODO: monitor staging deploy"
   ```
@@ -670,7 +670,7 @@ If single quotes are not practical in your shell, escape each literal backtick b
   Or pass real newlines inside the quoted argument:
 
   ```bash
-  backlog task edit 42 --append-notes "- Added new API endpoint
+  memaster task edit 42 --append-notes "- Added new API endpoint
   - Updated tests
   - TODO: monitor staging deploy"
   ```
@@ -678,7 +678,7 @@ If single quotes are not practical in your shell, escape each literal backtick b
 ### Comments Formatting
 
 - Use comments for task discussion, review notes, questions, and handoff context that should remain visible to humans and agents.
-- Comments are append-only via `backlog task edit <id> --comment "..."`; include `--comment-author @name` when attribution is useful.
+- Comments are append-only via `memaster task edit <id> --comment "..."`; include `--comment-author @name` when attribution is useful.
 - Comment bodies may contain Markdown, but standalone `---` lines are reserved as comment delimiters.
 - Do not use comments as the primary execution log; use Implementation Notes for progress and Final Summary for the PR description.
 
@@ -705,10 +705,10 @@ Tests:
 
 ### Task Images (Local Assets)
 
-Tasks may include images for screenshots, diagrams, or visual references. Local images are served automatically when using `backlog browser`.
+Tasks may include images for screenshots, diagrams, or visual references. Local images are served automatically when using `memaster browser`.
 
 **Storage location:**
-- Place image files under the `assets/` folder inside your backlog directory (e.g., `backlog/assets/images/screenshot.png`)
+- Place image files under the `assets/` folder inside your memaster directory (e.g., `memaster/assets/images/screenshot.png`)
 
 **Supported formats:**
 - png, jpg, jpeg, gif, svg, webp, avif (served with correct Content-Type)
@@ -719,108 +719,108 @@ Tasks may include images for screenshots, diagrams, or visual references. Local 
 ```
 
 **Workflow when adding images to tasks:**
-1. Move or copy the image file into the `assets/` folder inside your backlog directory (e.g., `backlog/assets/images/screenshot.png`)
+1. Move or copy the image file into the `assets/` folder inside your memaster directory (e.g., `memaster/assets/images/screenshot.png`)
 2. Then add or edit the task content via CLI, referencing the image using the `assets/<relative-path>` path
 
 **Key points:**
-- The path in Markdown starts with `assets/` and maps to the backlog directory's `assets/` folder; do **not** include the backlog directory name itself
-- When `backlog browser` is running, these files are automatically available at `assets/<relative-path>`
+- The path in Markdown starts with `assets/` and maps to the memaster directory's `assets/` folder; do **not** include the memaster directory name itself
+- When `memaster browser` is running, these files are automatically available at `assets/<relative-path>`
 - You can add images to descriptions, implementation notes, or final summaries using the standard CLI commands
 
 ### Document Management
 
 > Docs are used for long-term project reference information, such as development standards, configuration guides, architecture documentation, etc. They differ from `tasks/` (specific tasks), `decisions/` (decision records), and `drafts/` (drafts).
 
-Use Backlog.md public interfaces for document creation and updates so IDs, frontmatter, paths, and search metadata stay consistent.
+Use Memaster public interfaces for document creation and updates so IDs, frontmatter, paths, and search metadata stay consistent.
 
 #### CLI Usage
 
 The CLI supports creating, updating, listing, viewing, archiving, restoring, and deleting documents.
 
 ```bash
-# Create a new doc (saved under backlog/docs/ by default)
-backlog doc create "API Guidelines"
+# Create a new doc (saved under memaster/docs/ by default)
+memaster doc create "API Guidelines"
 
 # Create in a subdirectory (nested paths supported)
-backlog doc create "Setup Guide" -p guides/setup
+memaster doc create "Setup Guide" -p guides/setup
 
 # Specify type at creation time
-backlog doc create "Architecture" -t guide
+memaster doc create "Architecture" -t guide
 
 # Update content while preserving omitted metadata
-backlog doc update doc-1 --content "Updated markdown"
+memaster doc update doc-1 --content "Updated markdown"
 
-# Update metadata or move a doc within backlog/docs/
-backlog doc update doc-1 --title "Setup Handbook" -t guide --tags setup,runbook -p guides
+# Update metadata or move a doc within memaster/docs/
+memaster doc update doc-1 --title "Setup Handbook" -t guide --tags setup,runbook -p guides
 
 # List all docs (searched globally across subdirectories)
-backlog doc list
+memaster doc list
 
 # View a specific doc
-backlog doc view doc-1
+memaster doc view doc-1
 
-# Archive a doc that is no longer needed (its file moves to backlog/archive/docs/)
-backlog doc archive doc-1
+# Archive a doc that is no longer needed (its file moves to memaster/archive/docs/)
+memaster doc archive doc-1
 
-# Bring an archived doc back to backlog/docs/ with the same ID
-backlog doc restore doc-1
+# Bring an archived doc back to memaster/docs/ with the same ID
+memaster doc restore doc-1
 
 # Remove an archived doc for good; works only after archive and asks no question
-backlog doc delete doc-1
+memaster doc delete doc-1
 ```
 
 #### MCP / API Usage
 
 - Use `document_create` to create documents with title, content, optional type/tags, and optional docs-directory-relative path.
 - Use `document_update` to update document content, title, type, tags, or path while preserving document metadata.
-- Use `document_archive` to archive a document by ID. It follows the same rules as `backlog doc archive`.
-- Use `document_restore` and `document_delete` to restore or delete an archived document by ID. They follow the same rules as `backlog doc restore` and `backlog doc delete`.
+- Use `document_archive` to archive a document by ID. It follows the same rules as `memaster doc archive`.
+- Use `document_restore` and `document_delete` to restore or delete an archived document by ID. They follow the same rules as `memaster doc restore` and `memaster doc delete`.
 - Document responses include the persisted docs-relative file path so agents can reference the created file without scanning source internals.
 
 #### Key Rules
 
-- Document paths are relative to `backlog/docs/`; absolute paths and `..` traversal are rejected.
+- Document paths are relative to `memaster/docs/`; absolute paths and `..` traversal are rejected.
 - Supported document types are `readme`, `guide`, `specification`, and `other`.
 - Document IDs are global across the entire docs tree, including nested subfolders.
-- Archiving moves a document's file unchanged to the same relative path under `backlog/archive/docs/`. The ID stays reserved, so no new document receives it. An archived document leaves lists and search, stays viewable (`backlog doc view`, `document_view`), and is read-only: an update fails until it is restored.
-- Restoring moves the archived file back, unchanged, to the same relative path under `backlog/docs/`. The document keeps its ID and can be updated again.
+- Archiving moves a document's file unchanged to the same relative path under `memaster/archive/docs/`. The ID stays reserved, so no new document receives it. An archived document leaves lists and search, stays viewable (`memaster doc view`, `document_view`), and is read-only: an update fails until it is restored.
+- Restoring moves the archived file back, unchanged, to the same relative path under `memaster/docs/`. The document keeps its ID and can be updated again.
 - Removing a document takes two steps: archive, then delete. Delete works only on an archived document, asks no question, removes the file and releases the ID once no other file and no committed file on any branch uses the number.
 - Archiving or deleting a document changes no task. The command prints the tasks and drafts whose documentation list names the moved or removed file; update those entries yourself.
 - Prefer CLI, MCP, or Web document APIs over ad-hoc file writes so frontmatter and metadata remain valid.
 
 ### Decision Management
 
-Decisions are records of choices, kept in `backlog/decisions/`. The CLI creates, lists, views and edits decisions, and archives, restores, and deletes them; MCP has no decision tools. The first edit adds section markers in place. Unknown metadata and text outside the four managed sections stay unchanged. Duplicate known section headings must be resolved before saving. Auto-commit refuses edits when a decision links to content outside the Git repository; disable auto-commit for that edit.
+Decisions are records of choices, kept in `memaster/decisions/`. The CLI creates, lists, views and edits decisions, and archives, restores, and deletes them; MCP has no decision tools. The first edit adds section markers in place. Unknown metadata and text outside the four managed sections stay unchanged. Duplicate known section headings must be resolved before saving. Auto-commit refuses edits when a decision links to content outside the Git repository; disable auto-commit for that edit.
 
 ```bash
 # Create a decision and list the decisions
-backlog decision create "Use PostgreSQL" -s accepted --context "Need transactions" --decision "Use PostgreSQL"
-backlog decision list --plain
+memaster decision create "Use PostgreSQL" -s accepted --context "Need transactions" --decision "Use PostgreSQL"
+memaster decision list --plain
 
 # Read an active or archived decision; JSON is also available
-backlog decision view decision-1 --plain
-backlog decision view decision-1 --json
+memaster decision view decision-1 --plain
+memaster decision view decision-1 --json
 
 # Replace named sections or title; an empty section value clears it
-backlog decision edit decision-1 -t "Revised choice" --context $'First line\nSecond line' --alternatives ""
+memaster decision edit decision-1 -t "Revised choice" --context $'First line\nSecond line' --alternatives ""
 
 # Change only a decision's status
-backlog decision edit decision-1 -s superseded
+memaster decision edit decision-1 -s superseded
 
 # Set the replacement without changing status; combine with -s superseded when wanted
-backlog decision edit decision-1 --superseded-by decision-2
+memaster decision edit decision-1 --superseded-by decision-2
 
 # Clear the replacement link
-backlog decision edit decision-1 --superseded-by ""
+memaster decision edit decision-1 --superseded-by ""
 
-# Archive a decision that is no longer wanted (its file moves to backlog/archive/decisions/)
-backlog decision archive decision-1
+# Archive a decision that is no longer wanted (its file moves to memaster/archive/decisions/)
+memaster decision archive decision-1
 
-# Bring an archived decision back to backlog/decisions/ with the same ID
-backlog decision restore decision-1
+# Bring an archived decision back to memaster/decisions/ with the same ID
+memaster decision restore decision-1
 
 # Remove an archived decision for good; works only after archive and asks no question
-backlog decision delete decision-1
+memaster decision delete decision-1
 ```
 
 - Use `--context`, `--decision`, `--consequences` and `--alternatives` on create or edit. Each flag replaces one section; omitted flags preserve existing content. Multi-line values need real newlines, as in the bash/zsh example above. Literal `\n` is not decoded.
@@ -833,17 +833,17 @@ backlog decision delete decision-1
 
 | Action             | Command                                      |
 |--------------------|----------------------------------------------|
-| View task          | `backlog task 42 --plain`                    |
-| List tasks         | `backlog task list --plain`                  |
-| Search tasks       | `backlog search "topic" --plain`              |
-| Search with filter | `backlog search "api" --status "To Do" --plain` |
-| Search by modified file | `backlog search --modified-file src/api.ts --plain` |
-| Filter by status   | `backlog task list -s "In Progress" --plain` |
-| Filter by assignee | `backlog task list -a @sara --plain`         |
-| Archive task       | `backlog task archive 42`                    |
-| Restore archived task | `backlog task restore 42`                 |
-| Delete archived task | `backlog task delete 42`                   |
-| Demote to draft    | `backlog task demote 42`                     |
+| View task          | `memaster task 42 --plain`                    |
+| List tasks         | `memaster task list --plain`                  |
+| Search tasks       | `memaster search "topic" --plain`              |
+| Search with filter | `memaster search "api" --status "To Do" --plain` |
+| Search by modified file | `memaster search --modified-file src/api.ts --plain` |
+| Filter by status   | `memaster task list -s "In Progress" --plain` |
+| Filter by assignee | `memaster task list -a @sara --plain`         |
+| Archive task       | `memaster task archive 42`                    |
+| Restore archived task | `memaster task restore 42`                 |
+| Delete archived task | `memaster task delete 42`                   |
+| Demote to draft    | `memaster task demote 42`                     |
 
 ---
 
@@ -851,16 +851,16 @@ backlog decision delete decision-1
 
 | Problem              | Solution                                                           |
 |----------------------|--------------------------------------------------------------------|
-| Task not found       | Check task ID with `backlog task list --plain`                     |
-| AC won't check       | Use correct index: `backlog task 42 --plain` to see AC numbers     |
+| Task not found       | Check task ID with `memaster task list --plain`                     |
+| AC won't check       | Use correct index: `memaster task 42 --plain` to see AC numbers     |
 | Changes not saving   | Ensure you're using CLI, not editing files                         |
-| Metadata out of sync | Re-edit via CLI to fix: `backlog task edit 42 -s <current-status>` |
+| Metadata out of sync | Re-edit via CLI to fix: `memaster task edit 42 -s <current-status>` |
 
 ---
 
 ## Remember: The Golden Rule
 
-**🎯 If you want to change ANYTHING in a task, use the `backlog task edit` command.**
+**🎯 If you want to change ANYTHING in a task, use the `memaster task edit` command.**
 **📖 Use CLI to read tasks, exceptionally READ task files directly, never WRITE to them.**
 
-Full help available: `backlog --help`
+Full help available: `memaster --help`

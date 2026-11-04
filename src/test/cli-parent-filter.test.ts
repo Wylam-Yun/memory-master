@@ -18,7 +18,7 @@ describe("CLI parent task filtering", () => {
 
 		// Initialize git repo first using shell API (same pattern as other tests)
 
-		// Initialize backlog project using Core (same pattern as other tests)
+		// Initialize memaster project using Core (same pattern as other tests)
 		const core = new Core(TEST_DIR);
 		await initializeFilesystemTestProject(core, "Parent Filter Test Project");
 

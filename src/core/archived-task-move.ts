@@ -1,8 +1,8 @@
 import { copyFile, lstat, mkdir, open, readlink, realpath, symlink, unlink } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { buildGlobPattern } from "../utils/prefix-config.ts";
-import type { Core } from "./backlog.ts";
 import { findLocalDuplicateTaskIds, installFileNoReplace } from "./duplicate-task-repair.ts";
+import type { Core } from "./memaster.ts";
 
 /**
  * Archived task files stored outside the archive folder and what moving them into it would do.
@@ -16,14 +16,14 @@ export interface ArchivedTaskMovePlan {
 	/** Files that stay where they are because the archive folder already has a file with that name. */
 	blocked: string[];
 	/**
-	 * Folders with files to move that are links to a directory outside the backlog directory. The
+	 * Folders with files to move that are links to a directory outside the memaster directory. The
 	 * move takes the files out of that directory, so whoever confirms it is shown where it is.
 	 * `realDirectory` is absolute.
 	 */
 	linkedSources: Array<{ directory: string; realDirectory: string }>;
 	/**
 	 * Set when there are files to move and the archive folder resolves to a directory
-	 * outside the backlog directory: the move puts the files into that directory.
+	 * outside the memaster directory: the move puts the files into that directory.
 	 */
 	linkedDestination?: { directory: string; realDirectory: string };
 }
@@ -66,7 +66,7 @@ export async function previewArchivedTaskMove(core: Core): Promise<ArchivedTaskM
 		blocked: [],
 		linkedSources: [],
 	};
-	const realBacklogDirectory = await realpath(core.filesystem.backlogDir);
+	const realMemasterDirectory = await realpath(core.filesystem.memasterDir);
 
 	for (const { directory, realDirectory } of await core.filesystem.getArchivedTaskLocations()) {
 		if (directory === archiveDirectory) continue;
@@ -83,13 +83,13 @@ export async function previewArchivedTaskMove(core: Core): Promise<ArchivedTaskM
 			if (targetTaken) plan.blocked.push(sourcePath);
 			else plan.moves.push({ sourcePath, targetPath: projectPath(core, targetPath) });
 		}
-		if (plan.moves.length > movesBefore && isOutside(realBacklogDirectory, realDirectory)) {
+		if (plan.moves.length > movesBefore && isOutside(realMemasterDirectory, realDirectory)) {
 			plan.linkedSources.push({ directory: projectPath(core, directory), realDirectory });
 		}
 	}
 	if (plan.moves.length > 0) {
 		const realDirectory = await resolveDestinationDirectory(archiveDirectory);
-		if (isOutside(realBacklogDirectory, realDirectory)) {
+		if (isOutside(realMemasterDirectory, realDirectory)) {
 			plan.linkedDestination = { directory: plan.archiveDirectory, realDirectory };
 		}
 	}

@@ -1,6 +1,6 @@
 import { type FSWatcher, watch } from "node:fs";
 import { stat } from "node:fs/promises";
-import type { Core } from "../core/backlog.ts";
+import type { Core } from "../core/memaster.ts";
 import type { Task } from "../types/index.ts";
 import { hasAnyPrefix } from "./prefix-config.ts";
 import { extractTaskIdFromFilename, normalizeTaskId, normalizeTaskIdentity, taskIdsEqual } from "./task-path.ts";
@@ -74,7 +74,7 @@ async function readTaskFileSnapshot(tasksDir: string): Promise<TaskFileSnapshot>
 }
 
 /**
- * Watch the current checkout's backlog/tasks directory and emit incremental updates.
+ * Watch the current checkout's memaster/tasks directory and emit incremental updates.
  * A single filesystem event is reconciled until task content is stable or absence is
  * confirmed, because atomic writes can make the event visible before the file is.
  */

@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
-import { Core } from "../core/backlog.ts";
-import { BacklogServer } from "../server/index.ts";
+import { Core } from "../core/memaster.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Task } from "../types/index.ts";
 import { createUniqueTestDir, retry, safeCleanup } from "./test-utils.ts";
 
 let testDir: string;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 let serverPort = 0;
 let core: Core;
 
@@ -27,7 +27,7 @@ beforeEach(async () => {
 	testDir = createUniqueTestDir("server-dependency-error-copy");
 	await mkdir(testDir, { recursive: true });
 	core = new Core(testDir);
-	await core.filesystem.ensureBacklogStructure();
+	await core.filesystem.ensureMemasterStructure();
 	await core.filesystem.saveConfig({
 		projectName: "Server dependency error copy",
 		statuses: ["To Do", "In Progress", "Done"],
@@ -40,7 +40,7 @@ beforeEach(async () => {
 	});
 	await core.createTask(task(), false);
 
-	server = new BacklogServer(testDir);
+	server = new MemasterServer(testDir);
 	await server.start(0, false);
 	serverPort = server.getPort() ?? 0;
 	await retry(async () => {
@@ -55,8 +55,8 @@ afterEach(async () => {
 	await safeCleanup(testDir);
 });
 
-describe("BacklogServer dependency validation errors", () => {
-	it("does not tell a rejected web-UI dependency save to open 'backlog browser'", async () => {
+describe("MemasterServer dependency validation errors", () => {
+	it("does not tell a rejected web-UI dependency save to open 'memaster browser'", async () => {
 		const response = await fetch(`http://127.0.0.1:${serverPort}/api/tasks/TASK-1`, {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },
@@ -66,7 +66,7 @@ describe("BacklogServer dependency validation errors", () => {
 		expect(response.status).toBe(400);
 		const body = (await response.json()) as { error: string };
 		expect(body.error).toContain("TASK-999");
-		expect(body.error).not.toContain("backlog browser");
+		expect(body.error).not.toContain("memaster browser");
 	});
 
 	it("rejects a save that makes the task depend on itself, alias spelling included", async () => {
@@ -111,6 +111,6 @@ describe("BacklogServer dependency validation errors", () => {
 		expect(response.status).toBe(400);
 		const body = (await response.json()) as { error: string };
 		expect(body.error).toContain("TASK-999");
-		expect(body.error).not.toContain("backlog browser");
+		expect(body.error).not.toContain("memaster browser");
 	});
 });

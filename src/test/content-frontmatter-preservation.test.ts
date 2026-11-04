@@ -7,7 +7,7 @@ import { parseDecision, parseDocument, parseMarkdown } from "../markdown/parser.
 import { serializeDocument } from "../markdown/serializer.ts";
 import { McpServer } from "../mcp/server.ts";
 import { registerDocumentTools } from "../mcp/tools/documents/index.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, safeCleanup } from "./test-utils.ts";
 
@@ -38,7 +38,7 @@ const PREFIX_BODY = "---\nbody_key: stays in the body\n---\n\nFollowing text";
 
 let root: string;
 let filesystem: FileSystem;
-let server: BacklogServer | undefined;
+let server: MemasterServer | undefined;
 let mcp: McpServer | undefined;
 
 async function writeDocument(metadata = METADATA): Promise<string> {
@@ -51,7 +51,7 @@ async function writeDocument(metadata = METADATA): Promise<string> {
 }
 
 async function startServer(): Promise<number> {
-	server = new BacklogServer(root);
+	server = new MemasterServer(root);
 	await server.start(0, false);
 	const port = server.getPort();
 	if (!port) throw new Error("Test server did not get a port");
@@ -62,7 +62,7 @@ describe("document and decision unknown frontmatter", () => {
 	beforeEach(async () => {
 		root = createUniqueTestDir("content-frontmatter");
 		filesystem = new FileSystem(root);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		await filesystem.saveConfig({
 			projectName: "Frontmatter preservation",
 			statuses: ["To Do", "In Progress", "Done"],

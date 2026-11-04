@@ -3,29 +3,29 @@ import { mkdir, mkdtemp, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { getAssignees, getLabels, getStatuses, getTaskIds } from "../completions/data-providers.ts";
-import { Core, createRuntimeCore } from "../core/backlog.ts";
-import { BACKLOG_CWD_ENV, resolveRuntimeCwd } from "../utils/runtime-cwd.ts";
+import { Core, createRuntimeCore } from "../core/memaster.ts";
+import { MEMASTER_CWD_ENV, resolveRuntimeCwd } from "../utils/runtime-cwd.ts";
 import { initializeTestProject } from "./test-utils.ts";
 
 describe("resolveRuntimeCwd", () => {
 	let testDir: string;
 	let originalCwd: string;
-	let originalBacklogCwd: string | undefined;
+	let originalMemasterCwd: string | undefined;
 
 	beforeEach(async () => {
-		testDir = await mkdtemp(join(tmpdir(), "backlog-runtime-cwd-"));
+		testDir = await mkdtemp(join(tmpdir(), "memaster-runtime-cwd-"));
 		originalCwd = process.cwd();
-		originalBacklogCwd = process.env[BACKLOG_CWD_ENV];
-		delete process.env[BACKLOG_CWD_ENV];
+		originalMemasterCwd = process.env[MEMASTER_CWD_ENV];
+		delete process.env[MEMASTER_CWD_ENV];
 		process.chdir(testDir);
 	});
 
 	afterEach(async () => {
 		process.chdir(originalCwd);
-		if (originalBacklogCwd === undefined) {
-			delete process.env[BACKLOG_CWD_ENV];
+		if (originalMemasterCwd === undefined) {
+			delete process.env[MEMASTER_CWD_ENV];
 		} else {
-			process.env[BACKLOG_CWD_ENV] = originalBacklogCwd;
+			process.env[MEMASTER_CWD_ENV] = originalMemasterCwd;
 		}
 		await rm(testDir, { recursive: true, force: true });
 	});
@@ -42,24 +42,24 @@ describe("resolveRuntimeCwd", () => {
 		expect(result.source).toBe("process");
 	});
 
-	it("uses BACKLOG_CWD when environment override is provided", async () => {
+	it("uses MEMASTER_CWD when environment override is provided", async () => {
 		const nestedDir = join(testDir, "workspace", "project");
 		await mkdir(nestedDir, { recursive: true });
-		process.env[BACKLOG_CWD_ENV] = nestedDir;
+		process.env[MEMASTER_CWD_ENV] = nestedDir;
 
 		const result = await resolveRuntimeCwd();
 
 		await expectCanonicalPath(result.cwd, nestedDir);
 		expect(result.source).toBe("env");
-		expect(result.sourceLabel).toBe(BACKLOG_CWD_ENV);
+		expect(result.sourceLabel).toBe(MEMASTER_CWD_ENV);
 	});
 
-	it("gives --cwd option precedence over BACKLOG_CWD", async () => {
+	it("gives --cwd option precedence over MEMASTER_CWD", async () => {
 		const envDir = join(testDir, "env-dir");
 		const optionDir = join(testDir, "option-dir");
 		await mkdir(envDir, { recursive: true });
 		await mkdir(optionDir, { recursive: true });
-		process.env[BACKLOG_CWD_ENV] = envDir;
+		process.env[MEMASTER_CWD_ENV] = envDir;
 
 		const result = await resolveRuntimeCwd({ cwd: optionDir });
 
@@ -78,9 +78,9 @@ describe("resolveRuntimeCwd", () => {
 	});
 
 	it("throws when override path is invalid", async () => {
-		process.env[BACKLOG_CWD_ENV] = join(testDir, "missing");
+		process.env[MEMASTER_CWD_ENV] = join(testDir, "missing");
 
-		await expect(resolveRuntimeCwd()).rejects.toThrow(`Invalid directory from ${BACKLOG_CWD_ENV}`);
+		await expect(resolveRuntimeCwd()).rejects.toThrow(`Invalid directory from ${MEMASTER_CWD_ENV}`);
 	});
 
 	describe("createRuntimeCore", () => {
@@ -90,22 +90,22 @@ describe("resolveRuntimeCwd", () => {
 			await expectCanonicalPath(core.filesystem.rootDir, testDir);
 		});
 
-		it("binds the Core to BACKLOG_CWD when the override is provided", async () => {
+		it("binds the Core to MEMASTER_CWD when the override is provided", async () => {
 			const projectDir = join(testDir, "workspace", "project");
 			await mkdir(projectDir, { recursive: true });
-			process.env[BACKLOG_CWD_ENV] = projectDir;
+			process.env[MEMASTER_CWD_ENV] = projectDir;
 
 			const core = await createRuntimeCore();
 
 			await expectCanonicalPath(core.filesystem.rootDir, projectDir);
 		});
 
-		it("ascends to the project root when BACKLOG_CWD points at a subdirectory", async () => {
+		it("ascends to the project root when MEMASTER_CWD points at a subdirectory", async () => {
 			const projectDir = join(testDir, "project");
 			const nestedDir = join(projectDir, "packages", "web", "src");
 			await initializeTestProject(new Core(projectDir), "Nested Override Project");
 			await mkdir(nestedDir, { recursive: true });
-			process.env[BACKLOG_CWD_ENV] = nestedDir;
+			process.env[MEMASTER_CWD_ENV] = nestedDir;
 
 			const core = await createRuntimeCore();
 
@@ -127,29 +127,29 @@ describe("resolveRuntimeCwd", () => {
 		it("stays on the resolved directory when no project is found", async () => {
 			const nestedDir = join(testDir, "no-project", "nested");
 			await mkdir(nestedDir, { recursive: true });
-			process.env[BACKLOG_CWD_ENV] = nestedDir;
+			process.env[MEMASTER_CWD_ENV] = nestedDir;
 
 			const core = await createRuntimeCore();
 
 			await expectCanonicalPath(core.filesystem.rootDir, nestedDir);
 		});
 
-		it("fails closed when BACKLOG_CWD points at a missing directory", async () => {
-			process.env[BACKLOG_CWD_ENV] = join(testDir, "missing");
+		it("fails closed when MEMASTER_CWD points at a missing directory", async () => {
+			process.env[MEMASTER_CWD_ENV] = join(testDir, "missing");
 
-			await expect(createRuntimeCore()).rejects.toThrow(`Invalid directory from ${BACKLOG_CWD_ENV}`);
+			await expect(createRuntimeCore()).rejects.toThrow(`Invalid directory from ${MEMASTER_CWD_ENV}`);
 		});
 	});
 
 	describe("shell completion data providers", () => {
-		it("reads the parent project when BACKLOG_CWD points at a subdirectory", async () => {
+		it("reads the parent project when MEMASTER_CWD points at a subdirectory", async () => {
 			const projectDir = join(testDir, "project");
 			const nestedDir = join(projectDir, "packages", "cli");
 			const core = new Core(projectDir);
 			await initializeTestProject(core, "Completion Project");
 			await mkdir(nestedDir, { recursive: true });
 			await core.createTaskFromInput({ title: "Completion task", labels: ["ui"], assignee: ["@alex"] });
-			process.env[BACKLOG_CWD_ENV] = nestedDir;
+			process.env[MEMASTER_CWD_ENV] = nestedDir;
 
 			expect(await getTaskIds()).toEqual(["TASK-1"]);
 			expect(await getLabels()).toEqual(["ui"]);
@@ -159,14 +159,14 @@ describe("resolveRuntimeCwd", () => {
 		it("degrades to static fallbacks when no project is found", async () => {
 			const nestedDir = join(testDir, "no-project", "nested");
 			await mkdir(nestedDir, { recursive: true });
-			process.env[BACKLOG_CWD_ENV] = nestedDir;
+			process.env[MEMASTER_CWD_ENV] = nestedDir;
 
 			expect(await getTaskIds()).toEqual([]);
 			expect(await getStatuses()).toEqual(["To Do", "In Progress", "Done"]);
 		});
 
-		it("degrades to static fallbacks when BACKLOG_CWD is invalid", async () => {
-			process.env[BACKLOG_CWD_ENV] = join(testDir, "missing");
+		it("degrades to static fallbacks when MEMASTER_CWD is invalid", async () => {
+			process.env[MEMASTER_CWD_ENV] = join(testDir, "missing");
 
 			expect(await getTaskIds()).toEqual([]);
 			expect(await getStatuses()).toEqual(["To Do", "In Progress", "Done"]);

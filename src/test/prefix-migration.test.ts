@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { migrateDraftPrefixes, needsDraftPrefixMigration } from "../core/prefix-migration.ts";
 import { FileSystem } from "../file-system/operations.ts";
 import { serializeTask } from "../markdown/serializer.ts";
-import type { BacklogConfig, Task } from "../types/index.ts";
+import type { MemasterConfig, Task } from "../types/index.ts";
 import { createUniqueTestDir, isWindows, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
@@ -16,7 +16,7 @@ describe("Draft Prefix Migration", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("test-prefix-migration");
 		filesystem = new FileSystem(TEST_DIR);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 	});
 
 	afterEach(async () => {
@@ -29,7 +29,7 @@ describe("Draft Prefix Migration", () => {
 		});
 
 		it("should return true when prefixes section is missing", () => {
-			const config: BacklogConfig = {
+			const config: MemasterConfig = {
 				projectName: "Test",
 				statuses: ["To Do", "Done"],
 				labels: [],
@@ -40,7 +40,7 @@ describe("Draft Prefix Migration", () => {
 		});
 
 		it("should return false when prefixes section exists", () => {
-			const config: BacklogConfig = {
+			const config: MemasterConfig = {
 				projectName: "Test",
 				statuses: ["To Do", "Done"],
 				labels: [],
@@ -57,7 +57,7 @@ describe("Draft Prefix Migration", () => {
 	describe("migrateDraftPrefixes", () => {
 		it("should add prefixes section to config when drafts folder is empty", async () => {
 			// Create initial config without prefixes
-			const initialConfig: BacklogConfig = {
+			const initialConfig: MemasterConfig = {
 				projectName: "Test Project",
 				statuses: ["To Do", "In Progress", "Done"],
 				labels: [],
@@ -77,7 +77,7 @@ describe("Draft Prefix Migration", () => {
 
 		it("should rename task-*.md files in drafts folder to draft-*.md", async () => {
 			// Create initial config without prefixes
-			const initialConfig: BacklogConfig = {
+			const initialConfig: MemasterConfig = {
 				projectName: "Test Project",
 				statuses: ["To Do", "In Progress", "Done"],
 				labels: [],
@@ -119,7 +119,7 @@ describe("Draft Prefix Migration", () => {
 
 		it("should update IDs inside migrated files", async () => {
 			// Create initial config without prefixes
-			const initialConfig: BacklogConfig = {
+			const initialConfig: MemasterConfig = {
 				projectName: "Test Project",
 				statuses: ["To Do", "In Progress", "Done"],
 				labels: [],
@@ -155,7 +155,7 @@ describe("Draft Prefix Migration", () => {
 
 		it("should handle multiple task-*.md files", async () => {
 			// Create initial config without prefixes
-			const initialConfig: BacklogConfig = {
+			const initialConfig: MemasterConfig = {
 				projectName: "Test Project",
 				statuses: ["To Do", "In Progress", "Done"],
 				labels: [],
@@ -200,7 +200,7 @@ describe("Draft Prefix Migration", () => {
 
 		it("should be idempotent - running twice has same result", async () => {
 			// Create initial config without prefixes
-			const initialConfig: BacklogConfig = {
+			const initialConfig: MemasterConfig = {
 				projectName: "Test Project",
 				statuses: ["To Do", "In Progress", "Done"],
 				labels: [],
@@ -243,7 +243,7 @@ describe("Draft Prefix Migration", () => {
 
 		it("should not affect existing draft-*.md files", async () => {
 			// Create initial config without prefixes
-			const initialConfig: BacklogConfig = {
+			const initialConfig: MemasterConfig = {
 				projectName: "Test Project",
 				statuses: ["To Do", "In Progress", "Done"],
 				labels: [],

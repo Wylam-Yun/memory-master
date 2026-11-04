@@ -11,9 +11,9 @@ import {
 	selectListWindow,
 } from "../utils/list-window.ts";
 
-/** `backlog task list` with the window options and one option that reads a value, `--search`. */
+/** `memaster task list` with the window options and one option that reads a value, `--search`. */
 function taskListCommand(): Command {
-	return addListWindowOptions(new Command("backlog").command("task").command("list").option("--search <query>"));
+	return addListWindowOptions(new Command("memaster").command("task").command("list").option("--search <query>"));
 }
 
 function windowOf(skip: number, maxCount?: number, commandArgs: string[] = []): ListWindow {
@@ -64,38 +64,38 @@ describe("list windows", () => {
 		};
 
 		expect(footer(0, 5)).toBeNull();
-		expect(footer(2, 2)).toBe("Showing 3-4 of 5 items. Next: backlog task list --max-count 2 --plain --skip 4");
+		expect(footer(2, 2)).toBe("Showing 3-4 of 5 items. Next: memaster task list --max-count 2 --plain --skip 4");
 		expect(footer(4, 2)).toBe("Showing 5-5 of 5 items.");
 		expect(footer(9, 2)).toBe("Showing 0 of 5 items.");
 	});
 
 	it("replaces the typed skip and quotes arguments the shell would split", () => {
 		expect(nextPageCommand(windowOf(0, 3, ["task", "list", "--skip", "3", "--max-count", "3"]), 6)).toBe(
-			"backlog task list --max-count 3 --skip 6",
+			"memaster task list --max-count 3 --skip 6",
 		);
 		expect(
 			nextPageCommand(
 				windowOf(0, 3, ["search", "--skip=3", "it's done", "--status", "To Do", "=draft", "--priority=high"]),
 				6,
 			),
-		).toBe("backlog search 'it'\\''s done' --status 'To Do' '=draft' '--priority=high' --skip 6");
+		).toBe("memaster search 'it'\\''s done' --status 'To Do' '=draft' '--priority=high' --skip 6");
 	});
 
 	it("keeps option values that read --skip or -- and puts the new skip before --", () => {
 		const next = (args: string[]) => nextPageCommand(windowOf(0, 1, args), 1);
 
 		expect(next(["task", "list", "--search", "--skip", "--max-count", "1"])).toBe(
-			"backlog task list --search --skip --max-count 1 --skip 1",
+			"memaster task list --search --skip --max-count 1 --skip 1",
 		);
 		expect(next(["task", "list", "--search", "--skip", "--skip", "3", "--max-count", "1"])).toBe(
-			"backlog task list --search --skip --max-count 1 --skip 1",
+			"memaster task list --search --skip --max-count 1 --skip 1",
 		);
 		expect(next(["task", "list", "--search", "--", "--max-count", "1"])).toBe(
-			"backlog task list --search -- --max-count 1 --skip 1",
+			"memaster task list --search -- --max-count 1 --skip 1",
 		);
-		expect(next(["doc", "list", "--max-count", "1", "--"])).toBe("backlog doc list --max-count 1 --skip 1 --");
+		expect(next(["doc", "list", "--max-count", "1", "--"])).toBe("memaster doc list --max-count 1 --skip 1 --");
 		expect(next(["search", "--max-count", "1", "--", "--skip", "it"])).toBe(
-			"backlog search --max-count 1 --skip 1 -- --skip it",
+			"memaster search --max-count 1 --skip 1 -- --skip it",
 		);
 	});
 
@@ -154,7 +154,7 @@ describe("list windows", () => {
 			}
 			expect(parseListWindow({ count: true, json: true }, taskListCommand(), [])).toBeNull();
 			expect(errors).toHaveBeenLastCalledWith(
-				"--count cannot be combined with --json. Try 'backlog task list --help' for options.",
+				"--count cannot be combined with --json. Try 'memaster task list --help' for options.",
 			);
 		} finally {
 			errors.mockRestore();

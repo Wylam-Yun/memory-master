@@ -1,10 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import { BranchTaskLoader } from "../core/task-loader.ts";
 import type { GitOperations } from "../git/operations.ts";
-import type { BacklogConfig } from "../types/index.ts";
+import type { MemasterConfig } from "../types/index.ts";
 import { treeBlobs } from "./test-utils.ts";
 
-const config: BacklogConfig = {
+const config: MemasterConfig = {
 	projectName: "Branch loader resilience",
 	statuses: ["To Do", "Done"],
 	labels: [],
@@ -21,7 +21,7 @@ describe("BranchTaskLoader resilience", () => {
 		const currentCommit = "0".repeat(40);
 		const badCommit = "1".repeat(40);
 		const goodCommit = "2".repeat(40);
-		const taskPath = "backlog/tasks/task-17 - Healthy task.md";
+		const taskPath = "memaster/tasks/task-17 - Healthy task.md";
 		const treeCalls = new Set<string>();
 		const git = {
 			listTreeBlobs: async (commit: string) => {
@@ -84,7 +84,7 @@ Loaded despite the neighboring branch failure.`;
 	it("retries a commit index after a transient history failure", async () => {
 		const currentCommit = "0".repeat(40);
 		const featureCommit = "1".repeat(40);
-		const taskPath = "backlog/tasks/task-18 - Retried task.md";
+		const taskPath = "memaster/tasks/task-18 - Retried task.md";
 		let treeCalls = 0;
 		let historyCalls = 0;
 		let blobCalls = 0;
@@ -144,7 +144,7 @@ Loaded after retrying the failed history query.`;
 	it("retries a transient hydration failure without rebuilding the commit index", async () => {
 		const currentCommit = "0".repeat(40);
 		const featureCommit = "3".repeat(40);
-		const taskPath = "backlog/tasks/task-19 - Retried hydration.md";
+		const taskPath = "memaster/tasks/task-19 - Retried hydration.md";
 		let treeCalls = 0;
 		let historyCalls = 0;
 		let blobCalls = 0;
@@ -198,7 +198,7 @@ Loaded after retrying the failed blob read.`;
 	it("caches an immutable malformed task without leaving the generation unhealthy", async () => {
 		const currentCommit = "0".repeat(40);
 		const featureCommit = "4".repeat(40);
-		const taskPath = "backlog/tasks/task-20 - Malformed.md";
+		const taskPath = "memaster/tasks/task-20 - Malformed.md";
 		let treeCalls = 0;
 		let historyCalls = 0;
 		let blobCalls = 0;

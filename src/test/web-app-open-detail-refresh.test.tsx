@@ -3,7 +3,7 @@ import { JSDOM } from "jsdom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { type TaskDetail, toTaskDetail } from "../core/task-detail.ts";
-import type { BacklogConfig, SearchResult, Task } from "../types/index.ts";
+import type { MemasterConfig, SearchResult, Task } from "../types/index.ts";
 import App from "../web/App.tsx";
 import { HealthCheckProvider } from "../web/contexts/HealthCheckContext.tsx";
 import { apiClient } from "../web/lib/api.ts";
@@ -139,7 +139,7 @@ function stubApi(handlers: {
 
 	apiClient.checkStatus = async () => ({ initialized: true, projectName: "Readiness" }) as never;
 	apiClient.fetchStatuses = async () => statuses;
-	apiClient.fetchConfig = async () => ({ projectName: "Readiness", statuses }) as BacklogConfig;
+	apiClient.fetchConfig = async () => ({ projectName: "Readiness", statuses }) as MemasterConfig;
 	apiClient.fetchMilestones = async () => [];
 	apiClient.fetchArchivedMilestones = async () => [];
 	apiClient.search = async () => handlers.search();

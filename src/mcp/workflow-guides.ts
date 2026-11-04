@@ -32,8 +32,8 @@ export interface WorkflowGuideDefinition<Key extends InstructionGuideKey = Instr
 export const WORKFLOW_GUIDES: WorkflowGuideDefinition<WorkflowGuideKey>[] = [
 	{
 		key: "overview",
-		uri: "backlog://workflow/overview",
-		name: "Backlog Workflow Overview",
+		uri: "memaster://workflow/overview",
+		name: "Memaster Workflow Overview",
 		description: "When to create tasks and the basic workflow",
 		mimeType: "text/markdown",
 		resourceText: MCP_WORKFLOW_OVERVIEW,
@@ -41,7 +41,7 @@ export const WORKFLOW_GUIDES: WorkflowGuideDefinition<WorkflowGuideKey>[] = [
 	},
 	{
 		key: "task-creation",
-		uri: "backlog://workflow/task-creation",
+		uri: "memaster://workflow/task-creation",
 		name: "Task Creation Guide",
 		description: "How to search, scope, and create tasks",
 		mimeType: "text/markdown",
@@ -49,7 +49,7 @@ export const WORKFLOW_GUIDES: WorkflowGuideDefinition<WorkflowGuideKey>[] = [
 	},
 	{
 		key: "task-execution",
-		uri: "backlog://workflow/task-execution",
+		uri: "memaster://workflow/task-execution",
 		name: "Task Execution Guide",
 		description: "How to plan, update, and work through tasks",
 		mimeType: "text/markdown",
@@ -57,7 +57,7 @@ export const WORKFLOW_GUIDES: WorkflowGuideDefinition<WorkflowGuideKey>[] = [
 	},
 	{
 		key: "task-finalization",
-		uri: "backlog://workflow/task-finalization",
+		uri: "memaster://workflow/task-finalization",
 		name: "Task Finalization Guide",
 		description: "How to verify, summarize, and finish work",
 		mimeType: "text/markdown",
@@ -81,9 +81,9 @@ export const INSTRUCTION_GUIDES: WorkflowGuideDefinition[] = [
 	})),
 	{
 		key: "init-required",
-		uri: "backlog://init-required",
-		name: "Backlog Init Required Guide",
-		description: "How to initialize Backlog.md in this directory",
+		uri: "memaster://init-required",
+		name: "Memaster Init Required Guide",
+		description: "How to initialize Memaster in this directory",
 		mimeType: "text/markdown",
 		resourceText: CLI_INIT_REQUIRED_GUIDE,
 	},

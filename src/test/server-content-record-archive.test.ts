@@ -3,11 +3,11 @@ import { lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
 import { Core } from "../index.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import { createTestDirOutsideRepository, initializeTestProject, retry, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 let serverPort = 0;
 
 const api = (path: string) => `http://127.0.0.1:${serverPort}${path}`;
@@ -35,7 +35,7 @@ const KINDS = [
 		id: "doc-1",
 		otherId: "doc-9",
 		missingId: "doc-42",
-		cliCommand: "backlog doc",
+		cliCommand: "memaster doc",
 		file: "doc-1 - Retired-runbook.md",
 		noun: "Document",
 		create: (core: Core, title: string) =>
@@ -51,7 +51,7 @@ const KINDS = [
 		id: "decision-1",
 		otherId: "decision-9",
 		missingId: "decision-42",
-		cliCommand: "backlog decision",
+		cliCommand: "memaster decision",
 		file: "decision-1 - Retired-runbook.md",
 		noun: "Decision",
 		create: (core: Core, title: string) => core.createDecisionFromInput({ title }).then((decision) => decision.id),
@@ -79,7 +79,7 @@ async function startServer(autoCommit: boolean): Promise<Core> {
 	await git("add", "-A");
 	await git("commit", "-m", "Set up the project");
 
-	server = new BacklogServer(TEST_DIR);
+	server = new MemasterServer(TEST_DIR);
 	await server.start(0, false);
 	serverPort = server.getPort() ?? 0;
 	expect(serverPort).not.toBe(0);
@@ -99,8 +99,8 @@ afterEach(async () => {
 });
 
 describe.each([...KINDS])("POST archive route for a $kind", (kind) => {
-	const folderPath = (...segments: string[]) => join(TEST_DIR, "backlog", kind.folder, ...segments);
-	const archivePath = (...segments: string[]) => join(TEST_DIR, "backlog", kind.archiveFolder, ...segments);
+	const folderPath = (...segments: string[]) => join(TEST_DIR, "memaster", kind.folder, ...segments);
+	const archivePath = (...segments: string[]) => join(TEST_DIR, "memaster", kind.archiveFolder, ...segments);
 
 	it("archives the record the way the CLI does, commit included, and takes it out of the lists at once", async () => {
 		await startServer(true);
@@ -111,9 +111,9 @@ describe.each([...KINDS])("POST archive route for a $kind", (kind) => {
 		expect(archived).toEqual({ status: 200, body: { success: true } });
 		expect(await exists(folderPath(kind.file))).toBe(false);
 		expect((await readFile(archivePath(kind.file))).equals(before)).toBe(true);
-		expect(await git("log", "-1", "--format=%s")).toBe(`backlog: Archive ${kind.kind} ${kind.id}`);
+		expect(await git("log", "-1", "--format=%s")).toBe(`memaster: Archive ${kind.kind} ${kind.id}`);
 		expect(await git("show", "--name-status", "--format=", "HEAD")).toBe(
-			`R100\tbacklog/${kind.folder}/${kind.file}\tbacklog/${kind.archiveFolder}/${kind.file}`,
+			`R100\tmemaster/${kind.folder}/${kind.file}\tmemaster/${kind.archiveFolder}/${kind.file}`,
 		);
 		// No reload: the next read of the sidebar and of search leaves the record out.
 		const list = (await (await fetch(api(kind.list))).json()) as Array<{ title: string }>;
@@ -156,7 +156,7 @@ describe.each([...KINDS])("POST archive route for a $kind", (kind) => {
 
 		expect(refused.status).toBe(400);
 		expect(refused.body).toEqual({
-			error: `${kind.noun} ${kind.id} cannot be archived: the archive already has a file at backlog/${kind.archiveFolder}/${kind.file}.`,
+			error: `${kind.noun} ${kind.id} cannot be archived: the archive already has a file at memaster/${kind.archiveFolder}/${kind.file}.`,
 		});
 		expect(await readFile(folderPath(kind.file), "utf8")).toBe(content);
 	});

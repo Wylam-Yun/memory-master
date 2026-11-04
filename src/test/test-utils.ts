@@ -10,8 +10,8 @@ import net from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { $ } from "bun";
-import type { Core } from "../core/backlog.ts";
 import { initializeProject as initializeProjectShared } from "../core/init.ts";
+import type { Core } from "../core/memaster.ts";
 import type { FileSystem } from "../file-system/operations.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { Task } from "../types/index.ts";
@@ -30,7 +30,7 @@ export function createUniqueTestDir(prefix: string): string {
 /**
  * Creates a test project directory outside the repository, for tests that run destructive CLI
  * commands. The CLI finds its project by walking up from the working directory, so a command that
- * outlives a directory under the repository's own tmp/ would act on the repository's backlog.
+ * outlives a directory under the repository's own tmp/ would act on the repository's memaster.
  */
 export async function createTestDirOutsideRepository(prefix: string): Promise<string> {
 	return await mkdtemp(join(tmpdir(), `${prefix}-`));
@@ -282,7 +282,7 @@ export async function createLauncherInstall(
 	if (writeBinary) {
 		const packageDir = join(dir, "node_modules", getCandidatePackageNames()[0]);
 		await mkdir(packageDir, { recursive: true });
-		const binaryPath = join(packageDir, isWindows() ? "backlog.exe" : "backlog");
+		const binaryPath = join(packageDir, isWindows() ? "memaster.exe" : "memaster");
 		await writeBinary(binaryPath);
 		await chmod(binaryPath, 0o755);
 	}
@@ -360,36 +360,36 @@ export async function initializeTestProject(
 	core: Core,
 	projectName: string,
 	autoCommit = false,
-	backlogDirectory?: string,
+	memasterDirectory?: string,
 ): Promise<void> {
-	await initializeTestProjectWithOptions(core, projectName, { autoCommit, backlogDirectory });
+	await initializeTestProjectWithOptions(core, projectName, { autoCommit, memasterDirectory });
 }
 
 export async function initializeFilesystemTestProject(
 	core: Core,
 	projectName: string,
-	backlogDirectory?: string,
+	memasterDirectory?: string,
 ): Promise<void> {
-	await initializeTestProjectWithOptions(core, projectName, { backlogDirectory, filesystemOnly: true });
+	await initializeTestProjectWithOptions(core, projectName, { memasterDirectory, filesystemOnly: true });
 }
 
 async function initializeTestProjectWithOptions(
 	core: Core,
 	projectName: string,
-	options: { autoCommit?: boolean; backlogDirectory?: string; filesystemOnly?: boolean },
+	options: { autoCommit?: boolean; memasterDirectory?: string; filesystemOnly?: boolean },
 ): Promise<void> {
-	const { autoCommit = false, backlogDirectory, filesystemOnly = false } = options;
-	const backlogDirectorySource = backlogDirectory
-		? backlogDirectory === "backlog" || backlogDirectory === ".backlog"
-			? (backlogDirectory as "backlog" | ".backlog")
+	const { autoCommit = false, memasterDirectory, filesystemOnly = false } = options;
+	const memasterDirectorySource = memasterDirectory
+		? memasterDirectory === "memaster" || memasterDirectory === ".memaster"
+			? (memasterDirectory as "memaster" | ".memaster")
 			: "custom"
 		: undefined;
-	const configLocation = backlogDirectorySource === "custom" ? "root" : "folder";
+	const configLocation = memasterDirectorySource === "custom" ? "root" : "folder";
 
 	await initializeProjectShared(core, {
 		projectName,
-		backlogDirectory,
-		backlogDirectorySource,
+		memasterDirectory,
+		memasterDirectorySource,
 		configLocation,
 		integrationMode: "none",
 		filesystemOnly,
@@ -399,7 +399,7 @@ async function initializeTestProjectWithOptions(
 	});
 
 	if (autoCommit) {
-		const repoRoot = await core.gitOps.stageBacklogDirectory(core.filesystem.backlogDirName);
-		await core.gitOps.commitChanges(`backlog: Initialize backlog project: ${projectName}`, repoRoot);
+		const repoRoot = await core.gitOps.stageMemasterDirectory(core.filesystem.memasterDirName);
+		await core.gitOps.commitChanges(`memaster: Initialize memaster project: ${projectName}`, repoRoot);
 	}
 }

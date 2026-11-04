@@ -31,7 +31,7 @@ describe("Draft creation consistency", () => {
 		expect(second.stdout.toString()).toContain("draft-2 - Goodbye.md");
 		expect(second.stdout.toString()).not.toContain("draft-task-");
 
-		const draftFiles = await readdir(join(TEST_DIR, "backlog", "drafts"));
+		const draftFiles = await readdir(join(TEST_DIR, "memaster", "drafts"));
 		expect(draftFiles).toContain("draft-1 - Hallo.md");
 		expect(draftFiles).toContain("draft-2 - Goodbye.md");
 		expect(draftFiles.some((file) => file.startsWith("draft-task-"))).toBe(false);

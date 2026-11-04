@@ -1,18 +1,18 @@
-## Backlog.md Overview (CLI)
+## Memaster Overview (CLI)
 
-Backlog.md tracks committed work: what will be built, fixed, or changed.
+Memaster tracks committed work: what will be built, fixed, or changed.
 
-### When to Use Backlog
+### When to Use Memaster
 
 Create a task when work requires planning, decisions, or handoff notes. Search for an existing task first. Skip task creation for questions, exploration, and obvious mechanical edits.
 
 ### Find and Read Work
 
-- `backlog search "query" --plain`
-- `backlog task list --status "<todo status>" --plain`
-- `backlog task list --status "<active status>" --plain`
-- `backlog task list --search "login" --labels frontend,bug --limit 20 --plain`
-- `backlog task view {{TASK_ID:123}} --plain`
+- `memaster search "query" --plain`
+- `memaster task list --status "<todo status>" --plain`
+- `memaster task list --status "<active status>" --plain`
+- `memaster task list --search "login" --labels frontend,bug --limit 20 --plain`
+- `memaster task view {{TASK_ID:123}} --plain`
 
 For long lists, use `--max-count` and `--skip`, follow the printed `Next` command, or use `--count` for the total; command help covers the details.
 
@@ -20,28 +20,28 @@ For scripts, `task list`, `task view`, `task <id>`, `draft list`, `decision list
 
 ### Decision Records
 
-Create a decision with `backlog decision create "Title" --context "Why" --decision "The choice"`, then read it with `backlog decision view decision-1 --plain` or `--json`. `decision list --plain` lists active decisions; `decision view` also reads archived decisions. Use `backlog decision edit decision-1 -t "New title" --context "New context"` to update it. Create and edit accept `--context`, `--decision`, `--consequences` and `--alternatives`; each replaces a section, an empty value clears it, and omitted flags keep existing content. Multi-line values need real newlines, for example `--context $'First line\nSecond line'` in bash/zsh. Literal `\n` stays literal.
+Create a decision with `memaster decision create "Title" --context "Why" --decision "The choice"`, then read it with `memaster decision view decision-1 --plain` or `--json`. `decision list --plain` lists active decisions; `decision view` also reads archived decisions. Use `memaster decision edit decision-1 -t "New title" --context "New context"` to update it. Create and edit accept `--context`, `--decision`, `--consequences` and `--alternatives`; each replaces a section, an empty value clears it, and omitted flags keep existing content. Multi-line values need real newlines, for example `--context $'First line\nSecond line'` in bash/zsh. Literal `\n` stays literal.
 
-To record a replacement, use `backlog decision edit decision-1 --superseded-by decision-2`; this leaves status unchanged, or combine it with `-s superseded`. The replacement must identify one existing decision and cannot be the decision itself. Pass `--superseded-by ""` to clear the link. Changes set `updated_date`; omitted fields, unknown metadata and unmanaged text stay intact. Run `backlog decision edit --help` for details.
+To record a replacement, use `memaster decision edit decision-1 --superseded-by decision-2`; this leaves status unchanged, or combine it with `-s superseded`. The replacement must identify one existing decision and cannot be the decision itself. Pass `--superseded-by ""` to clear the link. Changes set `updated_date`; omitted fields, unknown metadata and unmanaged text stay intact. Run `memaster decision edit --help` for details.
 
 ### Required Guides
 
 Read the matching guide before taking these actions; this overview does not replace it:
 
-- `backlog instructions task-creation` — before creating or splitting tasks
-- `backlog instructions task-execution` — before planning, changing status or assignee, adding notes, or implementing
-- `backlog instructions task-finalization` — before checking acceptance criteria, writing final summaries, or marking work finished
+- `memaster instructions task-creation` — before creating or splitting tasks
+- `memaster instructions task-execution` — before planning, changing status or assignee, adding notes, or implementing
+- `memaster instructions task-finalization` — before checking acceptance criteria, writing final summaries, or marking work finished
 
-Use `backlog <command> --help` before unfamiliar operations. Help describes fields, output, and examples.
+Use `memaster <command> --help` before unfamiliar operations. Help describes fields, output, and examples.
 
 ### Task Lifecycle
 
 Mark finished work Done (or the configured final status) and leave it on the board until periodic cleanup.
 
-Archive (`backlog task archive {{TASK_ID:123}}`) moves a task in any status off the board: finished work during cleanup, and canceled, duplicate, or invalid work at any time. An archived task keeps its ID, its record, and every dependency and reference to it. It stays readable with `backlog task view` and is read-only. A dependency on an archived task counts as satisfied only when that task is in the final status.
+Archive (`memaster task archive {{TASK_ID:123}}`) moves a task in any status off the board: finished work during cleanup, and canceled, duplicate, or invalid work at any time. An archived task keeps its ID, its record, and every dependency and reference to it. It stays readable with `memaster task view` and is read-only. A dependency on an archived task counts as satisfied only when that task is in the final status.
 
-Restore (`backlog task restore {{TASK_ID:123}}`) moves an archived task back to the board with the same ID and the status it had. Restore a task before changing it: editing an archived task fails and names this command.
+Restore (`memaster task restore {{TASK_ID:123}}`) moves an archived task back to the board with the same ID and the status it had. Restore a task before changing it: editing an archived task fails and names this command.
 
-Deleting a task takes two steps: archive it, then run `backlog task delete {{TASK_ID:123}}`. Delete permanently removes the archived task and releases its ID once no other branch or worktree still holds the task. It removes the dependencies and references other tasks and drafts hold to it and names the tasks and drafts it changed. A task whose subtasks still exist, as tasks or as drafts, is not deleted.
+Deleting a task takes two steps: archive it, then run `memaster task delete {{TASK_ID:123}}`. Delete permanently removes the archived task and releases its ID once no other branch or worktree still holds the task. It removes the dependencies and references other tasks and drafts hold to it and names the tasks and drafts it changed. A task whose subtasks still exist, as tasks or as drafts, is not deleted.
 
-Use the CLI for Backlog changes. Never edit task, draft, document, decision, or milestone markdown files directly; commands preserve metadata, relationships, and history.
+Use the CLI for Memaster changes. Never edit task, draft, document, decision, or milestone markdown files directly; commands preserve metadata, relationships, and history.

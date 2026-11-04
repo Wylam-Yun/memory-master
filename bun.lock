@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "backlog.md",
+      "name": "memory-master",
       "devDependencies": {
         "@biomejs/biome": "2.6.2",
         "@clack/core": "1.5.1",

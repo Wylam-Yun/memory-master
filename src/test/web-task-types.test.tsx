@@ -461,7 +461,7 @@ describe("Web task type UI", () => {
 		await waitFor(() => updateCalls === 1 && typeSelect.disabled);
 
 		const refreshedTask = { ...task, description: "Refreshed while the type write is pending" };
-		await renderModal(refreshedTask, ["Bug", "Feature"], ["Backlog", "To Do", "Done"]);
+		await renderModal(refreshedTask, ["Bug", "Feature"], ["Memaster", "To Do", "Done"]);
 		typeSelect = container.querySelector("select[aria-label='Task type']") as HTMLSelectElement;
 		expect(typeSelect.disabled).toBe(true);
 		expect(typeSelect.value).toBe("Feature");

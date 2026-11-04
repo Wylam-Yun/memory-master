@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { loadTaskCorpus } from "../core/task-detail.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { Task } from "../types/index.ts";
@@ -61,7 +61,7 @@ async function writeTask(directory: string, filename: string, value: Task): Prom
 
 async function commit(message: string, date: string): Promise<void> {
 	await $`git add -A`.cwd(testDir).quiet();
-	await $`GIT_AUTHOR_DATE="${date}" GIT_COMMITTER_DATE="${date}" git -c user.name="Backlog Test" -c user.email="test@example.com" commit -m ${message}`
+	await $`GIT_AUTHOR_DATE="${date}" GIT_COMMITTER_DATE="${date}" git -c user.name="Memaster Test" -c user.email="test@example.com" commit -m ${message}`
 		.cwd(testDir)
 		.quiet();
 }
@@ -75,7 +75,7 @@ beforeEach(async () => {
 	extraDirs = [];
 	extraCores = [];
 	core = new Core(testDir);
-	await core.filesystem.ensureBacklogStructure();
+	await core.filesystem.ensureMemasterStructure();
 	await core.filesystem.saveConfig({
 		projectName: "Core task corpus regressions",
 		statuses: ["To Do", "In Progress", "Done"],
@@ -377,10 +377,10 @@ describe("Core shared task corpus regressions", () => {
 		// directories untouched, so only ref-fingerprint comparison can notice it.
 		const worktreeDir = trackDir("worktree");
 		await $`git worktree add ${worktreeDir} feature-stale`.cwd(testDir).quiet();
-		const worktreeTaskPath = join(worktreeDir, "backlog", "tasks", "task-1 - Branch.md");
+		const worktreeTaskPath = join(worktreeDir, "memaster", "tasks", "task-1 - Branch.md");
 		await Bun.write(worktreeTaskPath, serializeTask(task("TASK-1", "After ref move")));
 		await $`git add -A`.cwd(worktreeDir).quiet();
-		await $`git -c user.name="Backlog Test" -c user.email="test@example.com" commit -m "Move branch tip"`
+		await $`git -c user.name="Memaster Test" -c user.email="test@example.com" commit -m "Move branch tip"`
 			.cwd(worktreeDir)
 			.quiet();
 
@@ -411,10 +411,10 @@ describe("Core shared task corpus regressions", () => {
 		// directories untouched, so only ref-fingerprint comparison can notice it.
 		const worktreeDir = trackDir("worktree");
 		await $`git worktree add ${worktreeDir} feature-stale`.cwd(testDir).quiet();
-		const worktreeTaskPath = join(worktreeDir, "backlog", "tasks", "task-1 - Branch.md");
+		const worktreeTaskPath = join(worktreeDir, "memaster", "tasks", "task-1 - Branch.md");
 		await Bun.write(worktreeTaskPath, serializeTask(task("TASK-1", "After ref move")));
 		await $`git add -A`.cwd(worktreeDir).quiet();
-		await $`git -c user.name="Backlog Test" -c user.email="test@example.com" commit -m "Move branch tip"`
+		await $`git -c user.name="Memaster Test" -c user.email="test@example.com" commit -m "Move branch tip"`
 			.cwd(worktreeDir)
 			.quiet();
 
@@ -449,9 +449,13 @@ describe("Core shared task corpus regressions", () => {
 		const contributorDir = trackDir("contributor");
 		await $`git clone ${originDir} ${contributorDir}`.quiet();
 		await $`git switch -c contributed`.cwd(contributorDir).quiet();
-		await writeTask(join(contributorDir, "backlog", "tasks"), "task-2 - Contributed.md", task("TASK-2", "Contributed"));
+		await writeTask(
+			join(contributorDir, "memaster", "tasks"),
+			"task-2 - Contributed.md",
+			task("TASK-2", "Contributed"),
+		);
 		await $`git add -A`.cwd(contributorDir).quiet();
-		await $`git -c user.name="Backlog Test" -c user.email="test@example.com" commit -m "Contribute task"`
+		await $`git -c user.name="Memaster Test" -c user.email="test@example.com" commit -m "Contribute task"`
 			.cwd(contributorDir)
 			.quiet();
 		await $`git push -u origin contributed`.cwd(contributorDir).quiet();
@@ -516,12 +520,12 @@ describe("Core shared task corpus regressions", () => {
 			await $`git clone ${originDir} ${contributorDir}`.quiet();
 			await $`git switch -c contributed`.cwd(contributorDir).quiet();
 			await writeTask(
-				join(contributorDir, "backlog", "tasks"),
+				join(contributorDir, "memaster", "tasks"),
 				"task-2 - Contributed.md",
 				task("TASK-2", "Contributed"),
 			);
 			await $`git add -A`.cwd(contributorDir).quiet();
-			await $`git -c user.name="Backlog Test" -c user.email="test@example.com" commit -m "Contribute task"`
+			await $`git -c user.name="Memaster Test" -c user.email="test@example.com" commit -m "Contribute task"`
 				.cwd(contributorDir)
 				.quiet();
 			await $`git push -u origin contributed`.cwd(contributorDir).quiet();

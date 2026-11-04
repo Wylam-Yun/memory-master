@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
-import type { BacklogConfig, Task } from "../types/index.ts";
+import { Core } from "../core/memaster.ts";
+import type { MemasterConfig, Task } from "../types/index.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
@@ -35,7 +35,7 @@ describe("Auto-commit configuration", () => {
 
 		it("should migrate existing config to include autoCommit", async () => {
 			// Create config without autoCommit
-			const oldConfig: BacklogConfig = {
+			const oldConfig: MemasterConfig = {
 				projectName: "Test Project",
 				statuses: ["To Do", "Done"],
 				labels: [],
@@ -161,7 +161,7 @@ describe("Auto-commit configuration", () => {
 
 			// Commit the config change to start with a clean state
 			const git = await core.getGitOps();
-			await git.addFile(join(TEST_DIR, "backlog", "config.yml"));
+			await git.addFile(join(TEST_DIR, "memaster", "config.yml"));
 			await git.commitChanges("Update autoCommit config for test");
 		});
 

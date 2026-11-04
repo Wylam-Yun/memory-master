@@ -2,14 +2,14 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { serializeTask } from "../markdown/serializer.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Task } from "../types/index.ts";
 import { createUniqueTestDir, retry, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 let serverPort = 0;
 let core: Core;
 
@@ -35,12 +35,12 @@ function makeTask(overrides: Partial<Task>): Task {
 	};
 }
 
-describe("BacklogServer cleanup endpoints", () => {
+describe("MemasterServer cleanup endpoints", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("server-cleanup");
 		await mkdir(TEST_DIR, { recursive: true });
 		core = new Core(TEST_DIR);
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await core.filesystem.saveConfig({
 			projectName: "Server Cleanup",
 			statuses: ["To Do", "Review", "Closed"],
@@ -74,7 +74,7 @@ describe("BacklogServer cleanup endpoints", () => {
 			false,
 		);
 
-		server = new BacklogServer(TEST_DIR);
+		server = new MemasterServer(TEST_DIR);
 		await server.start(0, false);
 		const port = server.getPort();
 		expect(port).not.toBeNull();
@@ -163,7 +163,7 @@ describe("BacklogServer cleanup endpoints", () => {
 		);
 
 		expect(result).toMatchObject({ movedCount: 0, totalCount: 1 });
-		// The browser shows this message, so it names the skipped task and the reason as `backlog cleanup` does.
+		// The browser shows this message, so it names the skipped task and the reason as `memaster cleanup` does.
 		expect(result.message).toBe("Skipped task TASK-1: its status is now To Do\nSuccessfully archived 0 of 1 tasks.");
 		expect(await core.filesystem.listArchivedTasks()).toEqual([]);
 	});
@@ -221,7 +221,7 @@ describe("BacklogServer cleanup endpoints", () => {
 		const again = await fetch(`http://127.0.0.1:${serverPort}/api/tasks/TASK-1/archive`, { method: "POST" });
 		expect(again.status).toBe(400);
 		expect(((await again.json()) as { error: string }).error).toBe(
-			"Task TASK-1 is archived. Archived tasks are read-only. Restore it to the board first: backlog task restore TASK-1",
+			"Task TASK-1 is archived. Archived tasks are read-only. Restore it to the board first: memaster task restore TASK-1",
 		);
 
 		const edit = await fetch(`http://127.0.0.1:${serverPort}/api/tasks/TASK-1`, {
@@ -265,7 +265,7 @@ describe("BacklogServer cleanup endpoints", () => {
 	});
 });
 
-describe("BacklogServer archive endpoint and a task on another branch", () => {
+describe("MemasterServer archive endpoint and a task on another branch", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("server-archive-other-branch");
 		await mkdir(TEST_DIR, { recursive: true });
@@ -273,7 +273,7 @@ describe("BacklogServer archive endpoint and a task on another branch", () => {
 		await $`git config user.name "Test User"`.cwd(TEST_DIR).quiet();
 		await $`git config user.email test@example.com`.cwd(TEST_DIR).quiet();
 		core = new Core(TEST_DIR);
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await core.filesystem.saveConfig({
 			projectName: "Server Archive",
 			statuses: ["To Do", "In Progress", "Done"],
@@ -292,7 +292,7 @@ describe("BacklogServer archive endpoint and a task on another branch", () => {
 		await $`git commit -m "Add the feature task"`.cwd(TEST_DIR).quiet();
 		await $`git switch main`.cwd(TEST_DIR).quiet();
 
-		server = new BacklogServer(TEST_DIR);
+		server = new MemasterServer(TEST_DIR);
 		await server.start(0, false);
 		serverPort = server.getPort() ?? 0;
 		await retry(async () => {

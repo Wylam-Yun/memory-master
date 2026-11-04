@@ -59,7 +59,7 @@ describe("MCP milestone tools", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("mcp-milestones");
 		server = new McpServer(TEST_DIR, "Test instructions");
-		await server.filesystem.ensureBacklogStructure();
+		await server.filesystem.ensureMemasterStructure();
 
 		await initializeFilesystemTestProject(server, "Test Project");
 
@@ -477,7 +477,7 @@ describe("MCP milestone tools", () => {
 		const status = await server.git.getStatus();
 		expect(status.trim()).toBe("");
 		const lastCommit = await server.git.getLastCommitMessage();
-		expect(lastCommit).toContain("backlog: Rename milestone m-0");
+		expect(lastCommit).toContain("memaster: Rename milestone m-0");
 	});
 
 	it("preserves the original commit error when milestone rename rollback fails", async () => {
@@ -604,7 +604,7 @@ describe("MCP milestone tools", () => {
 		expect(getText(rename.content)).toContain('Renamed milestone "Release 1.0" (m-0) → "Release 2.0" (m-0).');
 
 		const lastCommit = await server.git.getLastCommitMessage();
-		expect(lastCommit).toContain("backlog: Rename milestone m-0");
+		expect(lastCommit).toContain("memaster: Rename milestone m-0");
 
 		const { stdout: committedFilesRaw } = await $`git show --name-only --pretty=format:`.cwd(TEST_DIR).quiet();
 		const committedFiles = committedFilesRaw.toString();
@@ -635,7 +635,7 @@ describe("MCP milestone tools", () => {
 		expect(getText(archived.content)).toContain('Archived milestone "Release 1.0"');
 
 		const lastCommit = await server.git.getLastCommitMessage();
-		expect(lastCommit).toContain("backlog: Archive milestone m-0");
+		expect(lastCommit).toContain("memaster: Archive milestone m-0");
 
 		const { stdout: committedFilesRaw } = await $`git show --name-only --pretty=format:`.cwd(TEST_DIR).quiet();
 		const committedFiles = committedFilesRaw.toString();

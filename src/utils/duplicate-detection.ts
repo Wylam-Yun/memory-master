@@ -94,11 +94,11 @@ export function formatDuplicateTaskIdWarning(groups: DuplicateGroup[]): string {
 			lines.push(`    - ${task.filePath ?? task.title}`);
 		}
 	}
-	lines.push("Run 'backlog doctor' to preview a safe, human-readable repair.");
+	lines.push("Run 'memaster doctor' to preview a safe, human-readable repair.");
 	return lines.join("\n");
 }
 
 export function formatDuplicateTaskIdSummary(groups: DuplicateGroup[]): string {
 	const ids = groups.map((group) => group.id).join(", ");
-	return `Duplicate task IDs detected: ${ids}. Run 'backlog doctor' to preview a safe repair.`;
+	return `Duplicate task IDs detected: ${ids}. Run 'memaster doctor' to preview a safe repair.`;
 }

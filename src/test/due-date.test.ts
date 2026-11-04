@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { parseMilestone, parseTask } from "../markdown/parser.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { Task } from "../types/index.ts";
@@ -148,7 +148,7 @@ describe("due date persistence operations", () => {
 		await mkdir(testDir, { recursive: true });
 		await $`git init -b main`.cwd(testDir).quiet();
 		core = new Core(testDir);
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await initializeTestProject(core, "Due date project");
 	});
 
@@ -188,7 +188,7 @@ describe("due date persistence operations", () => {
 	it("does not hide valid milestones when another file has an invalid due date", async () => {
 		await core.filesystem.createMilestone("Valid release", undefined, "2026-09-01");
 		await Bun.write(
-			join(testDir, "backlog", "milestones", "m-1 - Invalid-release.md"),
+			join(testDir, "memaster", "milestones", "m-1 - Invalid-release.md"),
 			`---
 id: m-1
 title: "Invalid release"

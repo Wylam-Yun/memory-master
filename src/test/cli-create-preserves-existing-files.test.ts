@@ -15,7 +15,7 @@ const CLI_PATH = getTestCliPath();
 const itIfSymlinks = isWindows() ? it.skip : it;
 
 let TEST_DIR: string;
-/** A second directory outside the repository, for files kept outside the backlog folder. */
+/** A second directory outside the repository, for files kept outside the memaster folder. */
 let OUTSIDE_DIR: string;
 
 interface RecordKind {
@@ -63,8 +63,8 @@ const DECISION: RecordKind = {
 };
 const ALL_KINDS = [TASK, DRAFT, DOCUMENT, DECISION];
 
-/** Run `backlog <args>` in the test project and return what a caller of the CLI sees. */
-async function backlog(...args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+/** Run `memaster <args>` in the test project and return what a caller of the CLI sees. */
+async function memaster(...args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
 	const result = await $`bun ${[CLI_PATH, ...args]}`.cwd(TEST_DIR).nothrow().quiet();
 	return { exitCode: result.exitCode, stdout: result.stdout.toString(), stderr: result.stderr.toString() };
 }
@@ -74,7 +74,7 @@ function firstLine(text: string): string {
 }
 
 function recordsDir(kind: RecordKind): string {
-	return join(TEST_DIR, "backlog", kind.folder);
+	return join(TEST_DIR, "memaster", kind.folder);
 }
 
 function fileName(kind: RecordKind, n: number, title: string): string {
@@ -95,7 +95,7 @@ async function readFolder(dir: string): Promise<Record<string, string>> {
  * edit would: lower case for tasks and drafts, upper case for documents and decisions.
  */
 async function createFirstWithIdInOtherLetterCase(kind: RecordKind): Promise<void> {
-	await backlog(...kind.createCommand, "First");
+	await memaster(...kind.createCommand, "First");
 	const firstPath = join(recordsDir(kind), fileName(kind, 1, "First"));
 	const storedId = kind.storedId(1);
 	const otherCaseId = storedId === storedId.toUpperCase() ? storedId.toLowerCase() : storedId.toUpperCase();
@@ -134,13 +134,13 @@ afterEach(async () => {
 describe("creating a record never removes or replaces an existing file", () => {
 	for (const kind of ALL_KINDS) {
 		it(`${kind.label}: keeps a copied file named for the next number and takes the number after it`, async () => {
-			await backlog(...kind.createCommand, "First");
+			await memaster(...kind.createCommand, "First");
 			const dir = recordsDir(kind);
 			// A hand-made copy: its name claims number 2 while its frontmatter still says number 1.
 			await copyFile(join(dir, fileName(kind, 1, "First")), join(dir, fileName(kind, 2, "Copied")));
 			const before = await readFolder(dir);
 
-			const created = await backlog(...kind.createCommand, "Second");
+			const created = await memaster(...kind.createCommand, "Second");
 
 			expect(created.exitCode).toBe(0);
 			expect(firstLine(created.stdout)).toBe(kind.printed(3));
@@ -155,7 +155,7 @@ describe("creating a record never removes or replaces an existing file", () => {
 			const dir = recordsDir(kind);
 			const before = await readFolder(dir);
 
-			const created = await backlog(...kind.createCommand, "Second");
+			const created = await memaster(...kind.createCommand, "Second");
 
 			expect(created.exitCode).toBe(0);
 			expect(firstLine(created.stdout)).toBe(kind.printed(2));
@@ -166,10 +166,10 @@ describe("creating a record never removes or replaces an existing file", () => {
 		});
 
 		itIfSymlinks(`${kind.label}: leaves a symlinked record file and the file it points to alone`, async () => {
-			await backlog(...kind.createCommand, "First");
+			await memaster(...kind.createCommand, "First");
 			const dir = recordsDir(kind);
 			const firstPath = join(dir, fileName(kind, 1, "First"));
-			// The file named for the next number is a link to a file kept outside the backlog folder.
+			// The file named for the next number is a link to a file kept outside the memaster folder.
 			const linkedFile = join(OUTSIDE_DIR, "linked.md");
 			await copyFile(firstPath, linkedFile);
 			const linkPath = join(dir, fileName(kind, 2, "Linked"));
@@ -181,7 +181,7 @@ describe("creating a record never removes or replaces an existing file", () => {
 			const firstContent = await readFile(firstPath, "utf8");
 			const linkedContent = await readFile(linkedFile, "utf8");
 
-			const created = await backlog(...kind.createCommand, "Second");
+			const created = await memaster(...kind.createCommand, "Second");
 
 			expect(created.exitCode).toBe(0);
 			expect(firstLine(created.stdout)).toBe(kind.printed(3));
@@ -203,10 +203,10 @@ describe("creating a record never removes or replaces an existing file", () => {
 				const takenPath = join(dir, fileName(kind, 1, "Second"));
 				const missingTarget = await takePathWithLinkToMissingFile(takenPath);
 
-				const refused = await backlog(...kind.createCommand, "Second");
+				const refused = await memaster(...kind.createCommand, "Second");
 
 				expect(refused.exitCode).toBe(1);
-				expect(refused.stderr).toContain(join("backlog", kind.folder, fileName(kind, 1, "Second")));
+				expect(refused.stderr).toContain(join("memaster", kind.folder, fileName(kind, 1, "Second")));
 				expect(refused.stderr).toContain("already exists");
 				expect(refused.stdout).toBe("");
 				expect(await readdir(dir)).toEqual([fileName(kind, 1, "Second")]);
@@ -219,14 +219,14 @@ describe("creating a record never removes or replaces an existing file", () => {
 	// A document file is listed under any name, so its number is counted and skipped instead.
 	for (const kind of [TASK, DRAFT, DECISION]) {
 		it(`${kind.label}: never overwrites a file whose name differs only in letter case`, async () => {
-			await backlog(...kind.createCommand, "First");
+			await memaster(...kind.createCommand, "First");
 			const dir = recordsDir(kind);
 			// The upper-case prefix keeps this file out of the listing that picks the next number.
 			const twinName = `${kind.filePrefix.toUpperCase()}-2 - Second.md`;
 			await copyFile(join(dir, fileName(kind, 1, "First")), join(dir, twinName));
 			const before = await readFolder(dir);
 
-			const created = await backlog(...kind.createCommand, "Second");
+			const created = await memaster(...kind.createCommand, "Second");
 
 			if (await fileSystemIgnoresLetterCase()) {
 				// The new file's own path is the twin, so the create is refused.
@@ -245,7 +245,7 @@ describe("creating a record never removes or replaces an existing file", () => {
 	}
 
 	it("draft: counts a stored ID when another draft file cannot be read", async () => {
-		await backlog(...DRAFT.createCommand, "First");
+		await memaster(...DRAFT.createCommand, "First");
 		const dir = recordsDir(DRAFT);
 		const firstPath = join(dir, fileName(DRAFT, 1, "First"));
 		// The stored ID is higher than the number in any file name.
@@ -254,7 +254,7 @@ describe("creating a record never removes or replaces an existing file", () => {
 		const before = await readFolder(dir);
 		expect(before[fileName(DRAFT, 1, "First")]).toContain("id: DRAFT-5\n");
 
-		const created = await backlog(...DRAFT.createCommand, "Second");
+		const created = await memaster(...DRAFT.createCommand, "Second");
 
 		expect(created.exitCode).toBe(0);
 		expect(firstLine(created.stdout)).toBe(DRAFT.printed(6));
@@ -271,7 +271,7 @@ describe("a title change moves only the file the record was loaded from", () => 
 	 * file name starts with the same number. Returns the content of that other record's file.
 	 */
 	async function createGuideAndRecordSharingItsNumber(kind: RecordKind): Promise<string> {
-		await backlog(...kind.createCommand, "Guide");
+		await memaster(...kind.createCommand, "Guide");
 		const dir = recordsDir(kind);
 		const guide = await readFile(join(dir, fileName(kind, 1, "Guide")), "utf8");
 		const other = guide.replace(`id: ${kind.storedId(1)}\n`, `id: ${kind.storedId(99)}\n`).replace("Guide", "Other");
@@ -285,7 +285,7 @@ describe("a title change moves only the file the record was loaded from", () => 
 		it(`document: renames its own file to "${newTitle}" and keeps another record that shares its number`, async () => {
 			const other = await createGuideAndRecordSharingItsNumber(DOCUMENT);
 
-			const updated = await backlog("doc", "update", "doc-1", "--title", newTitle);
+			const updated = await memaster("doc", "update", "doc-1", "--title", newTitle);
 
 			expect(updated.exitCode).toBe(0);
 			expect(await readFolder(recordsDir(DOCUMENT))).toEqual({
@@ -295,9 +295,9 @@ describe("a title change moves only the file the record was loaded from", () => 
 		});
 
 		it(`draft: renames its own file to "${newTitle}" and leaves one file`, async () => {
-			await backlog(...DRAFT.createCommand, "Guide");
+			await memaster(...DRAFT.createCommand, "Guide");
 
-			const edited = await backlog("draft", "edit", "1", "-t", newTitle);
+			const edited = await memaster("draft", "edit", "1", "-t", newTitle);
 
 			expect(edited.exitCode).toBe(0);
 			expect(await readFolder(recordsDir(DRAFT))).toEqual({
@@ -310,10 +310,10 @@ describe("a title change moves only the file the record was loaded from", () => 
 		await createGuideAndRecordSharingItsNumber(DOCUMENT);
 		const before = await readFolder(recordsDir(DOCUMENT));
 
-		const refused = await backlog("doc", "update", "doc-1", "--title", "Other");
+		const refused = await memaster("doc", "update", "doc-1", "--title", "Other");
 
 		expect(refused.exitCode).toBe(1);
-		expect(refused.stderr).toContain(join("backlog", "docs", fileName(DOCUMENT, 1, "Other")));
+		expect(refused.stderr).toContain(join("memaster", "docs", fileName(DOCUMENT, 1, "Other")));
 		expect(refused.stderr).toContain("already exists");
 		expect(await readFolder(recordsDir(DOCUMENT))).toEqual(before);
 	});
@@ -321,17 +321,17 @@ describe("a title change moves only the file the record was loaded from", () => 
 	// Two draft files that share a number already make every edit of that number fail as ambiguous.
 	// The path a retitle needs can still be taken by a file that no listing returns.
 	itIfSymlinks("draft: refuses a retitle onto a path that is already taken and changes nothing", async () => {
-		await backlog(...DRAFT.createCommand, "Guide");
+		await memaster(...DRAFT.createCommand, "Guide");
 		const dir = recordsDir(DRAFT);
 		const guidePath = join(dir, fileName(DRAFT, 1, "Guide"));
 		const guide = await readFile(guidePath, "utf8");
 		const takenPath = join(dir, fileName(DRAFT, 1, "Other"));
 		const missingTarget = await takePathWithLinkToMissingFile(takenPath);
 
-		const refused = await backlog("draft", "edit", "1", "-t", "Other");
+		const refused = await memaster("draft", "edit", "1", "-t", "Other");
 
 		expect(refused.exitCode).toBe(1);
-		expect(refused.stderr).toContain(join("backlog", "drafts", fileName(DRAFT, 1, "Other")));
+		expect(refused.stderr).toContain(join("memaster", "drafts", fileName(DRAFT, 1, "Other")));
 		expect(refused.stderr).toContain("already exists");
 		expect((await readdir(dir)).sort()).toEqual([fileName(DRAFT, 1, "Guide"), fileName(DRAFT, 1, "Other")]);
 		expect(await readFile(guidePath, "utf8")).toBe(guide);
@@ -367,14 +367,14 @@ describe("a title change moves only the file the record was loaded from", () => 
 
 describe("moving a record between tasks and drafts leaves every other file alone", () => {
 	it("promote: takes the number after a copied task file and keeps that file", async () => {
-		await backlog(...TASK.createCommand, "First");
+		await memaster(...TASK.createCommand, "First");
 		const tasksDir = recordsDir(TASK);
 		// A hand-made copy: its name claims number 2 while its frontmatter still says number 1.
 		await copyFile(join(tasksDir, fileName(TASK, 1, "First")), join(tasksDir, fileName(TASK, 2, "Copied")));
-		await backlog(...DRAFT.createCommand, "Idea");
+		await memaster(...DRAFT.createCommand, "Idea");
 		const tasksBefore = await readFolder(tasksDir);
 
-		const promoted = await backlog("draft", "promote", "1");
+		const promoted = await memaster("draft", "promote", "1");
 
 		expect(promoted.exitCode).toBe(0);
 		expect(promoted.stdout).toBe("Promoted draft DRAFT-1\n");
@@ -386,13 +386,13 @@ describe("moving a record between tasks and drafts leaves every other file alone
 	});
 
 	it("demote: takes the number after a copied draft file and keeps that file", async () => {
-		await backlog(...DRAFT.createCommand, "First");
+		await memaster(...DRAFT.createCommand, "First");
 		const draftsDir = recordsDir(DRAFT);
 		await copyFile(join(draftsDir, fileName(DRAFT, 1, "First")), join(draftsDir, fileName(DRAFT, 2, "Copied")));
-		await backlog(...TASK.createCommand, "Work");
+		await memaster(...TASK.createCommand, "Work");
 		const draftsBefore = await readFolder(draftsDir);
 
-		const demoted = await backlog("task", "demote", "1");
+		const demoted = await memaster("task", "demote", "1");
 
 		expect(demoted.exitCode).toBe(0);
 		expect(firstLine(demoted.stdout)).toBe("Demoted task TASK-1");
@@ -404,7 +404,7 @@ describe("moving a record between tasks and drafts leaves every other file alone
 	});
 
 	itIfSymlinks("demote: refuses when the new draft's path is taken and leaves the task where it is", async () => {
-		await backlog(...TASK.createCommand, "Work");
+		await memaster(...TASK.createCommand, "Work");
 		const taskPath = join(recordsDir(TASK), fileName(TASK, 1, "Work"));
 		const task = await readFile(taskPath, "utf8");
 		const draftsDir = recordsDir(DRAFT);
@@ -412,10 +412,10 @@ describe("moving a record between tasks and drafts leaves every other file alone
 		const takenPath = join(draftsDir, fileName(DRAFT, 1, "Work"));
 		const missingTarget = await takePathWithLinkToMissingFile(takenPath);
 
-		const refused = await backlog("task", "demote", "1");
+		const refused = await memaster("task", "demote", "1");
 
 		expect(refused.exitCode).toBe(1);
-		expect(refused.stderr).toContain(join("backlog", "drafts", fileName(DRAFT, 1, "Work")));
+		expect(refused.stderr).toContain(join("memaster", "drafts", fileName(DRAFT, 1, "Work")));
 		expect(refused.stderr).toContain("already exists");
 		expect(await readFile(taskPath, "utf8")).toBe(task);
 		expect(await readdir(draftsDir)).toEqual([fileName(DRAFT, 1, "Work")]);
@@ -424,7 +424,7 @@ describe("moving a record between tasks and drafts leaves every other file alone
 	});
 
 	itIfSymlinks("promote: refuses when the new task's path is taken and leaves the draft where it is", async () => {
-		await backlog(...DRAFT.createCommand, "Idea");
+		await memaster(...DRAFT.createCommand, "Idea");
 		const draftPath = join(recordsDir(DRAFT), fileName(DRAFT, 1, "Idea"));
 		const draft = await readFile(draftPath, "utf8");
 		const tasksDir = recordsDir(TASK);
@@ -432,10 +432,10 @@ describe("moving a record between tasks and drafts leaves every other file alone
 		const takenPath = join(tasksDir, fileName(TASK, 1, "Idea"));
 		const missingTarget = await takePathWithLinkToMissingFile(takenPath);
 
-		const refused = await backlog("draft", "promote", "1");
+		const refused = await memaster("draft", "promote", "1");
 
 		expect(refused.exitCode).toBe(1);
-		expect(refused.stderr).toContain(join("backlog", "tasks", fileName(TASK, 1, "Idea")));
+		expect(refused.stderr).toContain(join("memaster", "tasks", fileName(TASK, 1, "Idea")));
 		expect(refused.stderr).toContain("already exists");
 		expect(refused.stderr).not.toContain("not found");
 		expect(refused.stdout).toBe("");

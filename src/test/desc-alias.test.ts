@@ -17,7 +17,7 @@ describe("--desc alias functionality", () => {
 		// Initialize git repo first
 		await $`git init`.cwd(TEST_DIR).quiet();
 
-		// Initialize backlog project using Core
+		// Initialize memaster project using Core
 		const core = new Core(TEST_DIR);
 		await initializeFilesystemTestProject(core, "Desc Alias Test Project");
 	});

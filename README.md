@@ -1,31 +1,31 @@
 <p align="center">
-  <img src="./.github/backlog-logo.png" alt="Backlog.md logo" width="120">
+  <img src="./.github/memaster-logo.png" alt="Memaster logo" width="120">
 </p>
 
-<h1 align="center">Backlog.md</h1>
+<h1 align="center">Memaster</h1>
 <p align="center"><strong>Markdown‑native Task Manager &amp; Kanban visualizer for any Git repository</strong></p>
 <p align="center">AI agents write the code. You review the tasks: before, during, and after.</p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/backlog.md"><img src="https://img.shields.io/npm/v/backlog.md?color=brightgreen" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/backlog.md"><img src="https://img.shields.io/npm/dm/backlog.md" alt="npm downloads"></a>
-  <a href="https://github.com/MrLesk/Backlog.md/blob/main/LICENSE"><img src="https://img.shields.io/github/license/MrLesk/Backlog.md" alt="MIT license"></a>
-  <a href="https://github.com/MrLesk/Backlog.md"><img src="https://img.shields.io/github/stars/MrLesk/Backlog.md?style=social" alt="GitHub stars"></a>
+  <a href="https://www.npmjs.com/package/memory-master"><img src="https://img.shields.io/npm/v/memory-master?color=brightgreen" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/memory-master"><img src="https://img.shields.io/npm/dm/memory-master" alt="npm downloads"></a>
+  <a href="https://github.com/Wylam-Yun/memory-master/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Wylam-Yun/memory-master" alt="MIT license"></a>
+  <a href="https://github.com/Wylam-Yun/memory-master"><img src="https://img.shields.io/github/stars/Wylam-Yun/memory-master?style=social" alt="GitHub stars"></a>
 </p>
 
 <p align="center">
-<code>npm i -g backlog.md</code>
+<code>npm i -g memory-master</code>
 </p>
 
-![Backlog demo GIF using: backlog board](./.github/backlog-v1.40.gif)
+![Memaster demo GIF using: memaster board](./.github/memaster-v1.40.gif)
 
 
 ---
 
-> **Backlog.md** turns any folder into a **self‑contained project board**
+> **Memaster** turns any folder into a **self‑contained project board**
 > powered by plain Markdown files and a zero‑config CLI.
 
-## Why Backlog.md in the AI era
+## Why Memaster in the AI era
 
 AI agents can now produce more plausible code in an hour than you can carefully read in a day.
 The bottleneck is no longer writing code. It's your attention. You can't meaningfully review
@@ -33,7 +33,7 @@ The bottleneck is no longer writing code. It's your attention. You can't meaning
 criteria before any code exists, and push back while a misunderstanding is still one sentence,
 not a rebuilt feature.
 
-Backlog.md structures agent work around **three review checkpoints**:
+Memaster structures agent work around **three review checkpoints**:
 
 1. **Review the spec:** the agent decomposes your idea into tasks with descriptions, acceptance
    criteria, and milestones before implementation starts.
@@ -45,8 +45,8 @@ Backlog.md structures agent work around **three review checkpoints**:
 Afterwards, the completed tasks remain in Git as a permanent record of what was attempted and why,
 legible to you, your team, and the next agent.
 
-**Dogfooded:** nearly all of Backlog.md's own code is written by AI agents working through
-Backlog.md itself. The full task ledger lives in this repo's [backlog folder](backlog/tasks).
+**Dogfooded:** nearly all of Memaster's own code is written by AI agents working through
+Memaster itself. The full task ledger lives in this repo's [memaster folder](memaster/tasks).
 
 📺 **See it in action:** [Devoxx Belgium 2025](https://www.youtube.com/watch?v=LSoDQU_9MMA) · [AI Engineer Code Summit 2025](https://www.youtube.com/watch?v=zMXKhhwiCIc)
 
@@ -60,11 +60,11 @@ Backlog.md itself. The full task ledger lives in this repo's [backlog folder](ba
 
 * 🎯 **Milestones & dependencies** -- structure bigger efforts and make execution order reviewable, with task detail showing what a task waits on and what waits on it
 
-* 📊 **Terminal Kanban** -- `backlog board` paints a live board in your shell; `backlog board export` creates shareable markdown reports
+* 📊 **Terminal Kanban** -- `memaster board` paints a live board in your shell; `memaster board export` creates shareable markdown reports
 
-* 🌐 **Web UI** -- `backlog browser` serves a local Kanban board with drag-and-drop and task editing forms
+* 🌐 **Web UI** -- `memaster browser` serves a local Kanban board with drag-and-drop and task editing forms
 
-* 🔍 **Search** -- fuzzy search across tasks, docs & decisions with `backlog search`
+* 🔍 **Search** -- fuzzy search across tasks, docs & decisions with `memaster search`
 
 * 🔒 **Local-first** -- no server, no account, no telemetry; tasks are plain files in your repo, and remote Git operations are optional
 
@@ -77,33 +77,33 @@ Backlog.md itself. The full task ledger lives in this repo's [backlog folder](ba
 
 ```bash
 # Install
-npm i -g backlog.md
-# or: bun add -g backlog.md
-# or: brew install backlog-md
-# or: nix run github:MrLesk/Backlog.md
+npm i -g memory-master
+# or: bun add -g memory-master
+# or: brew install memaster-md
+# or: nix run github:Wylam-Yun/memory-master
 
 # Initialize in any Git repo
-backlog init "My Awesome Project"
+memaster init "My Awesome Project"
 
 # Or initialize without Git for local/non-code projects
-backlog init "Personal Planning" --no-git
+memaster init "Personal Planning" --no-git
 ```
 
 > [!TIP]
-> **Trying it without installing?** Use the full package name: `npx backlog.md init "My Project"`, `npx backlog.md board`.
+> **Trying it without installing?** Use the full package name: `npx memory-master init "My Project"`, `npx memory-master board`.
 
 ### Run with Nix
 
-Run Backlog.md directly from the repository flake:
+Run Memaster directly from the repository flake:
 
 ```bash
-nix run github:MrLesk/Backlog.md -- --version
+nix run github:Wylam-Yun/memory-master -- --version
 ```
 
 Or install the named package into your Nix profile:
 
 ```bash
-nix profile install github:MrLesk/Backlog.md#backlog-md
+nix profile install github:Wylam-Yun/memory-master#memaster-md
 ```
 
 The Nix flake supports `x86_64-linux`, `aarch64-linux`, and
@@ -114,28 +114,28 @@ is checked under Ivy Bridge emulation. Intel macOS users can use the npm, Bun,
 or Homebrew installation instead.
 
 The init wizard will ask how you want to connect AI tools:
-- **CLI instructions** (recommended): creates a short instruction file that tells agents to run `backlog instructions overview`.
+- **CLI instructions** (recommended): creates a short instruction file that tells agents to run `memaster instructions overview`.
 - **MCP connector**: optionally auto-configures Claude Code, Codex, Gemini CLI, Kiro or Cursor for teams that prefer MCP.
-- **Skip**: no AI setup; use Backlog.md purely as a task manager.
+- **Skip**: no AI setup; use Memaster purely as a task manager.
 
-For Cursor with CLI instructions, select AGENTS.md or pass `--agent-instructions cursor`; both use the same AGENTS.md target. Backlog.md preserves existing AGENTS.md content and does not migrate or remove unrelated user-managed `.cursor/rules` files.
+For Cursor with CLI instructions, select AGENTS.md or pass `--agent-instructions cursor`; both use the same AGENTS.md target. Memaster preserves existing AGENTS.md content and does not migrate or remove unrelated user-managed `.cursor/rules` files.
 
-Everything is stored as human-readable Markdown in a project-local backlog folder such as `backlog/`, `.backlog/`, or a custom project-relative path configured through `backlog.config.yml` (e.g. `backlog_directory: my-backlog`). Task IDs use a configurable prefix (`backlog init --task-prefix`): the default produces `TASK-1`-style IDs, while this repository uses `back`, so examples below show `BACK-1`-style IDs. Git is optional: `backlog init --no-git` creates a filesystem-only project.
+Everything is stored as human-readable Markdown in a project-local memaster folder such as `memaster/`, `.memaster/`, or a custom project-relative path configured through `memaster.config.yml` (e.g. `memaster_directory: my-memaster`). Task IDs use a configurable prefix (`memaster init --task-prefix`): the default produces `TASK-1`-style IDs, while this repository uses `back`, so examples below show `BACK-1`-style IDs. Git is optional: `memaster init --no-git` creates a filesystem-only project.
 
 > [!TIP]
-> **Want an architecture diagram of your repo, kept up to date automatically?** See the [Backlog.md + Groma.md integration](#groma-md) below.
+> **Want an architecture diagram of your repo, kept up to date automatically?** See the [Memaster + Groma.md integration](#groma-md) below.
 
 ---
 
 ## Working with AI agents
 
 This is the recommended flow for Claude Code, Codex, Gemini CLI, Kiro and similar tools, following the **spec‑driven AI development** approach.
-After running `backlog init`, agents should start by running `backlog instructions overview`. Work in this loop:
+After running `memaster init`, agents should start by running `memaster instructions overview`. Work in this loop:
 
 **Step 1: Describe your idea.** Tell the agent what you want to build and ask it to split the work into small tasks with clear descriptions and acceptance criteria.
 
 **🤖 Ask your AI Agent:**
-> I want to add a search feature to the web view that searches tasks, docs, and decisions. Please decompose this into small Backlog.md tasks.
+> I want to add a search feature to the web view that searches tasks, docs, and decisions. Please decompose this into small Memaster tasks.
 
 > [!NOTE]
 > **Review checkpoint #1:** read the task descriptions and acceptance criteria.
@@ -155,7 +155,7 @@ After running `backlog init`, agents should start by running `backlog instructio
 > [!NOTE]
 > **Review checkpoint #3:** review the code, run tests, check linting, and verify the results match your expectations.
 
-Mark verified work Done (or the configured final status). During periodic cleanup, `backlog task archive` moves it off the board; the same command takes canceled, duplicate, or invalid work off the board at any time. An archived task keeps its ID, record, and dependency links, stays readable with `backlog task view`, and is read-only. `backlog task restore` brings an archived task back to the board with the same ID. To remove a task for good, archive it and then run `backlog task delete`, which releases its ID once no other branch or worktree still holds the task.
+Mark verified work Done (or the configured final status). During periodic cleanup, `memaster task archive` moves it off the board; the same command takes canceled, duplicate, or invalid work off the board at any time. An archived task keeps its ID, record, and dependency links, stays readable with `memaster task view`, and is read-only. `memaster task restore` brings an archived task back to the board with the same ID. To remove a task for good, archive it and then run `memaster task delete`, which releases its ID once no other branch or worktree still holds the task.
 
 If the output is not good enough: clear the plan/notes/final summary, refine the task description and acceptance criteria, and run the task again in a fresh session.
 
@@ -163,25 +163,25 @@ If the output is not good enough: clear the plan/notes/final summary, refine the
 
 ## Working without AI agents
 
-Use Backlog.md as a standalone task manager from the terminal or browser.
+Use Memaster as a standalone task manager from the terminal or browser.
 
 ```bash
 # Create and refine tasks
-backlog task create "Render markdown as kanban"
-backlog task edit BACK-1 -d "Detailed context" --ac "Clear acceptance criteria"
+memaster task create "Render markdown as kanban"
+memaster task edit BACK-1 -d "Detailed context" --ac "Clear acceptance criteria"
 
 # Track work
-backlog task list -s "To Do"
-backlog task list --json | jq '.tasks[] | .id'
-backlog task edit BACK-1 --comment "Can we split the UI work into a separate PR?" --comment-author @sara
-backlog search "kanban"
-backlog board
+memaster task list -s "To Do"
+memaster task list --json | jq '.tasks[] | .id'
+memaster task edit BACK-1 --comment "Can we split the UI work into a separate PR?" --comment-author @sara
+memaster search "kanban"
+memaster board
 
 # Work visually in the browser
-backlog browser
+memaster browser
 ```
 
-You can switch between AI-assisted and manual workflows at any time; both operate on the same Markdown task files. Just prefer Backlog.md commands (CLI/MCP/Web) over hand-editing task files, so field types and metadata stay consistent.
+You can switch between AI-assisted and manual workflows at any time; both operate on the same Markdown task files. Just prefer Memaster commands (CLI/MCP/Web) over hand-editing task files, so field types and metadata stay consistent.
 
 Read commands support stable, versioned JSON for scripts and integrations. Use `--json` with `task list`, `task view`, the `task <id>` shorthand, `draft list`, `decision list`, and `search`. JSON mode is noninteractive and keeps successful stdout machine-readable. Add `--watch` to `task list --json` for an initial full list followed by changed full replacements, using the exact same JSON format. Read successive complete JSON values; each response replaces the previous list.
 
@@ -191,16 +191,16 @@ Read commands support stable, versioned JSON for scripts and integrations. Use `
 
 <a id="groma-md"></a>
 
-## 🗺️ Backlog.md + Groma.md
+## 🗺️ Memaster + Groma.md
 
-Backlog.md keeps the spec, the plan and the code reviewable. [Groma.md](https://groma.md) adds the
+Memaster keeps the spec, the plan and the code reviewable. [Groma.md](https://groma.md) adds the
 architecture: it scans your repository into a C4 map that you or your coding agent curate, stored next
 to your code as an [Open Knowledge Format 0.2](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md)
-bundle. It reads your Backlog.md tasks, so the two work well together:
+bundle. It reads your Memaster tasks, so the two work well together:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./.github/groma-map-dark.webp">
-  <img src="./.github/groma-map-light.webp" alt="Backlog.md's own architecture in Groma.md: Backlog.md tasks pinned to the components they touch, with one task selected and its acceptance criteria open" width="100%">
+  <img src="./.github/groma-map-light.webp" alt="Memaster's own architecture in Groma.md: Memaster tasks pinned to the components they touch, with one task selected and its acceptance criteria open" width="100%">
 </picture>
 
 * 📍 **Tasks on the map** -- every task is pinned to the components it touches, so you see where the work lands in your system, not only in a list
@@ -213,20 +213,20 @@ bundle. It reads your Backlog.md tasks, so the two work well together:
 
 * 📝 **Still plain files** -- both run locally, need no account, and keep everything as Markdown in your repo
 
-Groma.md is a separate install, and Backlog.md works fine without it. To add the map to a repo that
-already uses Backlog.md:
+Groma.md is a separate install, and Memaster works fine without it. To add the map to a repo that
+already uses Memaster:
 
 ```bash
 npm i -g groma.md
 groma web
 ```
 
-Backlog.md uses it on itself: every push to main updates its map, and every pull request gets a comment
+Memaster uses it on itself: every push to main updates its map, and every pull request gets a comment
 showing what it changes in the architecture.
 
 👉 **[Get started at groma.md](https://groma.md)**
 
-🗺️ **[Explore Backlog.md's own architecture, live](https://mrlesk.github.io/Backlog.md/architecture/auto/)**
+🗺️ **[Explore Memaster's own architecture, live](https://mrlesk.github.io/Memaster/architecture/auto/)**
 
 ---
 
@@ -237,13 +237,13 @@ reachable from other devices on the LAN or VPN:
 
 ```bash
 # Start the web server (opens browser automatically)
-backlog browser
+memaster browser
 
 # Custom port
-backlog browser --port 8080
+memaster browser --port 8080
 
 # Don't open browser automatically
-backlog browser --no-open
+memaster browser --no-open
 ```
 
 **Features:**
@@ -258,14 +258,14 @@ backlog browser --no-open
 
 ![Web Interface Screenshot](./.github/web.jpeg)
 
-To keep the Web UI running as an auto-starting local service, see [Running Backlog.md as a Service](backlog/docs/doc-003%20-%20Running-Backlog-Browser-as-a-Service.md).
+To keep the Web UI running as an auto-starting local service, see [Running Memaster as a Service](memaster/docs/doc-003%20-%20Running-Memaster-Browser-as-a-Service.md).
 
 ---
 
 ## 🔧 MCP Integration (Model Context Protocol)
 
 CLI instructions are the default AI setup. MCP remains supported for AI coding assistants like Claude Code, Codex, Gemini CLI and Kiro when you explicitly prefer an MCP connector.
-You can run `backlog init` (even if you already initialized Backlog.md) and choose MCP integration, or follow the manual steps below.
+You can run `memaster init` (even if you already initialized Memaster) and choose MCP integration, or follow the manual steps below.
 
 ### Client guides
 
@@ -273,7 +273,7 @@ You can run `backlog init` (even if you already initialized Backlog.md) and choo
   <summary><strong>Claude Code</strong></summary>
 
   ```bash
-  claude mcp add backlog --scope user -- backlog mcp start
+  claude mcp add memaster --scope user -- memaster mcp start
   ```
 
 </details>
@@ -282,7 +282,7 @@ You can run `backlog init` (even if you already initialized Backlog.md) and choo
   <summary><strong>Codex</strong></summary>
 
   ```bash
-  codex mcp add backlog -- backlog mcp start
+  codex mcp add memaster -- memaster mcp start
   ```
 
 </details>
@@ -291,7 +291,7 @@ You can run `backlog init` (even if you already initialized Backlog.md) and choo
   <summary><strong>Gemini CLI</strong></summary>
 
   ```bash
-  gemini mcp add backlog -s user backlog mcp start
+  gemini mcp add memaster -s user memaster mcp start
   ```
 
 </details>
@@ -300,7 +300,7 @@ You can run `backlog init` (even if you already initialized Backlog.md) and choo
   <summary><strong>Kiro</strong></summary>
 
   ```bash
-  kiro-cli mcp add --scope global --name backlog --command backlog --args mcp,start
+  kiro-cli mcp add --scope global --name memaster --command memaster --args mcp,start
   ```
 
 </details>
@@ -312,7 +312,7 @@ You can run `backlog init` (even if you already initialized Backlog.md) and choo
 
 </details>
 
-Use the shared `backlog` server name everywhere. The server finds the active project from your client's MCP roots, and re-resolves when you switch workspace or worktree. A single user-scope server covers every repo.
+Use the shared `memaster` server name everywhere. The server finds the active project from your client's MCP roots, and re-resolves when you switch workspace or worktree. A single user-scope server covers every repo.
 
 <details>
   <summary><strong>Manual config</strong></summary>
@@ -320,30 +320,30 @@ Use the shared `backlog` server name everywhere. The server finds the active pro
 ```json
 {
   "mcpServers": {
-    "backlog": {
-      "command": "backlog",
+    "memaster": {
+      "command": "memaster",
       "args": ["mcp", "start"],
       "env": {
-        "BACKLOG_CWD": "/absolute/path/to/your/project"
+        "MEMASTER_CWD": "/absolute/path/to/your/project"
       }
     }
   }
 }
 ```
 
-Set `BACKLOG_CWD` to pin the server to one project and stop workspace following. Use it to always target the same backlog, or when your client can't report MCP roots.
+Set `MEMASTER_CWD` to pin the server to one project and stop workspace following. Use it to always target the same memaster, or when your client can't report MCP roots.
 If your IDE supports custom args but not env vars, you can also use `["mcp", "start", "--cwd", "/absolute/path/to/your/project"]`.
-Until the server finds an initialized project, it serves `backlog://init-required`.
+Until the server finds an initialized project, it serves `memaster://init-required`.
 
 </details>
 
 > [!IMPORTANT]
-> When adding the MCP server manually, add a short instruction to your CLAUDE.md/AGENTS.md files telling agents to read `backlog://workflow/overview`.
-> This step is not required when using `backlog init` as it adds these instructions automatically.
-> For CLI-based setups, use `backlog instructions overview` to fetch the current workflow guidance.
+> When adding the MCP server manually, add a short instruction to your CLAUDE.md/AGENTS.md files telling agents to read `memaster://workflow/overview`.
+> This step is not required when using `memaster init` as it adds these instructions automatically.
+> For CLI-based setups, use `memaster instructions overview` to fetch the current workflow guidance.
 
 
-Once connected, agents can read the Backlog.md workflow instructions via `backlog://workflow/overview`, with detailed guides at `backlog://workflow/task-creation`, `backlog://workflow/task-execution`, and `backlog://workflow/task-finalization`.
+Once connected, agents can read the Memaster workflow instructions via `memaster://workflow/overview`, with detailed guides at `memaster://workflow/task-creation`, `memaster://workflow/task-execution`, and `memaster://workflow/task-finalization`.
 Use `/mcp` command in your AI tool (Claude Code, Codex, Kiro) to verify if the connection is working.
 
 ---
@@ -352,23 +352,23 @@ Use `/mcp` command in your AI tool (Claude Code, Codex, Kiro) to verify if the c
 
 Full command reference covering task management, search, board, docs, decisions, and more: **[CLI-INSTRUCTIONS.md](CLI-INSTRUCTIONS.md)**
 
-Quick examples: `backlog`, `backlog instructions`, `backlog task create`, `backlog task list`, `backlog task edit`, `backlog milestone add`, `backlog milestone rename`, `backlog milestone remove`, `backlog search`, `backlog board`, `backlog browser`.
+Quick examples: `memaster`, `memaster instructions`, `memaster task create`, `memaster task list`, `memaster task edit`, `memaster milestone add`, `memaster milestone rename`, `memaster milestone remove`, `memaster search`, `memaster board`, `memaster browser`.
 
-Full help: `backlog --help`
+Full help: `memaster --help`
 
 ---
 
 ## <img src="./.github/configuration-256.png" alt="Configuration" width="28" height="28" align="center"> Configuration
 
-Backlog.md works with zero configuration. Settings merge from CLI flags, then the project config file (`backlog.config.yml` when present, otherwise `backlog/config.yml` or `.backlog/config.yml`), then built‑in defaults.
+Memaster works with zero configuration. Settings merge from CLI flags, then the project config file (`memaster.config.yml` when present, otherwise `memaster/config.yml` or `.memaster/config.yml`), then built‑in defaults.
 
-Run `backlog config` with no arguments to launch the interactive wizard (the same experience triggered from `backlog init` advanced setup). It walks through cross-branch accuracy (`checkActiveBranches`, `remoteOperations`, `activeBranchDays`), Git workflow (`autoCommit`, `bypassGitHooks`), ID formatting (`zeroPaddedIds`), editor integration (`defaultEditor`), Definition of Done defaults, and Web UI defaults (`defaultPort`, `autoOpenBrowser`). Skipping the wizard applies the safe built-in defaults, and rerunning `backlog init` or `backlog config` pre-populates prompts with your current values.
+Run `memaster config` with no arguments to launch the interactive wizard (the same experience triggered from `memaster init` advanced setup). It walks through cross-branch accuracy (`checkActiveBranches`, `remoteOperations`, `activeBranchDays`), Git workflow (`autoCommit`, `bypassGitHooks`), ID formatting (`zeroPaddedIds`), editor integration (`defaultEditor`), Definition of Done defaults, and Web UI defaults (`defaultPort`, `autoOpenBrowser`). Skipping the wizard applies the safe built-in defaults, and rerunning `memaster init` or `memaster config` pre-populates prompts with your current values.
 
-For filesystem-only projects (`backlog init --no-git`), the saved config forces `checkActiveBranches=false`, `remoteOperations=false`, and `autoCommit=false` so CLI, Web, and MCP local-file workflows do not depend on a Git repository.
+For filesystem-only projects (`memaster init --no-git`), the saved config forces `checkActiveBranches=false`, `remoteOperations=false`, and `autoCommit=false` so CLI, Web, and MCP local-file workflows do not depend on a Git repository.
 
 ### Definition of Done defaults
 
-Set project-wide DoD items with `backlog config` (or during `backlog init` advanced setup), in the Web UI (Settings → Definition of Done Defaults), or by editing the project config file directly:
+Set project-wide DoD items with `memaster config` (or during `memaster init` advanced setup), in the Web UI (Settings → Definition of Done Defaults), or by editing the project config file directly:
 
 ```yaml
 definition_of_done:
@@ -377,7 +377,7 @@ definition_of_done:
   - No regressions introduced
 ```
 
-When a project uses root config discovery, edit `backlog.config.yml` instead of `backlog/config.yml`.
+When a project uses root config discovery, edit `memaster.config.yml` instead of `memaster/config.yml`.
 
 These items are added to every new task by default. You can add more on create with `--dod`, or disable defaults per task with `--no-dod-defaults`.
 
@@ -389,7 +389,7 @@ For the full configuration reference (all options, default values, commands, and
 
 ### Apple Silicon (macOS)
 
-On M-series Macs, `backlog` can fail with `illegal hardware instruction` or `Binary package not installed for darwin-...` when Node, Bun, or Homebrew run under Rosetta (x64 emulation) and install the Intel binary instead of the arm64 one — or the other way around. The launcher runs whichever darwin variant (arm64 or x64) is actually installed, but a clean native-arch install is the reliable fix.
+On M-series Macs, `memaster` can fail with `illegal hardware instruction` or `Binary package not installed for darwin-...` when Node, Bun, or Homebrew run under Rosetta (x64 emulation) and install the Intel binary instead of the arm64 one — or the other way around. The launcher runs whichever darwin variant (arm64 or x64) is actually installed, but a clean native-arch install is the reliable fix.
 
 Check what your tools report:
 
@@ -404,33 +404,33 @@ If the architectures disagree, reinstall with the native one:
 
 ```bash
 # Homebrew: make sure `which brew` prints /opt/homebrew, then
-brew reinstall backlog-md
+brew reinstall memaster-md
 
 # npm
-arch -arm64 npm i -g backlog.md
+arch -arm64 npm i -g memory-master
 
 # Bun
-arch -arm64 bun add -g backlog.md
+arch -arm64 bun add -g memory-master
 ```
 
-Running an x64 Node under Rosetta on purpose also works: `backlog` falls back to whichever `backlog.md-darwin-*` package is present.
+Running an x64 Node under Rosetta on purpose also works: `memaster` falls back to whichever `memory-master-darwin-*` package is present.
 
 ---
 
 ## 📺 Talks & Community
 
-Watch Backlog.md in action:
+Watch Memaster in action:
 
-- **Devoxx Belgium 2025**: [the spec-driven agent workflow behind Backlog.md, live on stage](https://www.youtube.com/watch?v=LSoDQU_9MMA)
-- **AI Engineer Code Summit 2025**: [Backlog.md: task management for AI agents](https://www.youtube.com/watch?v=zMXKhhwiCIc)
+- **Devoxx Belgium 2025**: [the spec-driven agent workflow behind Memaster, live on stage](https://www.youtube.com/watch?v=LSoDQU_9MMA)
+- **AI Engineer Code Summit 2025**: [Memaster: task management for AI agents](https://www.youtube.com/watch?v=zMXKhhwiCIc)
 - Slides from these and more talks: [mrlesk.com/talks](https://mrlesk.com/talks)
 
 ### Community tools
 
-- **[vscode-backlog-md](https://marketplace.visualstudio.com/items?itemName=ysamlan.vscode-backlog-md)** - VS Code extension with issues panel, kanban view, and editing. ([ysamlan/vscode-backlog-md](https://github.com/ysamlan/vscode-backlog-md))
+- **[vscode-memaster-md](https://marketplace.visualstudio.com/items?itemName=ysamlan.vscode-memaster-md)** - VS Code extension with issues panel, kanban view, and editing. ([ysamlan/vscode-memaster-md](https://github.com/ysamlan/vscode-memaster-md))
 
 ---
 
 ## License
 
-Backlog.md is released under the **MIT License**: do anything, just give credit. See [LICENSE](LICENSE).
+Memaster is released under the **MIT License**: do anything, just give credit. See [LICENSE](LICENSE).

@@ -50,7 +50,7 @@ describe("FileSystem task parse cache", () => {
 	beforeEach(async () => {
 		testDir = createUniqueTestDir("test-task-file-cache");
 		filesystem = new FileSystem(testDir);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 	});
 
 	afterEach(async () => {
@@ -155,18 +155,18 @@ describe("FileSystem task parse cache", () => {
 		}
 	});
 
-	it("clears parsed tasks when the configured backlog root changes", async () => {
+	it("clears parsed tasks when the configured memaster root changes", async () => {
 		await filesystem.saveTask(task("TASK-1", "Primary root"));
 		const parseSpy = spyOn(markdownParser, "parseTask");
 
 		try {
 			expect((await filesystem.listTasks())[0]?.title).toBe("Primary root");
-			filesystem.setBacklogDirectory("secondary");
-			await filesystem.ensureBacklogStructure();
+			filesystem.setMemasterDirectory("secondary");
+			await filesystem.ensureMemasterStructure();
 			await filesystem.saveTask(task("TASK-1", "Secondary root"));
 			expect((await filesystem.listTasks())[0]?.title).toBe("Secondary root");
 
-			filesystem.setBacklogDirectory("backlog");
+			filesystem.setMemasterDirectory("memaster");
 			expect((await filesystem.listTasks())[0]?.title).toBe("Primary root");
 			expect(parseSpy).toHaveBeenCalledTimes(3);
 		} finally {
@@ -221,7 +221,7 @@ describe("FileSystem task parse cache", () => {
 
 		try {
 			const startedBeforeRootChange = harness.readParsedTaskFile(taskPath, staleEpoch);
-			filesystem.setBacklogDirectory("secondary");
+			filesystem.setMemasterDirectory("secondary");
 
 			// Models a worker from the old scan that was queued behind the read limit.
 			expect((await harness.readParsedTaskFile(taskPath, staleEpoch)).title).toBe("Old root");

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
 import { initializeProject } from "../core/init.ts";
-import type { BacklogConfig } from "../types/index.ts";
+import { Core } from "../core/memaster.ts";
+import type { MemasterConfig } from "../types/index.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
 describe("Enhanced init command", () => {
@@ -30,7 +30,7 @@ describe("Enhanced init command", () => {
 		// Modify some config values to test preservation
 		expect(initialConfig).toBeTruthy();
 		if (!initialConfig) throw new Error("Config not loaded");
-		const modifiedConfig: BacklogConfig = {
+		const modifiedConfig: MemasterConfig = {
 			...initialConfig,
 			projectName: initialConfig?.projectName ?? "Test Project",
 			autoCommit: true,
@@ -47,8 +47,8 @@ describe("Enhanced init command", () => {
 		expect(existingConfig?.defaultEditor).toBe("vim");
 		expect(existingConfig?.defaultPort).toBe(8080);
 
-		// Verify backlog structure exists
-		const configExists = await Bun.file(join(tmpDir, "backlog", "config.yml")).exists();
+		// Verify memaster structure exists
+		const configExists = await Bun.file(join(tmpDir, "memaster", "config.yml")).exists();
 		expect(configExists).toBe(true);
 	});
 
@@ -82,13 +82,13 @@ describe("Enhanced init command", () => {
 			milestones: [],
 			defaultStatus: "To Do",
 			dateFormat: "yyyy-mm-dd",
-			backlogDirectory: "backlog",
+			memasterDirectory: "memaster",
 			autoCommit: false,
 			remoteOperations: true,
 			defaultEditor: "code --wait",
 		};
 
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await core.filesystem.saveConfig(configWithEditor);
 
 		// Verify editor was saved
@@ -109,7 +109,7 @@ describe("Enhanced init command", () => {
 			dateFormat: "yyyy-mm-dd",
 		};
 
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await core.filesystem.saveConfig(minimalConfig);
 
 		// Load config - should handle missing fields gracefully
@@ -125,23 +125,23 @@ describe("Enhanced init command", () => {
 		// Initialize with custom config
 		const customConfig = {
 			projectName: "Custom Project",
-			statuses: ["Backlog", "In Progress", "Review", "Done"],
+			statuses: ["Memaster", "In Progress", "Review", "Done"],
 			labels: ["bug", "feature", "enhancement"],
 			milestones: ["v1.0", "v2.0"],
-			defaultStatus: "Backlog",
+			defaultStatus: "Memaster",
 			dateFormat: "dd/mm/yyyy",
 			maxColumnWidth: 30,
-			backlogDirectory: "backlog",
+			memasterDirectory: "memaster",
 			autoCommit: true,
 		};
 
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await core.filesystem.saveConfig(customConfig);
 
 		// Simulate re-initialization by loading existing config
 		const existingConfig = await core.filesystem.loadConfig();
 		expect(existingConfig).toBeTruthy();
-		expect(existingConfig?.statuses).toEqual(["Backlog", "In Progress", "Review", "Done"]);
+		expect(existingConfig?.statuses).toEqual(["Memaster", "In Progress", "Review", "Done"]);
 		expect(existingConfig?.labels).toEqual(["bug", "feature", "enhancement"]);
 		expect(existingConfig?.dateFormat).toBe("dd/mm/yyyy");
 		expect(existingConfig?.maxColumnWidth).toBe(30);
@@ -150,7 +150,7 @@ describe("Enhanced init command", () => {
 	test("should preserve non-init-managed config fields during re-initialization", async () => {
 		const core = new Core(tmpDir);
 
-		const initialConfig: BacklogConfig = {
+		const initialConfig: MemasterConfig = {
 			projectName: "Preserve Fields Project",
 			statuses: ["To Do", "In Progress", "Done"],
 			labels: ["bug"],
@@ -170,7 +170,7 @@ describe("Enhanced init command", () => {
 			},
 		};
 
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await core.filesystem.saveConfig(initialConfig);
 
 		const existingConfig = await core.filesystem.loadConfig();
@@ -231,13 +231,13 @@ describe("Enhanced init command", () => {
 			milestones: [],
 			defaultStatus: "To Do",
 			dateFormat: "yyyy-mm-dd",
-			backlogDirectory: "backlog",
+			memasterDirectory: "memaster",
 			autoCommit: false,
 			remoteOperations: true,
 			zeroPaddedIds: 3,
 		};
 
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await core.filesystem.saveConfig(configWithPadding);
 
 		// Verify zero-padding was saved
@@ -260,13 +260,13 @@ describe("Enhanced init command", () => {
 			milestones: [],
 			defaultStatus: "To Do",
 			dateFormat: "yyyy-mm-dd",
-			backlogDirectory: "backlog",
+			memasterDirectory: "memaster",
 			autoCommit: false,
 			remoteOperations: true,
 			zeroPaddedIds: 0,
 		};
 
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await core.filesystem.saveConfig(configWithoutPadding);
 
 		// Verify zero-padding was saved as disabled
@@ -289,12 +289,12 @@ describe("Enhanced init command", () => {
 			milestones: [],
 			defaultStatus: "To Do",
 			dateFormat: "yyyy-mm-dd",
-			backlogDirectory: "backlog",
+			memasterDirectory: "memaster",
 			autoCommit: false,
 			zeroPaddedIds: 4,
 		};
 
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await core.filesystem.saveConfig(initialConfig);
 
 		// Simulate re-initialization by loading existing config
@@ -330,7 +330,7 @@ describe("Enhanced init command", () => {
 			milestones: [],
 			defaultStatus: "To Do",
 			dateFormat: "yyyy-mm-dd",
-			backlogDirectory: "backlog",
+			memasterDirectory: "memaster",
 			autoCommit: false,
 			prefixes: {
 				task: "JIRA",
@@ -338,7 +338,7 @@ describe("Enhanced init command", () => {
 			},
 		};
 
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await core.filesystem.saveConfig(customPrefixConfig);
 
 		// Verify custom prefix was saved
@@ -357,7 +357,7 @@ describe("Enhanced init command", () => {
 			milestones: [],
 			defaultStatus: "To Do",
 			dateFormat: "yyyy-mm-dd",
-			backlogDirectory: "backlog",
+			memasterDirectory: "memaster",
 			autoCommit: false,
 			prefixes: {
 				task: "BUG",
@@ -365,7 +365,7 @@ describe("Enhanced init command", () => {
 			},
 		};
 
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await core.filesystem.saveConfig(initialConfig);
 
 		// Simulate re-initialization by loading existing config
@@ -387,7 +387,7 @@ describe("Enhanced init command", () => {
 					advancedConfig: { taskPrefix },
 				}),
 			).rejects.toThrow(/reserved for drafts, docs, or decisions/);
-			expect(await Bun.file(join(tmpDir, "backlog", "config.yml")).exists()).toBe(false);
+			expect(await Bun.file(join(tmpDir, "memaster", "config.yml")).exists()).toBe(false);
 		}
 	});
 
@@ -509,110 +509,110 @@ describe("Enhanced init command", () => {
 		expect(loadedConfig?.prefixes?.task).toBe("PERSIST");
 	});
 
-	test("initializeProject should create .backlog when selected", async () => {
+	test("initializeProject should create .memaster when selected", async () => {
 		const core = new Core(tmpDir);
 
 		await initializeProject(core, {
-			projectName: "Hidden Backlog Init",
-			backlogDirectory: ".backlog",
-			backlogDirectorySource: ".backlog",
+			projectName: "Hidden Memaster Init",
+			memasterDirectory: ".memaster",
+			memasterDirectorySource: ".memaster",
 			integrationMode: "none",
 		});
 
-		const configExists = await Bun.file(join(tmpDir, ".backlog", "config.yml")).exists();
+		const configExists = await Bun.file(join(tmpDir, ".memaster", "config.yml")).exists();
 		expect(configExists).toBe(true);
-		expect(core.filesystem.backlogDirName).toBe(".backlog");
+		expect(core.filesystem.memasterDirName).toBe(".memaster");
 	});
 
-	test("initializeProject should honor .backlog source when backlogDirectory is omitted", async () => {
+	test("initializeProject should honor .memaster source when memasterDirectory is omitted", async () => {
 		const core = new Core(tmpDir);
 
 		await initializeProject(core, {
-			projectName: "Hidden Backlog Source Only",
-			backlogDirectorySource: ".backlog",
+			projectName: "Hidden Memaster Source Only",
+			memasterDirectorySource: ".memaster",
 			integrationMode: "none",
 		});
 
-		expect(await Bun.file(join(tmpDir, ".backlog", "config.yml")).exists()).toBe(true);
-		expect(await Bun.file(join(tmpDir, "backlog", "config.yml")).exists()).toBe(false);
+		expect(await Bun.file(join(tmpDir, ".memaster", "config.yml")).exists()).toBe(true);
+		expect(await Bun.file(join(tmpDir, "memaster", "config.yml")).exists()).toBe(false);
 	});
 
-	test("initializeProject should create a root backlog.config.yml for custom backlog directories", async () => {
+	test("initializeProject should create a root memaster.config.yml for custom memaster directories", async () => {
 		const core = new Core(tmpDir);
 		await initializeProject(core, {
-			projectName: "Custom Backlog Init",
-			backlogDirectory: "planning/backlog-data",
-			backlogDirectorySource: "custom",
+			projectName: "Custom Memaster Init",
+			memasterDirectory: "planning/memaster-data",
+			memasterDirectorySource: "custom",
 			configLocation: "root",
 			integrationMode: "none",
 		});
 
-		const rootConfigPath = join(tmpDir, "backlog.config.yml");
+		const rootConfigPath = join(tmpDir, "memaster.config.yml");
 		const rootConfig = await Bun.file(rootConfigPath).text();
 		const configExists = await Bun.file(rootConfigPath).exists();
 		const freshCore = new Core(tmpDir);
 		const freshConfig = await freshCore.filesystem.loadConfig();
 
 		expect(configExists).toBe(true);
-		expect(rootConfig).toContain('backlog_directory: "planning/backlog-data"');
-		expect(core.filesystem.backlogDirName).toBe("planning/backlog-data");
-		expect(freshConfig?.projectName).toBe("Custom Backlog Init");
-		expect(freshCore.filesystem.backlogDirName).toBe("planning/backlog-data");
+		expect(rootConfig).toContain('memaster_directory: "planning/memaster-data"');
+		expect(core.filesystem.memasterDirName).toBe("planning/memaster-data");
+		expect(freshConfig?.projectName).toBe("Custom Memaster Init");
+		expect(freshCore.filesystem.memasterDirName).toBe("planning/memaster-data");
 	});
 
-	test("initializeProject should default custom backlog directories to root config when configLocation is omitted", async () => {
+	test("initializeProject should default custom memaster directories to root config when configLocation is omitted", async () => {
 		const core = new Core(tmpDir);
 		await initializeProject(core, {
-			projectName: "Custom Backlog Default Root",
-			backlogDirectory: "planning/backlog-data",
-			backlogDirectorySource: "custom",
+			projectName: "Custom Memaster Default Root",
+			memasterDirectory: "planning/memaster-data",
+			memasterDirectorySource: "custom",
 			integrationMode: "none",
 		});
 
-		const rootConfigPath = join(tmpDir, "backlog.config.yml");
+		const rootConfigPath = join(tmpDir, "memaster.config.yml");
 		const rootConfig = await Bun.file(rootConfigPath).text();
 		expect(await Bun.file(rootConfigPath).exists()).toBe(true);
-		expect(rootConfig).toContain('backlog_directory: "planning/backlog-data"');
-		expect(await Bun.file(join(tmpDir, "planning", "backlog-data", "config.yml")).exists()).toBe(false);
+		expect(rootConfig).toContain('memaster_directory: "planning/memaster-data"');
+		expect(await Bun.file(join(tmpDir, "planning", "memaster-data", "config.yml")).exists()).toBe(false);
 	});
 
-	test("initializeProject should infer custom source from backlogDirectory when source is omitted", async () => {
+	test("initializeProject should infer custom source from memasterDirectory when source is omitted", async () => {
 		const core = new Core(tmpDir);
 		await initializeProject(core, {
-			projectName: "Custom Backlog Inferred Source",
-			backlogDirectory: "planning/backlog-data",
+			projectName: "Custom Memaster Inferred Source",
+			memasterDirectory: "planning/memaster-data",
 			integrationMode: "none",
 		});
 
-		const rootConfigPath = join(tmpDir, "backlog.config.yml");
+		const rootConfigPath = join(tmpDir, "memaster.config.yml");
 		const rootConfig = await Bun.file(rootConfigPath).text();
 		expect(await Bun.file(rootConfigPath).exists()).toBe(true);
-		expect(rootConfig).toContain('backlog_directory: "planning/backlog-data"');
-		expect(await Bun.file(join(tmpDir, "planning", "backlog-data", "config.yml")).exists()).toBe(false);
+		expect(rootConfig).toContain('memaster_directory: "planning/memaster-data"');
+		expect(await Bun.file(join(tmpDir, "planning", "memaster-data", "config.yml")).exists()).toBe(false);
 	});
 
-	test("initializeProject should reject custom backlog directories with folder config location", async () => {
+	test("initializeProject should reject custom memaster directories with folder config location", async () => {
 		const core = new Core(tmpDir);
 		await expect(
 			initializeProject(core, {
 				projectName: "Invalid Custom Folder Config",
-				backlogDirectory: "planning/backlog-data",
-				backlogDirectorySource: "custom",
+				memasterDirectory: "planning/memaster-data",
+				memasterDirectorySource: "custom",
 				configLocation: "folder",
 				integrationMode: "none",
 			}),
-		).rejects.toThrow("Custom backlog directories require root config discovery.");
+		).rejects.toThrow("Custom memaster directories require root config discovery.");
 	});
 
-	test("initializeProject should reject mismatched built-in source and custom backlog path", async () => {
+	test("initializeProject should reject mismatched built-in source and custom memaster path", async () => {
 		const core = new Core(tmpDir);
 		await expect(
 			initializeProject(core, {
-				projectName: "Mismatched Backlog Source",
-				backlogDirectory: "planning/backlog-data",
-				backlogDirectorySource: ".backlog",
+				projectName: "Mismatched Memaster Source",
+				memasterDirectory: "planning/memaster-data",
+				memasterDirectorySource: ".memaster",
 				integrationMode: "none",
 			}),
-		).rejects.toThrow("Backlog directory source and backlog directory value must agree.");
+		).rejects.toThrow("Memaster directory source and memaster directory value must agree.");
 	});
 });

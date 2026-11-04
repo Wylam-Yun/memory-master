@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { $ } from "bun";
 import { FileSystem } from "../file-system/operations.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Milestone, Task } from "../types/index.ts";
 import { createUniqueTestDir, safeCleanup, withTimeout } from "./test-utils.ts";
 
@@ -15,9 +15,9 @@ type DueDateServerHandlers = {
 	handleUpdateMilestone(request: Request, milestoneId: string): Promise<Response>;
 };
 
-describe("BacklogServer due date endpoints", () => {
+describe("MemasterServer due date endpoints", () => {
 	let testDir: string;
-	let server: BacklogServer | null;
+	let server: MemasterServer | null;
 	let handlers: DueDateServerHandlers;
 
 	beforeEach(async () => {
@@ -25,7 +25,7 @@ describe("BacklogServer due date endpoints", () => {
 		await mkdir(testDir, { recursive: true });
 		await $`git init -b main`.cwd(testDir).quiet();
 		const filesystem = new FileSystem(testDir);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		await filesystem.saveConfig({
 			projectName: "Server due dates",
 			statuses: ["To Do", "In Progress", "Done"],
@@ -36,7 +36,7 @@ describe("BacklogServer due date endpoints", () => {
 			checkActiveBranches: false,
 			autoCommit: false,
 		});
-		server = new BacklogServer(testDir);
+		server = new MemasterServer(testDir);
 		handlers = server as unknown as DueDateServerHandlers;
 	});
 

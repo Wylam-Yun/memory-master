@@ -32,7 +32,7 @@ const tasks: Task[] = [
 	},
 	{
 		id: "BACK-7",
-		title: "Backlog task",
+		title: "Memaster task",
 		status: "To Do",
 		assignee: [],
 		labels: [],
@@ -1504,8 +1504,8 @@ describe("task detail routes", () => {
 				{
 					id: "BACK-101",
 					tasks: [
-						{ ...tasks[0], filePath: "backlog/tasks/back-101 - Alpha.md" } as Task,
-						{ ...tasks[0], title: "Duplicate", filePath: "backlog/tasks/back-0101 - Duplicate.md" } as Task,
+						{ ...tasks[0], filePath: "memaster/tasks/back-101 - Alpha.md" } as Task,
+						{ ...tasks[0], title: "Duplicate", filePath: "memaster/tasks/back-0101 - Duplicate.md" } as Task,
 					],
 				},
 			],

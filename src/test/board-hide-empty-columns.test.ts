@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ScreenInterface } from "neo-neo-bblessed";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import type { Task } from "../types/index.ts";
 import { type ColumnData, filterVisibleColumns, renderBoardTui } from "../ui/board.ts";
 import { getHelpShortcuts } from "../ui/components/help-popup.ts";
@@ -181,7 +181,7 @@ describe("TUI board honors hideEmptyColumns", () => {
 
 describe("Shift+H toggles hideEmptyColumns", () => {
 	it("hides the empty column and persists the setting for every surface", async () => {
-		const testDir = await mkdtemp(join(tmpdir(), "backlog-hide-empty-columns-"));
+		const testDir = await mkdtemp(join(tmpdir(), "memaster-hide-empty-columns-"));
 		const core = new Core(testDir);
 		try {
 			await initializeTestProject(core, "Hide Empty Columns");
@@ -209,7 +209,7 @@ describe("Shift+H toggles hideEmptyColumns", () => {
 	});
 
 	it("finishes the pending write before the board shuts down", async () => {
-		const testDir = await mkdtemp(join(tmpdir(), "backlog-hide-empty-columns-exit-"));
+		const testDir = await mkdtemp(join(tmpdir(), "memaster-hide-empty-columns-exit-"));
 		const core = new Core(testDir);
 		try {
 			await initializeTestProject(core, "Hide Empty Columns Exit");

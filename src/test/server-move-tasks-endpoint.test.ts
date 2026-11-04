@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
-import { Core } from "../core/backlog.ts";
-import { BacklogServer } from "../server/index.ts";
+import { Core } from "../core/memaster.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Task } from "../types/index.ts";
 import { createUniqueTestDir, retry, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 let serverPort = 0;
 let core: Core;
 
@@ -40,12 +40,12 @@ function makeTask(overrides: Partial<Task>): Task {
 	};
 }
 
-describe("BacklogServer batch move endpoint", () => {
+describe("MemasterServer batch move endpoint", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("server-move-tasks");
 		await mkdir(TEST_DIR, { recursive: true });
 		core = new Core(TEST_DIR);
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await core.filesystem.saveConfig({
 			projectName: "Server Move Tasks",
 			statuses: ["To Do", "In Progress", "Done"],
@@ -58,7 +58,7 @@ describe("BacklogServer batch move endpoint", () => {
 		await core.createTask(makeTask({ id: "task-1", ordinal: 1000 }), false);
 		await core.createTask(makeTask({ id: "task-2", ordinal: 2000 }), false);
 
-		server = new BacklogServer(TEST_DIR);
+		server = new MemasterServer(TEST_DIR);
 		await server.start(0, false);
 		const port = server.getPort();
 		expect(port).not.toBeNull();

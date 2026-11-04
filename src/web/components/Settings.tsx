@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../lib/api';
 import { SuccessToast } from './SuccessToast';
-import type { BacklogConfig } from '../../types';
+import type { MemasterConfig } from '../../types';
 
 const Settings: React.FC = () => {
-	const [config, setConfig] = useState<BacklogConfig | null>(null);
-	const [originalConfig, setOriginalConfig] = useState<BacklogConfig | null>(null);
+	const [config, setConfig] = useState<MemasterConfig | null>(null);
+	const [originalConfig, setOriginalConfig] = useState<MemasterConfig | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -41,7 +41,7 @@ const Settings: React.FC = () => {
 		}
 	};
 
-	const handleInputChange = (field: keyof BacklogConfig, value: any) => {
+	const handleInputChange = (field: keyof MemasterConfig, value: any) => {
 		if (!config) return;
 		
 		setConfig({

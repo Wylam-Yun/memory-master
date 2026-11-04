@@ -27,7 +27,7 @@ describe("Priority functionality", () => {
 			const testDir = createUniqueTestDir("priority-config");
 			const filesystem = new FileSystem(testDir);
 			try {
-				await filesystem.ensureBacklogStructure();
+				await filesystem.ensureMemasterStructure();
 				await filesystem.saveConfig({
 					projectName: "Priority Config",
 					statuses: ["To Do", "Done"],

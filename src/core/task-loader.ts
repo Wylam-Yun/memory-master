@@ -12,7 +12,7 @@ import { parseStoredUtcDate } from "../utils/utc-timestamp.ts";
 import { ARCHIVED_TASK_DIRECTORIES, DEFAULT_DIRECTORIES } from "../constants/index.ts";
 import type { GitBranchTip, GitOperations } from "../git/operations.ts";
 import { parseTask } from "../markdown/parser.ts";
-import type { BacklogConfig, Task } from "../types/index.ts";
+import type { MemasterConfig, Task } from "../types/index.ts";
 import { extractAnyPrefix } from "../utils/prefix-config.ts";
 import {
 	canonicalTaskId,
@@ -62,8 +62,8 @@ const STATE_DIRECTORIES: Array<{ path: string; type: TaskDirectoryType }> = [
 	...ARCHIVED_TASK_DIRECTORIES.map((path) => ({ path, type: "archived" as const })),
 ];
 
-function getTaskTypeFromPath(path: string, backlogDir: string): TaskDirectoryType | null {
-	const normalized = path.startsWith(`${backlogDir}/`) ? path.slice(backlogDir.length + 1) : path;
+function getTaskTypeFromPath(path: string, memasterDir: string): TaskDirectoryType | null {
+	const normalized = path.startsWith(`${memasterDir}/`) ? path.slice(memasterDir.length + 1) : path;
 
 	for (const { path: dir, type } of STATE_DIRECTORIES) {
 		if (normalized.startsWith(`${dir}/`)) {
@@ -77,7 +77,7 @@ function getTaskTypeFromPath(path: string, backlogDir: string): TaskDirectoryTyp
 /**
  * Get the appropriate loading message based on remote operations configuration
  */
-export function getTaskLoadingMessage(config: BacklogConfig | null): string {
+export function getTaskLoadingMessage(config: MemasterConfig | null): string {
 	return config?.remoteOperations === false
 		? "Loading tasks from local branches..."
 		: "Loading tasks from local and remote branches...";
@@ -86,7 +86,7 @@ export function getTaskLoadingMessage(config: BacklogConfig | null): string {
 interface RemoteIndexEntry {
 	id: string;
 	branch: string;
-	path: string; // "backlog/tasks/task-123 - title.md"
+	path: string; // "memaster/tasks/task-123 - title.md"
 	lastModified: Date;
 	commit: string;
 	/** The file's blob id in that commit: equal ids are identical copies. */
@@ -123,16 +123,16 @@ interface HydrationOptions {
 	loadTask: (commit: string, path: string, blobId: string) => Promise<Task | null>;
 }
 
-function logicalTaskPath(path: string, backlogDir: string): string {
+function logicalTaskPath(path: string, memasterDir: string): string {
 	const normalizedPath = path.replaceAll("\\", "/");
-	const normalizedBacklogDir = backlogDir
+	const normalizedMemasterDir = memasterDir
 		.replaceAll("\\", "/")
 		.replace(/^\.\//, "")
 		.replace(/^\/+|\/+$/g, "");
-	const backlogMarker = `/${normalizedBacklogDir}/`;
-	const markerIndex = normalizedPath.indexOf(backlogMarker);
+	const memasterMarker = `/${normalizedMemasterDir}/`;
+	const markerIndex = normalizedPath.indexOf(memasterMarker);
 	const logicalPath = markerIndex >= 0 ? normalizedPath.slice(markerIndex + 1) : normalizedPath.replace(/^\.\//, "");
-	return normalizeTaskLifecyclePath(logicalPath, normalizedBacklogDir);
+	return normalizeTaskLifecyclePath(logicalPath, normalizedMemasterDir);
 }
 
 function lifecycleRank(type: TaskDirectoryType | undefined): number {
@@ -160,18 +160,18 @@ function selectPreferredIdentityEntry(entries: RemoteIndexEntry[]): RemoteIndexE
 function chooseIdentityHydrationCandidates(
 	index: Map<string, RemoteIndexEntry[]>,
 	localTasks: Task[] | undefined,
-	backlogDir: string,
+	memasterDir: string,
 	toRef: (entry: RemoteIndexEntry) => string,
 ): HydrationCandidate[] {
 	const localIdentities = new Set(
 		(localTasks ?? [])
 			.filter((task) => task.filePath)
-			.map((task) => `${canonicalTaskId(task.id)}\0${logicalTaskPath(task.filePath ?? "", backlogDir)}`),
+			.map((task) => `${canonicalTaskId(task.id)}\0${logicalTaskPath(task.filePath ?? "", memasterDir)}`),
 	);
 	const winners = new Map<string, RemoteIndexEntry>();
 	for (const entries of index.values()) {
 		for (const entry of entries) {
-			const identity = `${canonicalTaskId(entry.id)}\0${logicalTaskPath(entry.path, backlogDir)}`;
+			const identity = `${canonicalTaskId(entry.id)}\0${logicalTaskPath(entry.path, memasterDir)}`;
 			if (localIdentities.has(identity)) continue;
 			const current = winners.get(identity);
 			if (!current || isPreferredIdentityEntry(entry, current)) winners.set(identity, entry);
@@ -318,13 +318,13 @@ export class BranchTaskLoader {
 
 	retainSnapshot(
 		tips: readonly GitBranchTip[],
-		options: { backlogDir: string; prefix: string; activeBranchDays: number },
+		options: { memasterDir: string; prefix: string; activeBranchDays: number },
 	): void {
 		const historyCutoff = getBranchHistoryCutoff(options.activeBranchDays);
 		const retainedCommits = new Set(tips.map((tip) => tip.commit));
 		const retainedIndexKeys = new Set(
 			[...retainedCommits].map((commit) =>
-				this.commitIndexKey(commit, options.backlogDir, options.prefix, historyCutoff),
+				this.commitIndexKey(commit, options.memasterDir, options.prefix, historyCutoff),
 			),
 		);
 		for (const key of this.commitIndexCache.keys()) {
@@ -337,10 +337,10 @@ export class BranchTaskLoader {
 
 	async load(
 		tips: readonly GitBranchTip[],
-		userConfig: BacklogConfig | null,
+		userConfig: MemasterConfig | null,
 		localTasks: Task[],
 		includeArchived: boolean,
-		backlogDir: string = DEFAULT_DIRECTORIES.BACKLOG,
+		memasterDir: string = DEFAULT_DIRECTORIES.MEMASTER,
 		onProgress?: (message: string) => void,
 		currentBranch?: string,
 	): Promise<BranchTaskLoadResult> {
@@ -366,7 +366,7 @@ export class BranchTaskLoader {
 				const branchRef = queue.pop();
 				if (!branchRef) break;
 				try {
-					const tree = await this.loadCommitIndex(branchRef.commit, backlogDir, prefix, historyCutoff);
+					const tree = await this.loadCommitIndex(branchRef.commit, memasterDir, prefix, historyCutoff);
 					const index = branchRef.source === "remote" ? remoteIndex : localIndex;
 					for (const cached of tree) {
 						const lastModified = new Date(cached.lastModified);
@@ -417,7 +417,10 @@ export class BranchTaskLoader {
 			const candidates = chooseHydrationCandidates(localById, index, strategy, toRef);
 			return strategy === "most_progressed"
 				? candidates
-				: mergeHydrationCandidates(candidates, chooseIdentityHydrationCandidates(index, localTasks, backlogDir, toRef));
+				: mergeHydrationCandidates(
+						candidates,
+						chooseIdentityHydrationCandidates(index, localTasks, memasterDir, toRef),
+					);
 		};
 
 		const loadTask = (commit: string, path: string, blobId: string) => this.loadCachedTask(commit, path, blobId);
@@ -436,7 +439,7 @@ export class BranchTaskLoader {
 
 	private async getPinnedBranchRefs(
 		tips: readonly GitBranchTip[],
-		userConfig: BacklogConfig | null,
+		userConfig: MemasterConfig | null,
 		snapshotCurrentBranch?: string,
 	): Promise<PinnedBranchRef[]> {
 		const isRemote = (name: string) => {
@@ -470,24 +473,24 @@ export class BranchTaskLoader {
 		return refs;
 	}
 
-	private commitIndexKey(commit: string, backlogDir: string, prefix: string, cutoff: Date | undefined): string {
-		return JSON.stringify([commit, backlogDir, prefix.toLowerCase(), cutoff?.getTime() ?? null]);
+	private commitIndexKey(commit: string, memasterDir: string, prefix: string, cutoff: Date | undefined): string {
+		return JSON.stringify([commit, memasterDir, prefix.toLowerCase(), cutoff?.getTime() ?? null]);
 	}
 
 	private async loadCommitIndex(
 		commit: string,
-		backlogDir: string,
+		memasterDir: string,
 		prefix: string,
 		historyCutoff: Date | undefined,
 	): Promise<readonly CachedTaskTreeEntry[]> {
-		const key = this.commitIndexKey(commit, backlogDir, prefix, historyCutoff);
+		const key = this.commitIndexKey(commit, memasterDir, prefix, historyCutoff);
 		const cached = this.commitIndexCache.get(key);
 		if (cached) return await cached;
 
 		const promise = (async (): Promise<readonly CachedTaskTreeEntry[]> => {
-			const blobs = await this.git.listTreeBlobs(commit, backlogDir);
+			const blobs = await this.git.listTreeBlobs(commit, memasterDir);
 			if (blobs.size === 0) return [];
-			const lastModified = await this.git.getBranchLastModifiedMap(commit, backlogDir, historyCutoff);
+			const lastModified = await this.git.getBranchLastModifiedMap(commit, memasterDir, historyCutoff);
 			return [...blobs].flatMap(([path, blobId]) => {
 				const id = extractConfiguredTaskId(path, prefix);
 				if (!id) return [];
@@ -495,7 +498,7 @@ export class BranchTaskLoader {
 					{
 						id,
 						path,
-						type: getTaskTypeFromPath(path, backlogDir),
+						type: getTaskTypeFromPath(path, memasterDir),
 						lastModified: (lastModified.get(path) ?? new Date(0)).getTime(),
 						blobId,
 					},

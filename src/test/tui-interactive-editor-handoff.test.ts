@@ -2,8 +2,8 @@ import { describe, expect, it } from "bun:test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
-import type { BacklogConfig, Task } from "../types/index.ts";
+import { Core } from "../core/memaster.ts";
+import type { MemasterConfig, Task } from "../types/index.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
@@ -120,7 +120,7 @@ setTimeout(() => {
 		throw new Error(`Failed to load config for scenario ${options.scenario}`);
 	}
 
-	const updatedConfig: BacklogConfig = {
+	const updatedConfig: MemasterConfig = {
 		...config,
 		remoteOperations: false,
 		checkActiveBranches: false,

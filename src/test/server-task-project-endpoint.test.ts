@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { $ } from "bun";
 import { FileSystem } from "../file-system/operations.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Task } from "../types/index.ts";
 import { createUniqueTestDir, safeCleanup, withTimeout } from "./test-utils.ts";
 
@@ -11,9 +11,9 @@ type ProjectServerHandlers = {
 	handleUpdateTask(request: Request, taskId: string): Promise<Response>;
 };
 
-describe("BacklogServer task project field", () => {
+describe("MemasterServer task project field", () => {
 	let testDir: string;
-	let server: BacklogServer | null;
+	let server: MemasterServer | null;
 	let handlers: ProjectServerHandlers;
 
 	beforeEach(async () => {
@@ -21,7 +21,7 @@ describe("BacklogServer task project field", () => {
 		await mkdir(testDir, { recursive: true });
 		await $`git init -b main`.cwd(testDir).quiet();
 		const filesystem = new FileSystem(testDir);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		await filesystem.saveConfig({
 			projectName: "Server project field",
 			statuses: ["To Do", "In Progress", "Done"],
@@ -33,7 +33,7 @@ describe("BacklogServer task project field", () => {
 			autoCommit: false,
 			projects: ["web", "api"],
 		});
-		server = new BacklogServer(testDir);
+		server = new MemasterServer(testDir);
 		handlers = server as unknown as ProjectServerHandlers;
 	});
 

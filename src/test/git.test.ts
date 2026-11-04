@@ -3,14 +3,14 @@ import { mkdir, mkdtemp, readFile, realpath, rm, rmdir, symlink, writeFile } fro
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { GitOperations, isGitRepository } from "../git/operations.ts";
-import type { BacklogConfig } from "../types/index.ts";
+import type { MemasterConfig } from "../types/index.ts";
 
 const TEST_CONFIG = {
 	projectName: "Git operations",
 	statuses: [],
 	labels: [],
 	dateFormat: "YYYY-MM-DD",
-} satisfies BacklogConfig;
+} satisfies MemasterConfig;
 
 function createGate(): { promise: Promise<void>; release: () => void } {
 	let release: () => void = () => {};
@@ -67,8 +67,8 @@ describe("Git Operations", () => {
 		it.skipIf(process.platform === "win32")(
 			"refuses an unresolvable selected path before committing owned staged files",
 			async () => {
-				const directory = await realpath(await mkdtemp(join(tmpdir(), "backlog-git-unresolvable-path-")));
-				const outside = await realpath(await mkdtemp(join(tmpdir(), "backlog-git-outside-path-")));
+				const directory = await realpath(await mkdtemp(join(tmpdir(), "memaster-git-unresolvable-path-")));
+				const outside = await realpath(await mkdtemp(join(tmpdir(), "memaster-git-outside-path-")));
 				const runGit = (...args: string[]): string => {
 					const result = Bun.spawnSync(["git", ...args], { cwd: directory, stdout: "pipe", stderr: "pipe" });
 					if (result.exitCode !== 0) throw new Error(result.stderr.toString());
@@ -111,7 +111,7 @@ describe("Git Operations", () => {
 				] as const
 			).filter(([linked]) => !linked || process.platform !== "win32"),
 		)("reads and commits a tracked removal (linked folder: %s, removed parents: %s)", async (linked, count) => {
-			const directory = await mkdtemp(join(tmpdir(), "backlog-git-missing-parent-"));
+			const directory = await mkdtemp(join(tmpdir(), "memaster-git-missing-parent-"));
 			const runGit = (...args: string[]): string => {
 				const result = Bun.spawnSync(["git", ...args], { cwd: directory, stdout: "pipe", stderr: "pipe" });
 				if (result.exitCode !== 0) throw new Error(result.stderr.toString());
@@ -279,7 +279,7 @@ describe("Git Operations", () => {
 					options: { timeoutMs: number; env?: Record<string, string> },
 				) => Promise<{ stdout: string; stderr: string }>;
 			};
-			const directory = await mkdtemp(join(tmpdir(), "backlog-git-timeout-"));
+			const directory = await mkdtemp(join(tmpdir(), "memaster-git-timeout-"));
 			const scriptPath = join(directory, "hang.sh");
 			const pidPath = join(directory, "child.pid");
 			let childPid: number | undefined;
@@ -291,7 +291,7 @@ describe("Git Operations", () => {
 trap '' TERM
 (trap '' TERM; sleep 30) &
 child_pid=$!
-printf '%s\\n' "$child_pid" > "$BACKLOG_TIMEOUT_PID_FILE"
+printf '%s\\n' "$child_pid" > "$MEMASTER_TIMEOUT_PID_FILE"
 wait "$child_pid"
 `,
 					{ mode: 0o755 },
@@ -300,7 +300,7 @@ wait "$child_pid"
 				await expect(
 					internals.execGit(["-c", `alias.hang=!${scriptPath}`, "hang"], {
 						timeoutMs: 500,
-						env: { BACKLOG_TIMEOUT_PID_FILE: pidPath },
+						env: { MEMASTER_TIMEOUT_PID_FILE: pidPath },
 					}),
 				).rejects.toThrow("Git command timeout after 500ms");
 
@@ -373,7 +373,7 @@ wait "$child_pid"
 		});
 
 		it("fetches parent refs without applying its policy to populated submodules", async () => {
-			const directory = await mkdtemp(join(tmpdir(), "backlog-git-no-recursion-"));
+			const directory = await mkdtemp(join(tmpdir(), "memaster-git-no-recursion-"));
 			const component = join(directory, "component-source");
 			const parent = join(directory, "parent-source");
 			const checkout = join(directory, "checkout");
@@ -586,7 +586,7 @@ wait "$child_pid"
 			};
 			const cutoff = new Date("2026-07-11T00:00:00Z");
 
-			expect(await git.getBranchLastModifiedMap("abc123", "backlog", cutoff)).toEqual(new Map());
+			expect(await git.getBranchLastModifiedMap("abc123", "memaster", cutoff)).toEqual(new Map());
 			expect(capturedArgs).toContain(`--since=@${Math.floor(cutoff.getTime() / 1000)}`);
 		});
 
@@ -601,7 +601,7 @@ wait "$child_pid"
 				throw new Error("history unavailable");
 			};
 
-			await expect(git.getBranchLastModifiedMap("abc123", "backlog")).rejects.toThrow("history unavailable");
+			await expect(git.getBranchLastModifiedMap("abc123", "memaster")).rejects.toThrow("history unavailable");
 		});
 	});
 
@@ -617,19 +617,19 @@ wait "$child_pid"
 					options?: { cwd?: string; readOnly?: boolean },
 				) => Promise<{ stdout: string; stderr: string }>;
 			};
-			internals.getPathContext = async () => ({ repoRoot: "/repo", relativePath: "project/backlog/tasks/back-1.md" });
+			internals.getPathContext = async () => ({ repoRoot: "/repo", relativePath: "project/memaster/tasks/back-1.md" });
 			internals.execGit = async (args, options) => {
 				capturedArgs = args;
 				capturedOptions = options;
 				return { stdout: "blob123\n", stderr: "" };
 			};
 
-			expect(await git.hashFile("/repo/project/backlog/tasks/back-1.md")).toBe("blob123");
+			expect(await git.hashFile("/repo/project/memaster/tasks/back-1.md")).toBe("blob123");
 			expect(capturedArgs).toEqual([
 				"hash-object",
-				"--path=project/backlog/tasks/back-1.md",
+				"--path=project/memaster/tasks/back-1.md",
 				"--",
-				"project/backlog/tasks/back-1.md",
+				"project/memaster/tasks/back-1.md",
 			]);
 			expect(capturedOptions).toEqual({ cwd: "/repo", readOnly: true });
 		});

@@ -61,15 +61,15 @@ describe("TUI window titles", () => {
 	});
 
 	it("falls back to a generic title when the project name is unusable", () => {
-		expect(formatTuiTitle("Board", undefined)).toBe("Backlog Board");
-		expect(formatTuiTitle("Board", "")).toBe("Backlog Board");
-		expect(formatTuiTitle("Board", "   ")).toBe("Backlog Board");
-		expect(formatTuiTitle("Tasks", "Untitled Project")).toBe("Backlog Tasks");
-		expect(formatTuiTitle("Overview", "untitled project")).toBe("Backlog Overview");
+		expect(formatTuiTitle("Board", undefined)).toBe("Memaster Board");
+		expect(formatTuiTitle("Board", "")).toBe("Memaster Board");
+		expect(formatTuiTitle("Board", "   ")).toBe("Memaster Board");
+		expect(formatTuiTitle("Tasks", "Untitled Project")).toBe("Memaster Tasks");
+		expect(formatTuiTitle("Overview", "untitled project")).toBe("Memaster Overview");
 	});
 
 	it("strips control characters from a crafted project name", () => {
-		// The title is written as ESC ] 0 ; <title> BEL, so a BEL or ESC in backlog/config.yml
+		// The title is written as ESC ] 0 ; <title> BEL, so a BEL or ESC in memaster/config.yml
 		// would otherwise end the sequence and inject escape codes into the terminal.
 		const crafted = formatTuiTitle("Board", "Acme\u0007\u001b]0;pwned");
 		expect(crafted).toBe("Acme]0;pwned - Board");
@@ -77,7 +77,7 @@ describe("TUI window titles", () => {
 
 		expect(formatTuiTitle("Board", "Acme\nWebsite")).toBe("AcmeWebsite - Board");
 		expect(formatTuiTitle("Board", "Acme\u009bWebsite")).toBe("AcmeWebsite - Board");
-		expect(formatTuiTitle("Board", "\u0007\u001b\u007f")).toBe("Backlog Board");
+		expect(formatTuiTitle("Board", "\u0007\u001b\u007f")).toBe("Memaster Board");
 	});
 
 	it("strips control characters from caller-supplied view titles", () => {
@@ -86,7 +86,7 @@ describe("TUI window titles", () => {
 		expect(hasControlCharacters(craftedTask)).toBe(false);
 
 		const craftedSearch = formatTuiTitle("Search: \u001b]0;pwned\u0007", undefined);
-		expect(craftedSearch).toBe("Backlog Search: ]0;pwned");
+		expect(craftedSearch).toBe("Memaster Search: ]0;pwned");
 		expect(hasControlCharacters(craftedSearch)).toBe(false);
 	});
 

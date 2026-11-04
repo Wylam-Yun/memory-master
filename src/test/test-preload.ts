@@ -11,6 +11,6 @@ process.env.GIT_COMMITTER_EMAIL = "test@example.com";
 // `bun test --parallel` workers on Linux can die with an uncatchable
 // "EEXIST: file already exists, epoll_ctl" that fails whole unrelated test
 // files (BACK-585). scripts/run-ci-tests.ts sets the variable for those passes.
-if (!process.env.BACKLOG_TEST_SKIP_DOM_PRELOAD) {
+if (!process.env.MEMASTER_TEST_SKIP_DOM_PRELOAD) {
 	await import("./react-dom-preload.ts");
 }

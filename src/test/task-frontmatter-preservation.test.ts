@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test";
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { FileSystem } from "../file-system/operations.ts";
 import { parseMarkdown, parseTask } from "../markdown/parser.ts";
 import { McpServer } from "../mcp/server.ts";
 import { registerTaskTools } from "../mcp/tools/tasks/index.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createTestDirOutsideRepository, safeCleanup } from "./test-utils.ts";
 
@@ -37,7 +37,7 @@ const BODY =
 
 let root: string;
 let filesystem: FileSystem;
-let server: BacklogServer | undefined;
+let server: MemasterServer | undefined;
 let mcp: McpServer | undefined;
 
 async function writeRecord(id = "TASK-1", metadata = METADATA, owned = ""): Promise<string> {
@@ -64,7 +64,7 @@ describe("task and draft unknown frontmatter", () => {
 	beforeEach(async () => {
 		root = await createTestDirOutsideRepository("task-frontmatter");
 		filesystem = new FileSystem(root);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		await filesystem.saveConfig({
 			projectName: "Task frontmatter",
 			statuses: ["To Do", "In Progress", "Done"],
@@ -163,7 +163,7 @@ describe("task and draft unknown frontmatter", () => {
 		const beforeDraftArchive = await expectMetadata(demoted.filePath);
 		expect(parseTask(beforeDraftArchive).acceptanceCriteriaItems?.[0]?.checked).toBe(true);
 		await $`bun ${CLI_PATH} draft archive ${demoted.id}`.cwd(root).quiet();
-		const archivedDrafts = join(filesystem.backlogDir, "archive/drafts");
+		const archivedDrafts = join(filesystem.memasterDir, "archive/drafts");
 		const filename = (await readdir(archivedDrafts))[0];
 		if (!filename) throw new Error("Missing archived draft");
 		expect(await Bun.file(join(archivedDrafts, filename)).text()).toBe(beforeDraftArchive);
@@ -172,7 +172,7 @@ describe("task and draft unknown frontmatter", () => {
 	it("keeps metadata through watched HTTP task/draft edits and status transitions", async () => {
 		const taskPath = await writeRecord("TASK-1", METADATA, "modified_files: [old]\n");
 		await writeRecord("DRAFT-1");
-		server = new BacklogServer(root);
+		server = new MemasterServer(root);
 		await server.start(0, false);
 		const port = server.getPort();
 		const put = async (id: string, updates: unknown) => {

@@ -1,6 +1,6 @@
 ## Task Creation Guide
 
-Use this guide when `backlog instructions` or the user indicates that new Backlog tasks are needed.
+Use this guide when `memaster instructions` or the user indicates that new Memaster tasks are needed.
 
 ### Step 1: Search First
 
@@ -8,16 +8,16 @@ Always check whether the work is already tracked.
 
 Recommended CLI commands:
 
-- `backlog search "desktop app" --plain`
-- `backlog task list --status "<todo status>" --plain`
-- `backlog task list --status "<active status>" --plain`
-- `backlog task list --exclude-status "<terminal status>" --plain`
-- `backlog task list --type {{TASK_TYPE:1}} --plain`
-- `backlog task list --search "desktop app" --labels frontend,bug --limit 20 --plain`
+- `memaster search "desktop app" --plain`
+- `memaster task list --status "<todo status>" --plain`
+- `memaster task list --status "<active status>" --plain`
+- `memaster task list --exclude-status "<terminal status>" --plain`
+- `memaster task list --type {{TASK_TYPE:1}} --plain`
+- `memaster task list --search "desktop app" --labels frontend,bug --limit 20 --plain`
 
 Avoid broad unfiltered listing when the project may have many tasks. Use `--status`, `--exclude-status`, `--type`, `--project`, `--assignee`, `--unassigned`, `--parent`, `--priority`, `--labels`, `--search`, or `--limit` where applicable. Check the size with `--count`, and read a long list in windows with `--max-count` and `--skip`; cut output ends with the command for the next window. Repeat `--exclude-status` or pass comma-separated configured statuses to exclude multiple states. Repeat `--type` or pass comma-separated configured task types to include multiple types. Repeat `--project` or pass comma-separated configured projects to include multiple projects.
 
-Use `backlog task view {{TASK_ID:123}} --plain` to read full context for likely matches.
+Use `memaster task view {{TASK_ID:123}} --plain` to read full context for likely matches.
 
 ### Step 2: Assess Scope Before Creating Tasks
 
@@ -39,18 +39,18 @@ Ask:
 Use subtasks when the work shares one goal and one subsystem:
 
 ```bash
-backlog task create "Desktop application"
-backlog task create -p {{TASK_ID:10}} "Set up shell"
-backlog task create -p {{TASK_ID:10}} "Wire IPC"
+memaster task create "Desktop application"
+memaster task create -p {{TASK_ID:10}} "Set up shell"
+memaster task create -p {{TASK_ID:10}} "Wire IPC"
 ```
 
-Use `--parent`/`-p` only with an existing task ID returned by `backlog task create`, `backlog task list`, or `backlog task view`. Do not pass milestone IDs such as `m-0` to `--parent`; assign a task to a milestone with `--milestone`/`-m`.
+Use `--parent`/`-p` only with an existing task ID returned by `memaster task create`, `memaster task list`, or `memaster task view`. Do not pass milestone IDs such as `m-0` to `--parent`; assign a task to a milestone with `--milestone`/`-m`.
 
 Use separate tasks with dependencies when work spans independent components:
 
 ```bash
-backlog task create "Add bulk update API"
-backlog task create "Add bulk update UI" --dep {{TASK_ID:21}}
+memaster task create "Add bulk update API"
+memaster task create "Add bulk update UI" --dep {{TASK_ID:21}}
 ```
 
 ### Step 4: Create Tasks
@@ -75,7 +75,7 @@ change before then. The narrow exception is already-started work being created d
 Examples:
 
 ```bash
-backlog task create "Add project search" \
+memaster task create "Add project search" \
   -d "Finding anything means running three separate commands, and matches in the ones you skip are missed silently. One search command covers tasks, docs, and decisions." \
   --ac "Search returns matching tasks by title and description" \
   --ac "Search supports --plain output" \
@@ -86,23 +86,23 @@ Too thin: `-d "Users can search tasks, docs, and decisions from one CLI command.
 so a future agent cannot weigh scope or alternatives.
 
 ```bash
-backlog task create "Add settings docs" \
+memaster task create "Add settings docs" \
   --doc docs/settings.md \
   --ref https://example.com/spec
 ```
 
 ### Shell Quoting for Literal Backticks
 
-When task text includes Markdown code spans, quote it so the shell passes the backticks literally. Unescaped backticks in double-quoted or unquoted arguments are command substitution in many shells, and Backlog.md cannot recover the original text after the shell has already executed it.
+When task text includes Markdown code spans, quote it so the shell passes the backticks literally. Unescaped backticks in double-quoted or unquoted arguments are command substitution in many shells, and Memaster cannot recover the original text after the shell has already executed it.
 
 Use single-quoted CLI arguments for values that contain literal backticks:
 
 ```bash
-backlog task create 'Document `backlog init` setup' \
-  --ac 'Instructions mention `backlog init --defaults` literally'
+memaster task create 'Document `memaster init` setup' \
+  --ac 'Instructions mention `memaster init --defaults` literally'
 ```
 
-If single quotes are not practical in your shell, escape each literal backtick before running the command. Do not rely on Backlog.md to sanitize accidental command output after substitution.
+If single quotes are not practical in your shell, escape each literal backtick before running the command. Do not rely on Memaster to sanitize accidental command output after substitution.
 
 ### Acceptance Criteria
 
@@ -121,11 +121,11 @@ Avoid criteria like "Implement helper function" unless the helper itself is the 
 Project-level Definition of Done defaults apply automatically. Add task-specific DoD items only when this task needs extra completion hygiene:
 
 ```bash
-backlog task create "Ship audit export" --dod "Manual export checked with sample data"
+memaster task create "Ship audit export" --dod "Manual export checked with sample data"
 ```
 
 ### After Creation
 
-Report the created task IDs, titles, and key acceptance criteria to the user. If the user asks for changes, update tasks through `backlog task edit`.
+Report the created task IDs, titles, and key acceptance criteria to the user. If the user asks for changes, update tasks through `memaster task edit`.
 
-If you will continue from task creation into implementation in the same session, stop and read `backlog instructions task-execution` before viewing, assigning, planning, editing, or implementing a task. Task creation is complete once the work is tracked; execution uses a separate workflow.
+If you will continue from task creation into implementation in the same session, stop and read `memaster instructions task-execution` before viewing, assigning, planning, editing, or implementing a task. Task creation is complete once the work is tracked; execution uses a separate workflow.

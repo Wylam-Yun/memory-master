@@ -2,14 +2,14 @@ import { lstat, mkdtemp, realpath, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { $ } from "bun";
-import type { BacklogConfig } from "../types/index.ts";
+import type { MemasterConfig } from "../types/index.ts";
 
 type GitPathContext = {
 	repoRoot: string;
 	relativePath: string;
 };
 
-type GitConfigLoader = () => Promise<BacklogConfig | null>;
+type GitConfigLoader = () => Promise<MemasterConfig | null>;
 
 const FETCH_TIMEOUT_MS = 10_000;
 
@@ -53,20 +53,20 @@ function parseIndexEntries(output: string): GitIndexEntry[] {
 
 export class GitOperations {
 	private projectRoot: string;
-	private config: BacklogConfig | null = null;
+	private config: MemasterConfig | null = null;
 	private readonly configLoader?: GitConfigLoader;
 	private hookRunSupported?: boolean;
 	private readonly repositories = new Set<string>();
 	private readonly repositoryChecks = new Map<string, Promise<boolean>>();
 	private readonly fetches = new Map<string, Promise<void>>();
 
-	constructor(projectRoot: string, config: BacklogConfig | null = null, configLoader?: GitConfigLoader) {
+	constructor(projectRoot: string, config: MemasterConfig | null = null, configLoader?: GitConfigLoader) {
 		this.projectRoot = projectRoot;
 		this.config = config;
 		this.configLoader = configLoader;
 	}
 
-	setConfig(config: BacklogConfig | null): void {
+	setConfig(config: MemasterConfig | null): void {
 		this.config = config;
 	}
 
@@ -210,7 +210,7 @@ export class GitOperations {
 		}
 		let commitEntries = ownedEntries;
 
-		const temporaryDirectory = await mkdtemp(join(tmpdir(), "backlog-git-commit-"));
+		const temporaryDirectory = await mkdtemp(join(tmpdir(), "memaster-git-commit-"));
 		const temporaryIndexEnv = { GIT_INDEX_FILE: join(temporaryDirectory, "index") };
 		const messagePath = join(temporaryDirectory, "message");
 		try {
@@ -419,10 +419,13 @@ export class GitOperations {
 		if (!hookStat) return;
 		if (!hookStat.isFile() || (process.platform !== "win32" && (hookStat.mode & 0o111) === 0)) return;
 
-		await this.execGit(["-c", 'alias.backlog-run-hook=!f() { "$@" 1>&2; }; f', "backlog-run-hook", hookPath, ...args], {
-			cwd: repoRoot,
-			env,
-		});
+		await this.execGit(
+			["-c", 'alias.memaster-run-hook=!f() { "$@" 1>&2; }; f', "memaster-run-hook", hookPath, ...args],
+			{
+				cwd: repoRoot,
+				env,
+			},
+		);
 	}
 
 	async resetPaths(filePaths: string[], repoRoot?: string | null): Promise<void> {
@@ -703,8 +706,8 @@ export class GitOperations {
 		throw new Error(`Git operation 'commit task file ${filePath}' failed after 3 attempts: ${lastError?.message}`);
 	}
 
-	async stageBacklogDirectory(backlogDir = "backlog"): Promise<string | null> {
-		const context = await this.getPathContext(backlogDir);
+	async stageMemasterDirectory(memasterDir = "memaster"): Promise<string | null> {
+		const context = await this.getPathContext(memasterDir);
 		if (context) {
 			const pathForAdd = context.relativePath === "." ? "." : context.relativePath;
 			await this.execGit(["add", pathForAdd], { cwd: context.repoRoot });
@@ -714,7 +717,7 @@ export class GitOperations {
 			return null;
 		}
 
-		await this.execGit(["add", `${backlogDir}/`]);
+		await this.execGit(["add", `${memasterDir}/`]);
 		return null;
 	}
 	async stageFileMove(fromPath: string, toPath: string): Promise<string | null> {
@@ -1289,7 +1292,7 @@ export class GitOperations {
 	 * The real location of an existing path, which is the path Git has to be given. Null when the
 	 * path does not exist; the caller then resolves the nearest existing folder and keeps the suffix.
 	 *
-	 * Every folder on the way is resolved. The backlog folder or one of its subfolders may be a link,
+	 * Every folder on the way is resolved. The memaster folder or one of its subfolders may be a link,
 	 * into this repository or into another one, and Git cannot stage a path beyond a link.
 	 *
 	 * The last component is resolved too, with one exception: a symbolic link to a file whose own

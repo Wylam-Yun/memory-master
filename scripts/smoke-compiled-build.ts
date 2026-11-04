@@ -218,12 +218,12 @@ function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
 }
 
 const helpOutput = await run([executable, "--help"]);
-assert(helpOutput.includes("Backlog.md - Project management CLI"), "Compiled CLI help is missing its title.");
+assert(helpOutput.includes("Memaster - Project management CLI"), "Compiled CLI help is missing its title.");
 
 const versionOutput = (await run([executable, "--version"])).trim();
 assert(versionOutput === expectedVersion, `Expected compiled version ${expectedVersion}, received ${versionOutput}.`);
 
-const smokeRoot = await mkdtemp(join(tmpdir(), "backlog-compiled-smoke-"));
+const smokeRoot = await mkdtemp(join(tmpdir(), "memaster-compiled-smoke-"));
 let smokeFailure: CapturedFailure | undefined;
 try {
 	await run([executable, "init", "Compiled Smoke", "--defaults", "--no-git", "--integration-mode", "none"], smokeRoot);
@@ -231,7 +231,7 @@ try {
 		[executable, "task", "create", "Packaged task", "--description", "Persisted", "--priority", "high"],
 		smokeRoot,
 	);
-	const tasksDirectory = join(smokeRoot, "backlog/tasks");
+	const tasksDirectory = join(smokeRoot, "memaster/tasks");
 	const taskFiles = (await readdir(tasksDirectory)).filter((file) => file.endsWith(".md"));
 	assert(taskFiles.length === 1, "Task creation did not persist one Markdown file.");
 	const stored = await readFile(join(tasksDirectory, taskFiles[0] as string), "utf8");
@@ -364,7 +364,7 @@ try {
 			() => ` stderr:\n${mcpStderr}`,
 		);
 		assert(
-			resources.resources.some((resource) => resource.uri === "backlog://workflow/overview"),
+			resources.resources.some((resource) => resource.uri === "memaster://workflow/overview"),
 			"Compiled MCP server is missing its workflow overview resource.",
 		);
 	} catch (error) {

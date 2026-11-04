@@ -2,10 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, utimes } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { McpServer } from "../mcp/server.ts";
 import { registerDocumentTools } from "../mcp/tools/documents/index.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { ContentRecordKind } from "../types/index.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } from "./test-utils.ts";
@@ -45,7 +45,7 @@ describe("document and decision mutation locks", () => {
 		const before = (await Bun.file(file).text()).replace(`id: ${id}`, `id: ${id.toUpperCase().replace("-1", "-001")}`);
 		await Bun.write(file, before);
 		// An occupied lock directory models another process with the same lock policy.
-		const lock = join(core.fs.backlogDir, ".locks", `${kind}-${id}`);
+		const lock = join(core.fs.memasterDir, ".locks", `${kind}-${id}`);
 		await mkdir(lock, { recursive: true });
 		const result =
 			kind === "document"
@@ -55,7 +55,7 @@ describe("document and decision mutation locks", () => {
 		expect(result.stderr.toString()).toContain(busy);
 		await expect(core.archiveContentRecord(kind, id)).rejects.toThrow(busy);
 
-		const server = new BacklogServer(directory);
+		const server = new MemasterServer(directory);
 		await server.start(0, false);
 		try {
 			const route = kind === "document" ? "docs" : "decisions";
@@ -77,7 +77,7 @@ describe("document and decision mutation locks", () => {
 	});
 
 	it("returns a document_update MCP error for an occupied record", async () => {
-		await mkdir(join(core.fs.backlogDir, ".locks", "document-doc-1"), { recursive: true });
+		await mkdir(join(core.fs.memasterDir, ".locks", "document-doc-1"), { recursive: true });
 		const mcp = new McpServer(directory, "Tests");
 		try {
 			const config = await mcp.fs.loadConfig();
@@ -102,7 +102,7 @@ describe("document and decision mutation locks", () => {
 		async (kind) => {
 			const id = idFor(kind);
 			await core.archiveContentRecord(kind, id);
-			const lock = join(core.fs.backlogDir, ".locks", `${kind}-${id}`);
+			const lock = join(core.fs.memasterDir, ".locks", `${kind}-${id}`);
 			await mkdir(lock, { recursive: true });
 			await expect(core.restoreContentRecord(kind, id)).rejects.toThrow(busy);
 			await expect(core.deleteContentRecord(kind, id)).rejects.toThrow(busy);
@@ -169,7 +169,7 @@ describe("document and decision mutation locks", () => {
 	});
 
 	it("does not block other records or mix document and decision locks", async () => {
-		await mkdir(join(core.fs.backlogDir, ".locks", "document-doc-1"), { recursive: true });
+		await mkdir(join(core.fs.memasterDir, ".locks", "document-doc-1"), { recursive: true });
 		await core.createDocumentFromInput({ title: "Other", content: "Other" });
 		await core.updateDocumentFromInput({ id: "doc-2", content: "Updated" });
 		await update("decision");

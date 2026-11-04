@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } from "./test-utils.ts";
 
@@ -20,7 +20,7 @@ describe("CLI mutations with missing storage directories", () => {
 
 		// Git does not retain empty directories, including the archive parent directory.
 		for (const directory of ["drafts", "decisions", "archive"]) {
-			const path = join(testDir, "backlog", directory);
+			const path = join(testDir, "memaster", directory);
 			await rm(path, { recursive: true });
 			expect(existsSync(path)).toBe(false);
 		}
@@ -65,7 +65,7 @@ describe("CLI mutations with missing storage directories", () => {
 			const { task: dependent } = await core.createTaskFromInput({ title: "Dependent task", dependencies: [task.id] });
 			if (!task.filePath) throw new Error("Expected the created task path");
 			const content = await Bun.file(task.filePath).text();
-			const destinationDir = join(testDir, "backlog", "archive", "tasks");
+			const destinationDir = join(testDir, "memaster", "archive", "tasks");
 			expect(existsSync(destinationDir)).toBe(false);
 
 			const result = await $`bun ${cliPath} task archive ${task.id}`.cwd(testDir).nothrow().quiet();
@@ -84,7 +84,7 @@ describe("CLI mutations with missing storage directories", () => {
 		});
 		const { task: dependent } = await core.createTaskFromInput({ title: "Dependent task", dependencies: [task.id] });
 		if (!task.filePath) throw new Error("Expected the created task path");
-		expect(existsSync(join(testDir, "backlog", "drafts"))).toBe(false);
+		expect(existsSync(join(testDir, "memaster", "drafts"))).toBe(false);
 
 		const result = await $`bun ${cliPath} task demote ${task.id}`.cwd(testDir).nothrow().quiet();
 		expect(result.exitCode).toBe(0);

@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { Command } from "commander";
 import { DEFAULT_STATUSES } from "../constants/index.ts";
-import { resolveBacklogDirectory } from "../utils/backlog-directory.ts";
+import { resolveMemasterDirectory } from "../utils/memaster-directory.ts";
 import { getPriorityLabels } from "../utils/priority-config.ts";
 import { getProjectValues } from "../utils/project-config.ts";
-import { BACKLOG_CWD_ENV } from "../utils/runtime-cwd.ts";
+import { MEMASTER_CWD_ENV } from "../utils/runtime-cwd.ts";
 import { getTaskTypeValues } from "../utils/task-type-config.ts";
 
 export interface HelpField {
@@ -171,10 +171,10 @@ function parseStringValueFromConfig(content: string, keys: string[]): string | n
 	return null;
 }
 
-function findBacklogConfigPathSync(startDir: string): string | null {
+function findMemasterConfigPathSync(startDir: string): string | null {
 	let current = startDir;
 	while (current !== dirname(current)) {
-		const resolution = resolveBacklogDirectory(current);
+		const resolution = resolveMemasterDirectory(current);
 		if (resolution.configPath) {
 			return resolution.configPath;
 		}
@@ -184,7 +184,7 @@ function findBacklogConfigPathSync(startDir: string): string | null {
 }
 
 function getRuntimeConfigStartDir(): string {
-	const override = process.env[BACKLOG_CWD_ENV]?.trim();
+	const override = process.env[MEMASTER_CWD_ENV]?.trim();
 	return override ? resolve(override) : process.cwd();
 }
 
@@ -200,7 +200,7 @@ function normalizeStatusValues(statuses: string[]): string[] {
 
 export function getCliStatusValues(options?: { includeDraft?: boolean }): string[] {
 	let configuredStatuses: string[] = [...DEFAULT_STATUSES];
-	const configPath = findBacklogConfigPathSync(getRuntimeConfigStartDir());
+	const configPath = findMemasterConfigPathSync(getRuntimeConfigStartDir());
 	if (configPath) {
 		try {
 			const parsed = parseStatusesFromConfig(readFileSync(configPath, "utf8"));
@@ -217,7 +217,7 @@ export function getCliStatusValues(options?: { includeDraft?: boolean }): string
 }
 
 export function getCliPriorityValues(): string[] {
-	const configPath = findBacklogConfigPathSync(getRuntimeConfigStartDir());
+	const configPath = findMemasterConfigPathSync(getRuntimeConfigStartDir());
 	if (configPath) {
 		try {
 			const parsed = parsePrioritiesFromConfig(readFileSync(configPath, "utf8"));
@@ -232,7 +232,7 @@ export function getCliPriorityValues(): string[] {
 }
 
 export function getCliTaskTypeValues(): string[] {
-	const configPath = findBacklogConfigPathSync(getRuntimeConfigStartDir());
+	const configPath = findMemasterConfigPathSync(getRuntimeConfigStartDir());
 	if (configPath) {
 		try {
 			const parsed = parseTaskTypesFromConfig(readFileSync(configPath, "utf8"));
@@ -245,7 +245,7 @@ export function getCliTaskTypeValues(): string[] {
 }
 
 export function getCliProjectValues(): string[] {
-	const configPath = findBacklogConfigPathSync(getRuntimeConfigStartDir());
+	const configPath = findMemasterConfigPathSync(getRuntimeConfigStartDir());
 	if (configPath) {
 		try {
 			const parsed = parseProjectsFromConfig(readFileSync(configPath, "utf8"));
@@ -258,7 +258,7 @@ export function getCliProjectValues(): string[] {
 }
 
 export function getCliTaskPrefix(): string {
-	const configPath = findBacklogConfigPathSync(getRuntimeConfigStartDir());
+	const configPath = findMemasterConfigPathSync(getRuntimeConfigStartDir());
 	if (configPath) {
 		try {
 			return parseStringValueFromConfig(readFileSync(configPath, "utf8"), ["task_prefix", "taskPrefix"]) ?? "task";

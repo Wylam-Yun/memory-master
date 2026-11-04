@@ -16,13 +16,13 @@ const ARCHIVABLE_PAGES = {
 	document: {
 		noun: 'document',
 		listPath: '/documentation',
-		restoreCommand: 'backlog doc restore',
+		restoreCommand: 'memaster doc restore',
 		archive: (id: string) => apiClient.archiveDoc(id),
 	},
 	decision: {
 		noun: 'decision',
 		listPath: '/decisions',
-		restoreCommand: 'backlog decision restore',
+		restoreCommand: 'memaster decision restore',
 		archive: (id: string) => apiClient.archiveDecision(id),
 	},
 } as const;

@@ -3,7 +3,7 @@ import { appendFile, chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } f
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { parseFrontmatter } from "../markdown/frontmatter.ts";
 import type { Task, TaskCreateInput } from "../types/index.ts";
 import { getCreatedTaskBoardOutcome, renderBoardTui, upsertBoardTask } from "../ui/board.ts";
@@ -43,7 +43,7 @@ function task(overrides: Partial<Task> = {}): Task {
 
 async function initializeGitRepository(testDir: string): Promise<void> {
 	await $`git init -b main`.cwd(testDir).quiet();
-	await $`git add backlog`.cwd(testDir).quiet();
+	await $`git add memaster`.cwd(testDir).quiet();
 	await $`git commit -m init`.cwd(testDir).quiet();
 }
 
@@ -209,11 +209,11 @@ describe("TUI task composer model", () => {
 	});
 
 	it("offers Draft only in the opened status choices without changing the resting value", () => {
-		const values = createTaskComposerValues(["Backlog", "Doing", "Done"]);
-		const choices = getTaskComposerStatusChoices(["Backlog", "Doing", "Done"]);
+		const values = createTaskComposerValues(["Memaster", "Doing", "Done"]);
+		const choices = getTaskComposerStatusChoices(["Memaster", "Doing", "Done"]);
 
-		expect(choices.map((choice) => choice.value)).toEqual(["Draft", "Backlog", "Doing", "Done"]);
-		expect(values.status).toBe("Backlog");
+		expect(choices.map((choice) => choice.value)).toEqual(["Draft", "Memaster", "Doing", "Done"]);
+		expect(values.status).toBe("Memaster");
 	});
 
 	it("uses configured type and priority choices with explicit unset options", () => {
@@ -402,7 +402,7 @@ describe("TUI task composer canonical persistence", () => {
 	let core: Core;
 
 	beforeEach(async () => {
-		testDir = await mkdtemp(join(tmpdir(), "backlog-tui-composer-"));
+		testDir = await mkdtemp(join(tmpdir(), "memaster-tui-composer-"));
 		core = new Core(testDir);
 		await initializeTestProject(core, "TUI Composer Test");
 	});
@@ -575,7 +575,7 @@ describe("TUI task composer canonical persistence", () => {
 		await initializeGitRepository(testDir);
 		await installFailingHook(
 			testDir,
-			'for file in backlog/tasks/*.md; do printf "\\nHook edit must survive.\\n" >> "$file"; done\nexit 1',
+			'for file in memaster/tasks/*.md; do printf "\\nHook edit must survive.\\n" >> "$file"; done\nexit 1',
 		);
 
 		const creation = core.createTaskFromInput({ title: "Hook modified" }, true);
@@ -688,7 +688,7 @@ describe("TUI task composer canonical persistence", () => {
 		await installHook(
 			testDir,
 			"pre-commit",
-			`test -d backlog/tasks || exit 9\nprintf '%s\\n' "$GIT_INDEX_FILE" "$GIT_EDITOR" >> "${markerPath}"`,
+			`test -d memaster/tasks || exit 9\nprintf '%s\\n' "$GIT_INDEX_FILE" "$GIT_EDITOR" >> "${markerPath}"`,
 			hooksDir,
 		);
 
@@ -719,7 +719,7 @@ describe("TUI task composer canonical persistence", () => {
 			await core.createTaskFromInput({ title: "Legacy hook runner" }, true);
 			const marker = (await readFile(markerPath, "utf8")).trim().split("\n");
 			expect(hookRunCalls).toBe(0);
-			expect(marker[0]).toContain("backlog-git-commit-");
+			expect(marker[0]).toContain("memaster-git-commit-");
 			expect(marker[1]).toBe(":");
 		} finally {
 			git.execGit = originalExecGit;
@@ -794,7 +794,7 @@ describe("TUI task composer canonical persistence", () => {
 		await initializeGitRepository(testDir);
 		await installFailingHook(
 			testDir,
-			'for file in backlog/tasks/*.md; do printf "\\nHook-owned task edit.\\n" >> "$file"; git add "$file"; done\nprintf "Unrelated hook bytes.\\n" > hook-unrelated.txt\ngit add hook-unrelated.txt\nexit 0',
+			'for file in memaster/tasks/*.md; do printf "\\nHook-owned task edit.\\n" >> "$file"; git add "$file"; done\nprintf "Unrelated hook bytes.\\n" > hook-unrelated.txt\ngit add hook-unrelated.txt\nexit 0',
 		);
 
 		const result = await core.createTaskFromInput({ title: "Constrained hook" }, true);
@@ -814,17 +814,17 @@ describe("TUI task composer canonical persistence", () => {
 		await installHook(
 			testDir,
 			"pre-commit",
-			'for file in backlog/tasks/*.md; do printf "\\nPre-commit bytes.\\n" >> "$file"; git add "$file"; done',
+			'for file in memaster/tasks/*.md; do printf "\\nPre-commit bytes.\\n" >> "$file"; git add "$file"; done',
 		);
 		await installHook(
 			testDir,
 			"prepare-commit-msg",
-			'for file in backlog/tasks/*.md; do printf "\\nPrepare-message bytes.\\n" >> "$file"; git add "$file"; done',
+			'for file in memaster/tasks/*.md; do printf "\\nPrepare-message bytes.\\n" >> "$file"; git add "$file"; done',
 		);
 		await installHook(
 			testDir,
 			"commit-msg",
-			'for file in backlog/tasks/*.md; do printf "\\nCommit-message bytes.\\n" >> "$file"; git add "$file"; done',
+			'for file in memaster/tasks/*.md; do printf "\\nCommit-message bytes.\\n" >> "$file"; git add "$file"; done',
 		);
 
 		const result = await core.createTaskFromInput({ title: "Hook phase boundary" }, true);
@@ -920,7 +920,7 @@ describe("TUI task composer canonical persistence", () => {
 			await initializeGitRepository(testDir);
 			await installFailingHook(
 				testDir,
-				'for file in backlog/tasks/*.md backlog/drafts/*.md; do test -e "$file" && rm "$file"; done\nexit 1',
+				'for file in memaster/tasks/*.md memaster/drafts/*.md; do test -e "$file" && rm "$file"; done\nexit 1',
 			);
 			const save = status === "Draft" ? core.fs.saveDraft.bind(core.fs) : core.fs.saveTask.bind(core.fs);
 			const method = status === "Draft" ? "saveDraft" : "saveTask";
@@ -970,7 +970,7 @@ describe("TUI task composer canonical persistence", () => {
 
 		it(`refuses to create a ${kind} over a file that appears at its path after the ID is chosen`, async () => {
 			const fileName = `${kind}-1 - Preexisting.md`;
-			const preExistingPath = join(testDir, "backlog", folder, fileName);
+			const preExistingPath = join(testDir, "memaster", folder, fileName);
 			const preExistingContent = "This is not a parseable record and must stay as it is.\n";
 
 			await afterNextIdGenerated(
@@ -985,12 +985,12 @@ describe("TUI task composer canonical persistence", () => {
 			);
 
 			expect(await readFile(preExistingPath, "utf8")).toBe(preExistingContent);
-			expect(await readdir(join(testDir, "backlog", folder))).toEqual([fileName]);
+			expect(await readdir(join(testDir, "memaster", folder))).toEqual([fileName]);
 		});
 
 		it(`leaves the file and the Git index untouched when a ${kind} create is refused`, async () => {
 			await initializeGitRepository(testDir);
-			const relativePath = `backlog/${folder}/${kind}-1 - Preexisting.md`;
+			const relativePath = `memaster/${folder}/${kind}-1 - Preexisting.md`;
 			const targetPath = join(testDir, relativePath);
 			const baselineContent = "HEAD baseline bytes.\n";
 			const stagedContent = "Prior staged user bytes.\n";

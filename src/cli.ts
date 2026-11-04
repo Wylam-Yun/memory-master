@@ -24,9 +24,9 @@ import { pickTaskForEditWizard, runTaskCreateWizard, runTaskEditWizard } from ".
 import { watchJson } from "./commands/watch-json.ts";
 import { DEFAULT_DIRECTORIES, DEFAULT_FILES, DEFAULT_STATUSES } from "./constants/index.ts";
 import { type ArchivedTaskMovePlan, moveArchivedTasks, previewArchivedTaskMove } from "./core/archived-task-move.ts";
-import { CONTENT_RECORD_WORDS, describeContentRecordChange, formatCleanupResult } from "./core/backlog.ts";
 import { type DuplicateRepairPlan, findLocalDuplicateTaskIds } from "./core/duplicate-task-repair.ts";
 import { initializeProject } from "./core/init.ts";
+import { CONTENT_RECORD_WORDS, describeContentRecordChange, formatCleanupResult } from "./core/memaster.ts";
 import { buildMilestoneBuckets, collectArchivedMilestoneKeys, milestoneKey } from "./core/milestones.ts";
 import { loadTaskDetail, loadTaskListItems } from "./core/task-detail.ts";
 import { isConfigValueError } from "./file-system/operations.ts";
@@ -58,13 +58,13 @@ import {
 import { MilestoneHandlers, type MilestoneRemoveArgs } from "./mcp/tools/milestones/handlers.ts";
 import type { CallToolResult } from "./mcp/types.ts";
 import {
-	type BacklogConfig,
 	type ContentRecordKind,
 	type DecisionUpdateInput,
 	DOCUMENT_TYPE_VALUES,
 	type Document as DocType,
 	type DocumentSearchResult,
 	isWorkingCopyTask,
+	type MemasterConfig,
 	type Milestone,
 	type SearchPriorityFilter,
 	type SearchResult,
@@ -81,7 +81,6 @@ import { createLoadingScreen } from "./ui/loading.ts";
 import { viewTaskEnhanced } from "./ui/task-viewer-with-search.ts";
 import { scrollableViewer } from "./ui/tui.ts";
 import { type AgentSelectionValue, processAgentSelection } from "./utils/agent-selection.ts";
-import { normalizeProjectBacklogDirectory } from "./utils/backlog-directory.ts";
 import { launchBrowser } from "./utils/browser-launch.ts";
 import { formatDependencyCleanupMessage } from "./utils/dependency-graph.ts";
 import {
@@ -92,7 +91,7 @@ import {
 	hasDraftIdentityFindings,
 } from "./utils/duplicate-detection.ts";
 import { AmbiguousIdError, isAmbiguousIdError } from "./utils/entity-id.ts";
-import { findBacklogRoot } from "./utils/find-backlog-root.ts";
+import { findMemasterRoot } from "./utils/find-memaster-root.ts";
 import {
 	addListWindowOptions,
 	LIST_WINDOW_HELP_FIELDS,
@@ -112,6 +111,7 @@ import {
 	type McpClientSetupKey,
 	runMcpClientSetupCommand,
 } from "./utils/mcp-client-setup.ts";
+import { normalizeProjectMemasterDirectory } from "./utils/memaster-directory.ts";
 import { resolveMilestoneInputForStorage } from "./utils/milestone-storage.ts";
 import {
 	DRAFT_PREFIX,
@@ -234,8 +234,8 @@ function normalizeIntegrationOption(value: string): IntegrationMode | null {
 	return null;
 }
 
-// Always use "backlog" as the global MCP server name so fallback mode works when the project isn't initialized.
-const MCP_SERVER_NAME = "backlog";
+// Always use "memaster" as the global MCP server name so fallback mode works when the project isn't initialized.
+const MCP_SERVER_NAME = "memaster";
 
 const MCP_CLIENT_INSTRUCTION_MAP: Record<string, AgentInstructionFile> = {
 	claude: "CLAUDE.md",
@@ -264,7 +264,7 @@ async function runMcpClientCommand(client: McpClientSetupKey, serverName = MCP_S
 	console.log(`    Configuring ${label}...`);
 	try {
 		await runMcpClientSetupCommand(command, args, { stdout: "inherit", stderr: "inherit" });
-		console.log(`    ✓ Added Backlog MCP server to ${label}`);
+		console.log(`    ✓ Added Memaster MCP server to ${label}`);
 		return label;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
@@ -288,7 +288,7 @@ function printMissingRequiredArgument(argumentName: string): void {
 }
 
 /**
- * Reports a command that could not finish. A config value Backlog refuses to read already states
+ * Reports a command that could not finish. A config value Memaster refuses to read already states
  * the file, the key, and the fix, so it is printed as written instead of behind a stack trace.
  */
 function reportCommandFailure(summary: string, error: unknown): void {
@@ -306,16 +306,16 @@ function formatTaskEditError(error: unknown, taskId: string, commandKind = "task
 		message.startsWith("Malformed Acceptance Criteria markers:") ||
 		message.startsWith("Malformed Definition of Done markers:")
 	) {
-		return `${message}\nRun 'backlog ${commandKind} view ${taskId} --plain' to locate the ${commandKind} file, repair or remove the malformed marker block in that Markdown file, then rerun the edit.`;
+		return `${message}\nRun 'memaster ${commandKind} view ${taskId} --plain' to locate the ${commandKind} file, repair or remove the malformed marker block in that Markdown file, then rerun the edit.`;
 	}
 	if (message.startsWith("Invalid index:")) {
-		return `${message} Try 'backlog ${commandKind} edit ${taskId} --help' for index options.`;
+		return `${message} Try 'memaster ${commandKind} edit ${taskId} --help' for index options.`;
 	}
 	if (
 		message.includes(" not found") &&
 		(message.startsWith("Acceptance criterion ") || message.startsWith("Definition of Done item "))
 	) {
-		return `${message}\nRun 'backlog ${commandKind} view ${taskId} --plain' to inspect indexes, or 'backlog ${commandKind} edit ${taskId} --help' for edit options.`;
+		return `${message}\nRun 'memaster ${commandKind} view ${taskId} --plain' to inspect indexes, or 'memaster ${commandKind} edit ${taskId} --help' for edit options.`;
 	}
 	return message;
 }
@@ -426,7 +426,7 @@ function printDuplicateRepairPlan(plan: DuplicateRepairPlan): void {
 				console.log(`    - ${location.branch}:${location.path} (${location.state})`);
 			}
 		}
-		console.log("Switch to the affected branches and reconcile these paths; Backlog.md will not edit another branch.");
+		console.log("Switch to the affected branches and reconcile these paths; Memaster will not edit another branch.");
 	}
 	if (plan.groups.length > 0) {
 		if (plan.references.length > 0) {
@@ -440,7 +440,7 @@ function printDuplicateRepairPlan(plan: DuplicateRepairPlan): void {
 		if (!plan.referenceScanComplete) {
 			console.log("\nReference scan incomplete; repair is blocked. See the failures below.");
 		} else if (plan.references.length === 0) {
-			console.log("\nNo textual references to the duplicate IDs were found in backlog Markdown files.");
+			console.log("\nNo textual references to the duplicate IDs were found in memaster Markdown files.");
 		}
 	}
 	if (plan.blockedReasons.length > 0) {
@@ -462,19 +462,19 @@ function printArchivedTaskMovePlan(plan: ArchivedTaskMovePlan, duplicateIdsPendi
 		if (plan.moves.length > previewLimit) console.log(`  ... and ${plan.moves.length - previewLimit} more`);
 		for (const { directory, realDirectory } of plan.linkedSources) {
 			console.log(
-				`${directory} is a link to ${realDirectory}, outside the backlog directory. The files are moved out of that folder.`,
+				`${directory} is a link to ${realDirectory}, outside the memaster directory. The files are moved out of that folder.`,
 			);
 		}
 		if (plan.linkedDestination) {
 			const { directory, realDirectory } = plan.linkedDestination;
 			console.log(
-				`${directory} is a link to ${realDirectory}, outside the backlog directory. The files are moved into that folder.`,
+				`${directory} is a link to ${realDirectory}, outside the memaster directory. The files are moved into that folder.`,
 			);
 		}
 		console.log(
 			duplicateIdsPending
 				? `They are moved into ${plan.archiveDirectory} once the duplicate task IDs above are repaired. File names and task IDs stay the same.`
-				: `'backlog doctor --fix' moves them into ${plan.archiveDirectory}. File names and task IDs stay the same.`,
+				: `'memaster doctor --fix' moves them into ${plan.archiveDirectory}. File names and task IDs stay the same.`,
 		);
 	}
 	if (plan.blocked.length > 0) {
@@ -546,14 +546,14 @@ function printDependencyDefectsReport(defects: DependencyDefects): void {
 			console.log(`  - ${finding.taskId} depends on itself${spelling}`);
 		}
 		console.log(
-			"Rewrite the task's dependencies without its own ID: 'backlog task edit <id> --dep <ids>' (or --clear-deps). Restore an archived task first: 'backlog task restore <id>'.",
+			"Rewrite the task's dependencies without its own ID: 'memaster task edit <id> --dep <ids>' (or --clear-deps). Restore an archived task first: 'memaster task restore <id>'.",
 		);
 	}
 	if (defects.cycles.length > 0) {
 		console.log("\nDependency cycles (diagnostic only):");
 		for (const cycle of defects.cycles) console.log(`  - ${cycle.join(" -> ")}`);
 		console.log(
-			"Break each cycle by rewriting one task's dependencies: 'backlog task edit <id> --dep <ids>' (or --clear-deps). Restore an archived task first: 'backlog task restore <id>'.",
+			"Break each cycle by rewriting one task's dependencies: 'memaster task edit <id> --dep <ids>' (or --clear-deps). Restore an archived task first: 'memaster task restore <id>'.",
 		);
 	}
 }
@@ -705,7 +705,7 @@ const PER_TASK_ONLY_EDIT_FLAGS: ReadonlyArray<{ option: string; flag: string }> 
 function findPerTaskOnlyFlag(options: Record<string, unknown>): string | null {
 	for (const { option, flag } of PER_TASK_ONLY_EDIT_FLAGS) {
 		if (options[option] !== undefined) {
-			return `Cannot use ${flag} with more than one task ID. ${flag} applies to one task only. Run backlog task edit once per task.`;
+			return `Cannot use ${flag} with more than one task ID. ${flag} applies to one task only. Run memaster task edit once per task.`;
 		}
 	}
 	return null;
@@ -854,7 +854,7 @@ async function resolveCliMilestoneInput(core: Core, milestone: string): Promise<
  * Processes --ac and --acceptance-criteria options to extract acceptance criteria
  * Handles both single values and arrays from multi-value accumulators
  */
-function getDefaultAdvancedConfig(existingConfig?: BacklogConfig | null): Partial<BacklogConfig> {
+function getDefaultAdvancedConfig(existingConfig?: MemasterConfig | null): Partial<MemasterConfig> {
 	return {
 		checkActiveBranches: existingConfig?.checkActiveBranches ?? true,
 		remoteOperations: existingConfig?.remoteOperations ?? true,
@@ -870,7 +870,7 @@ function getDefaultAdvancedConfig(existingConfig?: BacklogConfig | null): Partia
 }
 
 /**
- * Resolves the working directory commands operate on, honouring --cwd and BACKLOG_CWD.
+ * Resolves the working directory commands operate on, honouring --cwd and MEMASTER_CWD.
  * Exits with the resolution error message when the override points at an invalid directory.
  */
 async function requireRuntimeCwd(): Promise<string> {
@@ -885,14 +885,14 @@ async function requireRuntimeCwd(): Promise<string> {
 }
 
 /**
- * Resolves the Backlog.md project root from the current working directory.
- * Walks up the directory tree to find backlog/ or backlog.json, with git root fallback.
- * Exits with error message if no Backlog.md project is found.
+ * Resolves the Memaster project root from the current working directory.
+ * Walks up the directory tree to find memaster/ or memaster.json, with git root fallback.
+ * Exits with error message if no Memaster project is found.
  */
 async function requireProjectRoot(): Promise<string> {
-	const root = await findBacklogRoot(await requireRuntimeCwd());
+	const root = await findMemasterRoot(await requireRuntimeCwd());
 	if (!root) {
-		console.error("No Backlog.md project found. Run `backlog init` to initialize.");
+		console.error("No Memaster project found. Run `memaster init` to initialize.");
 		process.exit(1);
 	}
 	return root;
@@ -964,7 +964,7 @@ try {
 		const first = rawArgs[0];
 		if (
 			typeof first === "string" &&
-			/node_modules[\\/]+backlog\.md-(darwin|linux|windows)-[^\\/]+[\\/]+backlog(\.exe)?$/.test(first)
+			/node_modules[\\/]+memory-master-(darwin|linux|windows)-[^\\/]+[\\/]+memaster(\.exe)?$/.test(first)
 		) {
 			rawArgs = rawArgs.slice(1);
 		}
@@ -976,14 +976,14 @@ try {
 		let initialized = false;
 		try {
 			const runtimeCwd = await resolveRuntimeCwd();
-			const projectRoot = await findBacklogRoot(runtimeCwd.cwd);
+			const projectRoot = await findMemasterRoot(runtimeCwd.cwd);
 			if (projectRoot) {
 				const core = new Core(projectRoot);
 				const cfg = await core.filesystem.loadConfig();
 				initialized = !!cfg;
 			}
 		} catch (error) {
-			// An initialized project whose config Backlog refuses to read must not be presented as an
+			// An initialized project whose config Memaster refuses to read must not be presented as an
 			// uninitialized directory: report the value and stop, as every other entry point does.
 			if (isConfigValueError(error)) {
 				console.error(error.message);
@@ -1031,7 +1031,7 @@ function getMcpStartCwdOverrideFromArgv(argv = process.argv): string | undefined
 }
 
 // Global config migration - run before any command processing
-// Only run if we're in a backlog project (skip for init, help, version)
+// Only run if we're in a memaster project (skip for init, help, version)
 const shouldRunMigration =
 	!process.argv.includes("init") &&
 	!process.argv.includes("--help") &&
@@ -1043,7 +1043,7 @@ const shouldRunMigration =
 if (shouldRunMigration) {
 	try {
 		const runtimeCwd = await resolveRuntimeCwd({ cwd: getMcpStartCwdOverrideFromArgv() });
-		const projectRoot = await findBacklogRoot(runtimeCwd.cwd);
+		const projectRoot = await findMemasterRoot(runtimeCwd.cwd);
 		if (projectRoot) {
 			const core = new Core(projectRoot);
 
@@ -1060,8 +1060,8 @@ if (shouldRunMigration) {
 
 const program = new Command();
 program
-	.name("backlog")
-	.description("Backlog.md - Project management CLI")
+	.name("memaster")
+	.description("Memaster - Project management CLI")
 	.version(version, "-v, --version", "display version number")
 	.showSuggestionAfterError()
 	.showHelpAfterError("Run with --help to see accepted fields and examples.");
@@ -1080,7 +1080,7 @@ addHelpSchema(program.command("init [projectName]"), {
 			type: choiceType(["claude", "agents", "gemini", "copilot", "cursor", "none"], { multiple: true }),
 			description: "Instruction files to create; cursor writes AGENTS.md; comma-separated",
 		},
-		{ name: "--backlog-dir", type: "Project-relative path", description: "backlog, .backlog, or custom path" },
+		{ name: "--memaster-dir", type: "Project-relative path", description: "memaster, .memaster, or custom path" },
 		{
 			name: "--task-prefix",
 			type: "String (letters only; default: task)",
@@ -1088,15 +1088,15 @@ addHelpSchema(program.command("init [projectName]"), {
 		},
 		{ name: "--no-git", type: "Boolean", description: "Initialize without Git integration" },
 	],
-	writes: "Backlog directory, config file, optional agent instruction files, and optional git commit",
+	writes: "Memaster directory, config file, optional agent instruction files, and optional git commit",
 	output: "Initialization summary with selected integration and config; defaults to CLI instructions",
 	examples: [
-		'backlog init "My Project" --defaults',
-		'backlog init "My Project" --defaults --integration-mode cli',
-		'backlog init "My Project" --defaults --agent-instructions agents,claude',
+		'memaster init "My Project" --defaults',
+		'memaster init "My Project" --defaults --integration-mode cli',
+		'memaster init "My Project" --defaults --agent-instructions agents,claude',
 	],
 })
-	.description("initialize backlog project in the current directory (or BACKLOG_CWD when set)")
+	.description("initialize memaster project in the current directory (or MEMASTER_CWD when set)")
 	.option(
 		"--agent-instructions <instructions>",
 		"comma-separated agent instructions to create. Valid: claude, agents, gemini, copilot, cursor (writes AGENTS.md), none. Use 'none' to skip; when combined with others, 'none' is ignored.",
@@ -1114,7 +1114,7 @@ addHelpSchema(program.command("init [projectName]"), {
 		"--integration-mode <mode>",
 		"choose AI integration mode: cli, mcp, or none (default: cli; cli instructions are recommended)",
 	)
-	.option("--backlog-dir <path>", "backlog folder for init: backlog, .backlog, or a custom project-relative path")
+	.option("--memaster-dir <path>", "memaster folder for init: memaster, .memaster, or a custom project-relative path")
 	.option("--config-location <location>", "config location for init: folder or root")
 	.option(
 		"--task-prefix <prefix>",
@@ -1137,7 +1137,7 @@ addHelpSchema(program.command("init [projectName]"), {
 				autoOpenBrowser?: string;
 				installClaudeAgent?: string;
 				integrationMode?: string;
-				backlogDir?: string;
+				memasterDir?: string;
 				configLocation?: string;
 				taskPrefix?: string;
 				git?: boolean;
@@ -1145,7 +1145,7 @@ addHelpSchema(program.command("init [projectName]"), {
 			},
 		) => {
 			try {
-				// init targets the same directory every other command resolves (--cwd/BACKLOG_CWD, else process.cwd()).
+				// init targets the same directory every other command resolves (--cwd/MEMASTER_CWD, else process.cwd()).
 				const cwd = await requireRuntimeCwd();
 				const isRepo = await isGitRepository(cwd);
 				let filesystemOnly = options.git === false;
@@ -1158,7 +1158,7 @@ addHelpSchema(program.command("init [projectName]"), {
 						return;
 					}
 					const repositoryMode = await clack.select({
-						message: "No git repository found. How should Backlog.md initialize this project?",
+						message: "No git repository found. How should Memaster initialize this project?",
 						initialValue: "git",
 						options: [
 							{
@@ -1193,11 +1193,11 @@ addHelpSchema(program.command("init [projectName]"), {
 
 				if (isReInitialization) {
 					console.log(
-						"Existing backlog project detected. Current configuration will be preserved where not specified.",
+						"Existing memaster project detected. Current configuration will be preserved where not specified.",
 					);
-					if (options.backlogDir) {
+					if (options.memasterDir) {
 						console.error(
-							"The backlog directory is fixed after initialization. Re-run init without --backlog-dir for this project.",
+							"The memaster directory is fixed after initialization. Re-run init without --memaster-dir for this project.",
 						);
 						process.exit(1);
 					}
@@ -1243,7 +1243,7 @@ addHelpSchema(program.command("init [projectName]"), {
 					options.autoOpenBrowser ||
 					options.installClaudeAgent ||
 					options.integrationMode ||
-					options.backlogDir ||
+					options.memasterDir ||
 					options.configLocation ||
 					options.taskPrefix ||
 					options.git === false
@@ -1254,7 +1254,7 @@ addHelpSchema(program.command("init [projectName]"), {
 				if (!name) {
 					if (!hasInteractiveTTY) {
 						abortInitialization(
-							'Project name is required when no interactive terminal is available. Supply it with `backlog init "My Project" --defaults`.',
+							'Project name is required when no interactive terminal is available. Supply it with `memaster init "My Project" --defaults`.',
 						);
 						return;
 					}
@@ -1294,21 +1294,21 @@ addHelpSchema(program.command("init [projectName]"), {
 					return;
 				}
 
-				let backlogDirectory: string | undefined;
-				let backlogDirectorySource: "backlog" | ".backlog" | "custom" | undefined;
+				let memasterDirectory: string | undefined;
+				let memasterDirectorySource: "memaster" | ".memaster" | "custom" | undefined;
 				let configLocation: "folder" | "root" | undefined;
 				if (!isReInitialization) {
-					const backlogResolution = core.filesystem.resolveBacklogDirectoryInfo();
-					const defaultBacklogDirectory = backlogResolution.backlogDir ?? DEFAULT_DIRECTORIES.BACKLOG;
-					const defaultBacklogSource = backlogResolution.source ?? "backlog";
-					const defaultConfigLocation = backlogResolution.configSource ?? "folder";
-					const normalizedBacklogDirOption = options.backlogDir
-						? normalizeProjectBacklogDirectory(options.backlogDir)
+					const memasterResolution = core.filesystem.resolveMemasterDirectoryInfo();
+					const defaultMemasterDirectory = memasterResolution.memasterDir ?? DEFAULT_DIRECTORIES.MEMASTER;
+					const defaultMemasterSource = memasterResolution.source ?? "memaster";
+					const defaultConfigLocation = memasterResolution.configSource ?? "folder";
+					const normalizedMemasterDirOption = options.memasterDir
+						? normalizeProjectMemasterDirectory(options.memasterDir)
 						: undefined;
 					const normalizedConfigLocation = options.configLocation?.trim().toLowerCase();
-					if (options.backlogDir && !normalizedBacklogDirOption) {
+					if (options.memasterDir && !normalizedMemasterDirOption) {
 						console.error(
-							"Invalid --backlog-dir value. Use 'backlog', '.backlog', or a project-relative path inside the project.",
+							"Invalid --memaster-dir value. Use 'memaster', '.memaster', or a project-relative path inside the project.",
 						);
 						process.exit(1);
 					}
@@ -1322,43 +1322,43 @@ addHelpSchema(program.command("init [projectName]"), {
 					}
 
 					if (isNonInteractive) {
-						if (normalizedBacklogDirOption) {
-							backlogDirectory = normalizedBacklogDirOption;
-							backlogDirectorySource =
-								normalizedBacklogDirOption === DEFAULT_DIRECTORIES.BACKLOG ||
-								normalizedBacklogDirOption === DEFAULT_DIRECTORIES.HIDDEN_BACKLOG
-									? (normalizedBacklogDirOption as "backlog" | ".backlog")
+						if (normalizedMemasterDirOption) {
+							memasterDirectory = normalizedMemasterDirOption;
+							memasterDirectorySource =
+								normalizedMemasterDirOption === DEFAULT_DIRECTORIES.MEMASTER ||
+								normalizedMemasterDirOption === DEFAULT_DIRECTORIES.HIDDEN_MEMASTER
+									? (normalizedMemasterDirOption as "memaster" | ".memaster")
 									: "custom";
 						} else {
-							backlogDirectory = defaultBacklogDirectory;
-							backlogDirectorySource = defaultBacklogSource;
+							memasterDirectory = defaultMemasterDirectory;
+							memasterDirectorySource = defaultMemasterSource;
 						}
 						configLocation =
 							(normalizedConfigLocation as "folder" | "root" | undefined) ??
-							(backlogDirectorySource === "custom" ? "root" : defaultConfigLocation);
-						if (backlogDirectorySource === "custom" && configLocation !== "root") {
-							console.error("Custom backlog directories require --config-location root.");
+							(memasterDirectorySource === "custom" ? "root" : defaultConfigLocation);
+						if (memasterDirectorySource === "custom" && configLocation !== "root") {
+							console.error("Custom memaster directories require --config-location root.");
 							process.exit(1);
 						}
 					} else {
 						const locationPrompt = await clack.select({
-							message: "Where should Backlog.md store project files?",
-							initialValue: defaultBacklogSource,
+							message: "Where should Memaster store project files?",
+							initialValue: defaultMemasterSource,
 							options: [
 								{
-									label: "backlog/ (default)",
-									value: "backlog",
-									hint: "Store tasks and config in backlog/",
+									label: "memaster/ (default)",
+									value: "memaster",
+									hint: "Store tasks and config in memaster/",
 								},
 								{
-									label: ".backlog/",
-									value: ".backlog",
-									hint: "Store tasks and config in .backlog/",
+									label: ".memaster/",
+									value: ".memaster",
+									hint: "Store tasks and config in .memaster/",
 								},
 								{
 									label: "Custom project-relative path",
 									value: "custom",
-									hint: `Backlog.md will store project config in ${backlogResolution.rootConfigPath}`,
+									hint: `Memaster will store project config in ${memasterResolution.rootConfigPath}`,
 								},
 							],
 						});
@@ -1367,14 +1367,14 @@ addHelpSchema(program.command("init [projectName]"), {
 							return;
 						}
 
-						backlogDirectorySource = locationPrompt as "backlog" | ".backlog" | "custom";
-						if (backlogDirectorySource === "custom") {
+						memasterDirectorySource = locationPrompt as "memaster" | ".memaster" | "custom";
+						if (memasterDirectorySource === "custom") {
 							const customDirectory = await clack.text({
-								message: "Project-relative backlog directory:",
+								message: "Project-relative memaster directory:",
 								defaultValue:
-									defaultBacklogSource === "custom" && defaultBacklogDirectory ? defaultBacklogDirectory : "",
+									defaultMemasterSource === "custom" && defaultMemasterDirectory ? defaultMemasterDirectory : "",
 								validate: (value) => {
-									const normalized = normalizeProjectBacklogDirectory(String(value ?? ""));
+									const normalized = normalizeProjectMemasterDirectory(String(value ?? ""));
 									if (!normalized) {
 										return "Enter a project-relative path inside the current project.";
 									}
@@ -1385,23 +1385,23 @@ addHelpSchema(program.command("init [projectName]"), {
 								abortInitialization();
 								return;
 							}
-							backlogDirectory = normalizeProjectBacklogDirectory(String(customDirectory ?? "")) ?? undefined;
+							memasterDirectory = normalizeProjectMemasterDirectory(String(customDirectory ?? "")) ?? undefined;
 							configLocation = "root";
 						} else {
-							backlogDirectory = backlogDirectorySource;
+							memasterDirectory = memasterDirectorySource;
 							const configPrompt = await clack.select({
-								message: "Where should Backlog.md store project configuration?",
+								message: "Where should Memaster store project configuration?",
 								initialValue: defaultConfigLocation,
 								options: [
 									{
-										label: `${backlogDirectorySource}/config.yml`,
+										label: `${memasterDirectorySource}/config.yml`,
 										value: "folder",
-										hint: "Keep config inside the backlog folder",
+										hint: "Keep config inside the memaster folder",
 									},
 									{
-										label: "backlog.config.yml in project root",
+										label: "memaster.config.yml in project root",
 										value: "root",
-										hint: "Keep config at project root and point to the backlog folder there",
+										hint: "Keep config at project root and point to the memaster folder there",
 									},
 								],
 							});
@@ -1436,7 +1436,7 @@ addHelpSchema(program.command("init [projectName]"), {
 
 				const defaultAdvancedConfig = getDefaultAdvancedConfig(existingConfig);
 				const applyAdvancedOptionOverrides = () => {
-					const result: Partial<BacklogConfig> = { ...defaultAdvancedConfig };
+					const result: Partial<MemasterConfig> = { ...defaultAdvancedConfig };
 					result.checkActiveBranches = parseBoolean(options.checkBranches, result.checkActiveBranches ?? true);
 					if (result.checkActiveBranches) {
 						result.remoteOperations = parseBoolean(options.includeRemote, result.remoteOperations ?? true);
@@ -1471,7 +1471,7 @@ addHelpSchema(program.command("init [projectName]"), {
 				let agentFiles: AgentInstructionFile[] = [];
 				let agentInstructionsSkipped = false;
 				let mcpClientSetupSummary: string | undefined;
-				const mcpGuideUrl = "https://github.com/MrLesk/Backlog.md#-mcp-integration-model-context-protocol";
+				const mcpGuideUrl = "https://github.com/Wylam-Yun/memory-master#-mcp-integration-model-context-protocol";
 
 				if (
 					!integrationOption &&
@@ -1503,7 +1503,7 @@ addHelpSchema(program.command("init [projectName]"), {
 							integrationTipShown = true;
 						}
 						const integrationPrompt = await clack.select({
-							message: "How would you like your AI tools to connect to Backlog.md?",
+							message: "How would you like your AI tools to connect to Memaster?",
 							initialValue: "cli",
 							options: [
 								{
@@ -1515,7 +1515,7 @@ addHelpSchema(program.command("init [projectName]"), {
 									value: "mcp",
 								},
 								{
-									label: "Skip for now (I am not using Backlog.md with AI tools)",
+									label: "Skip for now (I am not using Memaster with AI tools)",
 									value: "none",
 								},
 							],
@@ -1698,7 +1698,7 @@ addHelpSchema(program.command("init [projectName]"), {
 					}
 				}
 
-				let advancedConfig: Partial<BacklogConfig> = { ...defaultAdvancedConfig };
+				let advancedConfig: Partial<MemasterConfig> = { ...defaultAdvancedConfig };
 				let advancedConfigured = false;
 				let installClaudeAgentSelection = false;
 				let installShellCompletionsSelection = false;
@@ -1711,7 +1711,7 @@ addHelpSchema(program.command("init [projectName]"), {
 						integrationMode === "cli" ? parseBoolean(options.installClaudeAgent, false) : false;
 				} else {
 					const advancedPrompt = await clack.confirm({
-						message: "Configure advanced settings now? (Runs the advanced backlog config wizard)",
+						message: "Configure advanced settings now? (Runs the advanced memaster config wizard)",
 						initialValue: false,
 					});
 					if (clack.isCancel(advancedPrompt)) {
@@ -1750,8 +1750,8 @@ addHelpSchema(program.command("init [projectName]"), {
 				// Call shared core init function
 				const initResult = await initializeProject(core, {
 					projectName: name,
-					backlogDirectory,
-					backlogDirectorySource,
+					memasterDirectory,
+					memasterDirectorySource,
 					configLocation,
 					integrationMode: integrationMode || "none",
 					mcpClients: [], // MCP clients are handled separately in CLI with interactive prompts
@@ -1808,7 +1808,7 @@ addHelpSchema(program.command("init [projectName]"), {
 						})
 						.join("\n");
 				const summaryLines: string[] = [`${label("Project Name:")} ${colorize("1", config.projectName)}`];
-				summaryLines.push(`${label("Backlog directory:")} ${backlogDirectory ?? core.filesystem.backlogDirName}`);
+				summaryLines.push(`${label("Memaster directory:")} ${memasterDirectory ?? core.filesystem.memasterDirName}`);
 				summaryLines.push(
 					`${label("Config location:")} ${configLocation === "root" ? DEFAULT_FILES.ROOT_CONFIG : "folder config.yml"}`,
 				);
@@ -1832,7 +1832,7 @@ addHelpSchema(program.command("init [projectName]"), {
 					summaryLines.push(`${label("MCP server name:")} ${mcpServerName}`);
 					summaryLines.push(`${label("MCP client setup:")} ${mcpClientSetupSummary ?? muted("skipped")}`);
 				} else {
-					summaryLines.push(`${label("AI integration:")} ${muted("skipped (configure later via `backlog init`)")}`);
+					summaryLines.push(`${label("AI integration:")} ${muted("skipped (configure later via `memaster init`)")}`);
 				}
 				let completionSummary: string;
 				if (completionInstallResult) {
@@ -1868,7 +1868,9 @@ addHelpSchema(program.command("init [projectName]"), {
 						}`,
 					);
 				} else {
-					summaryLines.push(`${label("Advanced settings:")} ${muted("unchanged (run `backlog config` to customize)")}`);
+					summaryLines.push(
+						`${label("Advanced settings:")} ${muted("unchanged (run `memaster config` to customize)")}`,
+					);
 				}
 				clack.note(summaryLines.join("\n"), "Initialization Summary");
 
@@ -1887,15 +1889,15 @@ addHelpSchema(program.command("init [projectName]"), {
 						.map((line) => `  ${line}`)
 						.join("\n");
 					console.warn(
-						`⚠️  Shell completion installation failed:\n${indentedError}\n  Run \`backlog completion install\` later to retry.\n`,
+						`⚠️  Shell completion installation failed:\n${indentedError}\n  Run \`memaster completion install\` later to retry.\n`,
 					);
 				}
 
 				// Log init result
 				if (initResult.isReInitialization) {
-					clack.outro(`Updated backlog project configuration: ${name}`);
+					clack.outro(`Updated memaster project configuration: ${name}`);
 				} else {
-					clack.outro(`Initialized backlog project: ${name}`);
+					clack.outro(`Initialized memaster project: ${name}`);
 				}
 
 				// Log agent files result from shared init
@@ -1909,7 +1911,7 @@ addHelpSchema(program.command("init [projectName]"), {
 
 				// Log Claude agent result from shared init
 				if (integrationMode === "cli" && initResult.mcpResults?.claudeAgent) {
-					clack.log.info(`Claude Code Backlog.md agent ${initResult.mcpResults.claudeAgent}`);
+					clack.log.info(`Claude Code Memaster agent ${initResult.mcpResults.claudeAgent}`);
 				}
 
 				// Final warning if remote operations were enabled but no git remotes are configured
@@ -1922,7 +1924,7 @@ addHelpSchema(program.command("init [projectName]"), {
 								[
 									"Warning: remoteOperations is enabled but no git remotes are configured.",
 									"Remote features will be skipped until a remote is added (e.g., 'git remote add origin <url>')",
-									"or disable remoteOperations via 'backlog config set remoteOperations false'.",
+									"or disable remoteOperations via 'memaster config set remoteOperations false'.",
 								].join(" "),
 							);
 						}
@@ -1998,12 +2000,12 @@ addHelpSchema(taskCmd.command("create [title]"), {
 			description: "Only for finished, verified work created directly in a configured terminal status",
 		},
 	],
-	writes: "Creates a task or draft markdown file through Backlog.md",
+	writes: "Creates a task or draft markdown file through Memaster",
 	output: "Created task details; use --plain for text output",
 	examples: [
-		'backlog task create "Add OAuth" --ac "Login succeeds"',
-		`backlog task create "Fix session expiry" --type ${TASK_TYPE_EXAMPLE}`,
-		'backlog task create -p {{TASK_ID:1}} "Add tests"',
+		'memaster task create "Add OAuth" --ac "Login succeeds"',
+		`memaster task create "Fix session expiry" --type ${TASK_TYPE_EXAMPLE}`,
+		'memaster task create -p {{TASK_ID:1}} "Add tests"',
 	],
 })
 	.option("-d, --description <text>", "task description")
@@ -2179,7 +2181,7 @@ addHelpSchema(taskCmd.command("create [title]"), {
 	});
 
 const searchCommand = addHelpSchema(program.command("search [query]"), {
-	reads: "Tasks, documents, and decisions from the configured backlog directory",
+	reads: "Tasks, documents, and decisions from the configured memaster directory",
 	required: [],
 	optional: [
 		{ name: "query", type: "String", description: "Fuzzy search text" },
@@ -2221,11 +2223,11 @@ const searchCommand = addHelpSchema(program.command("search [query]"), {
 	],
 	output: `Interactive search UI, plain text with --plain, or versioned JSON with --json. ${LIST_WINDOW_OUTPUT_HELP}; JSON adds total and nextSkip`,
 	examples: [
-		'backlog search "auth" --plain',
-		'backlog search "auth" --json',
-		'backlog search "api" --type task --status "<active status>"',
-		`backlog search "crash" --task-type ${TASK_TYPE_EXAMPLE} --plain`,
-		'backlog search "auth" --max-count 20 --skip 20 --plain',
+		'memaster search "auth" --plain',
+		'memaster search "auth" --json',
+		'memaster search "api" --type task --status "<active status>"',
+		`memaster search "crash" --task-type ${TASK_TYPE_EXAMPLE} --plain`,
+		'memaster search "auth" --max-count 20 --skip 20 --plain',
 	],
 })
 	.description("search tasks, documents, and decisions using the shared index")
@@ -2359,7 +2361,7 @@ addListWindowOptions(searchCommand)
 
 		let limit: number | undefined;
 		if (options.limit !== undefined) {
-			const parsed = parsePositiveIntegerOption(options.limit, "--limit", "backlog search --help");
+			const parsed = parsePositiveIntegerOption(options.limit, "--limit", "memaster search --help");
 			if (parsed === null) {
 				cleanup();
 				return;
@@ -2590,7 +2592,7 @@ function printDocumentSearchResults(results: DocumentSearchResult[], query: stri
 		console.log(
 			`  ${document.id} - ${document.title} (path: ${pathText}, type: ${document.type}, tags: ${tagsText})${scoreText}`,
 		);
-		console.log(`    View: backlog doc view ${document.id}`);
+		console.log(`    View: memaster doc view ${document.id}`);
 	}
 }
 
@@ -2707,7 +2709,7 @@ async function runTaskList(
 	const searchQuery = typeof options.search === "string" ? options.search.trim() : "";
 	let taskLimit: number | undefined;
 	if (options.limit !== undefined) {
-		const parsedLimit = parsePositiveIntegerOption(options.limit, "--limit", "backlog task list --help");
+		const parsedLimit = parsePositiveIntegerOption(options.limit, "--limit", "memaster task list --help");
 		if (parsedLimit === null) {
 			cleanup();
 			return;
@@ -2936,7 +2938,7 @@ async function runTaskList(
 }
 
 const taskListCommand = addHelpSchema(taskCmd.command("list"), {
-	reads: "Local editable tasks from the configured backlog directory",
+	reads: "Local editable tasks from the configured memaster directory",
 	required: [],
 	optional: [
 		{
@@ -2993,15 +2995,15 @@ const taskListCommand = addHelpSchema(taskCmd.command("list"), {
 	],
 	output: `Interactive task list, plain text with --plain, or versioned JSON with --json. ${LIST_WINDOW_OUTPUT_HELP}; JSON adds total and nextSkip. With --json --watch, successive complete JSON values use the same formatting; replace the previous list with each value. Restart for a fresh snapshot; intermediate edits may be coalesced.`,
 	examples: [
-		'backlog task list --status "<todo status>" --plain',
-		"backlog task list --ready --plain",
-		"backlog task list --json --watch",
-		'backlog task list --status "<todo status>" --json',
-		"backlog task list --parent {{TASK_ID:1}}",
-		`backlog task list --type ${TASK_TYPE_EXAMPLE} --plain`,
-		'backlog task list --labels frontend,bug --search "login" --limit 10 --plain',
-		'backlog task list --status "<todo status>" --max-count 20 --skip 20 --plain',
-		'backlog task list --status "<todo status>" --count',
+		'memaster task list --status "<todo status>" --plain',
+		"memaster task list --ready --plain",
+		"memaster task list --json --watch",
+		'memaster task list --status "<todo status>" --json',
+		"memaster task list --parent {{TASK_ID:1}}",
+		`memaster task list --type ${TASK_TYPE_EXAMPLE} --plain`,
+		'memaster task list --labels frontend,bug --search "login" --limit 10 --plain',
+		'memaster task list --status "<todo status>" --max-count 20 --skip 20 --plain',
+		'memaster task list --status "<todo status>" --count',
 	],
 })
 	.description("list tasks grouped by status")
@@ -3055,7 +3057,7 @@ addListWindowOptions(taskListCommand)
 		}
 		const cwd = await requireProjectRoot();
 		const filesystem = new Core(cwd).filesystem;
-		// Notifications cover the whole backlog, including directories created later. The periodic stat
+		// Notifications cover the whole memaster, including directories created later. The periodic stat
 		// pass covers only what the list reads: tasks, archived tasks for readiness, milestones for
 		// --milestone, and the config.
 		const inputs = [
@@ -3065,7 +3067,7 @@ addListWindowOptions(taskListCommand)
 			filesystem.archiveMilestonesDir,
 			filesystem.configFilePath,
 		];
-		await watchJson([filesystem.backlogDir, dirname(filesystem.configFilePath)], inputs, async () => {
+		await watchJson([filesystem.memasterDir, dirname(filesystem.configFilePath)], inputs, async () => {
 			let result: string | undefined;
 			await runTaskList(options, (value) => {
 				result = formatJson(value);
@@ -3113,7 +3115,7 @@ const draftEditTarget: EditCommandTarget = {
 			const draftsDir = await core.filesystem.getDraftsDir();
 			if (dirname(idOrSelectedPath) !== draftsDir) {
 				throw new Error(
-					`Invalid draft id: ${idOrSelectedPath}. Use a draft id (for example DRAFT-1), or pick the draft through 'backlog draft edit'.`,
+					`Invalid draft id: ${idOrSelectedPath}. Use a draft id (for example DRAFT-1), or pick the draft through 'memaster draft edit'.`,
 				);
 			}
 			const direct = await core.filesystem.draftReferenceFromPath(idOrSelectedPath);
@@ -3908,13 +3910,13 @@ const taskEditCommand = addHelpSchema(taskCmd.command("edit [taskIds...]"), {
 		{ name: "append-final-summary", type: "Markdown", description: "Append to final summary; repeatable" },
 		{ name: "check-ac", type: "Integer", description: "1-based acceptance criterion index" },
 	],
-	writes: "Updates task metadata and structured task sections through Backlog.md",
+	writes: "Updates task metadata and structured task sections through Memaster",
 	output: "Updated task details; use --plain for text output",
 	examples: [
-		'backlog task edit {{TASK_ID:1}} --status "<active status>" -a @sara',
-		`backlog task edit {{TASK_ID:1}} --type ${TASK_TYPE_EXAMPLE}`,
-		"backlog task edit {{TASK_ID:1}} --check-ac 1",
-		'backlog task edit {{TASK_ID:1}} {{TASK_ID:2}} --status "<active status>"',
+		'memaster task edit {{TASK_ID:1}} --status "<active status>" -a @sara',
+		`memaster task edit {{TASK_ID:1}} --type ${TASK_TYPE_EXAMPLE}`,
+		"memaster task edit {{TASK_ID:1}} --check-ac 1",
+		'memaster task edit {{TASK_ID:1}} {{TASK_ID:2}} --status "<active status>"',
 	],
 }).description("edit an existing task");
 configureEditCommand(taskEditCommand).action(async (taskIds: string[] | undefined, options) => {
@@ -3931,7 +3933,7 @@ addHelpSchema(taskCmd.command("view <taskId>"), {
 		{ name: "json", type: "Boolean", description: "Use versioned machine-readable JSON output" },
 	],
 	output: "Interactive task detail view, plain text with --plain, or versioned JSON with --json",
-	examples: ["backlog task view {{TASK_ID:1}} --plain", "backlog task view {{TASK_ID:1}} --json"],
+	examples: ["memaster task view {{TASK_ID:1}} --plain", "memaster task view {{TASK_ID:1}} --json"],
 })
 	.description("display task details")
 	.option("--plain", "use plain text output instead of interactive UI")
@@ -3974,7 +3976,7 @@ addHelpSchema(taskCmd.command("archive <taskId>"), {
 	writes:
 		"Moves the task off the board into the archive. Its ID stays reserved, and its record, dependencies, and references are kept; no other task is changed.",
 	output: "Archive confirmation text",
-	examples: ["backlog task archive {{TASK_ID:1}}"],
+	examples: ["memaster task archive {{TASK_ID:1}}"],
 })
 	.description("move a task off the board into the archive, keeping its ID and links")
 	.action(async (taskId: string) => {
@@ -3993,9 +3995,9 @@ addHelpSchema(taskCmd.command("delete <taskId>"), {
 	required: [{ name: "taskId", type: "Task ID", description: "Archived task to delete" }],
 	optional: [],
 	writes:
-		"Permanently removes an archived task. Its ID is released once no other branch or worktree still holds the task. Dependencies and references that other tasks and drafts hold to it are removed. A task must be archived first (backlog task archive), and a task whose subtasks still exist, as tasks or as drafts, is not deleted. There is no prompt.",
+		"Permanently removes an archived task. Its ID is released once no other branch or worktree still holds the task. Dependencies and references that other tasks and drafts hold to it are removed. A task must be archived first (memaster task archive), and a task whose subtasks still exist, as tasks or as drafts, is not deleted. There is no prompt.",
 	output: "Delete confirmation text, followed by the tasks and drafts that lost a dependency or reference",
-	examples: ["backlog task archive {{TASK_ID:1}}", "backlog task delete {{TASK_ID:1}}"],
+	examples: ["memaster task archive {{TASK_ID:1}}", "memaster task delete {{TASK_ID:1}}"],
 })
 	.description(
 		"permanently delete an archived task and release its ID once no other branch or worktree still holds the task",
@@ -4023,7 +4025,7 @@ addHelpSchema(taskCmd.command("restore <taskId>"), {
 	writes:
 		"Moves an archived task back to the board with the same ID and the status it had. Archived tasks are read-only, so restore a task before editing it. A task that is already on the board is left as it is.",
 	output: "Restore confirmation text",
-	examples: ["backlog task restore {{TASK_ID:1}}"],
+	examples: ["memaster task restore {{TASK_ID:1}}"],
 })
 	.description("move an archived task back to the board, keeping its ID and status")
 	.action(async (taskId: string) => {
@@ -4047,7 +4049,7 @@ taskCmd
 	.allowUnknownOption()
 	.helpOption(false)
 	.action(() => {
-		console.error("backlog task complete was removed. Use backlog task archive <id>.");
+		console.error("memaster task complete was removed. Use memaster task archive <id>.");
 		process.exitCode = 1;
 	});
 
@@ -4169,7 +4171,11 @@ const draftListCommand = addHelpSchema(draftCmd.command("list"), {
 		{ name: "json", type: "Boolean", description: "Use versioned machine-readable JSON output" },
 	],
 	output: `Interactive draft list, plain text with --plain, or versioned JSON with --json. ${LIST_WINDOW_OUTPUT_HELP}; JSON adds total and nextSkip`,
-	examples: ["backlog draft list --plain", "backlog draft list --json", "backlog draft list --sort id --max-count 20"],
+	examples: [
+		"memaster draft list --plain",
+		"memaster draft list --json",
+		"memaster draft list --sort id --max-count 20",
+	],
 })
 	.description("list all drafts")
 	.option("--sort <field>", `sort drafts by field (${TASK_SORT_FIELD_LIST})`);
@@ -4329,9 +4335,9 @@ const draftEditCommand = addHelpSchema(draftCmd.command("edit [taskId]"), {
 		{ name: "clear-docs", type: "Boolean", description: "Remove all documentation" },
 		{ name: "plain", type: "Boolean", description: "Use plain text output after editing" },
 	],
-	writes: "Updates draft metadata and structured sections through Backlog.md",
+	writes: "Updates draft metadata and structured sections through Memaster",
 	output: "Updated draft details; use --plain for text output",
-	examples: ['backlog draft edit DRAFT-1 -t "Renamed draft"', "backlog draft edit DRAFT-1 --check-ac 1"],
+	examples: ['memaster draft edit DRAFT-1 -t "Renamed draft"', "memaster draft edit DRAFT-1 --check-ac 1"],
 }).description("edit an existing draft");
 configureEditCommand(draftEditCommand).action(async (taskId: string | undefined, options) => {
 	await runEditCommand(draftEditTarget, taskId ? [taskId] : [], options);
@@ -4413,7 +4419,7 @@ const milestoneListCommand = addHelpSchema(milestoneCmd.command("list"), {
 		{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" },
 	],
 	output: `Milestone list with completion status; active milestones come first, then completed ones with --show-completed. ${LIST_WINDOW_OUTPUT_HELP}`,
-	examples: ["backlog milestone list --plain", "backlog milestone list --show-completed --max-count 10 --plain"],
+	examples: ["memaster milestone list --plain", "memaster milestone list --show-completed --max-count 10 --plain"],
 })
 	.description("list milestones with completion status")
 	.option("--show-completed", "show completed milestones");
@@ -4484,7 +4490,7 @@ addHelpSchema(milestoneCmd.command("add <name>"), {
 	],
 	writes: "Creates a milestone markdown file in the active milestones directory",
 	output: "Created milestone title and ID",
-	examples: ['backlog milestone add "Release 1.0"', 'backlog milestone add "Beta" --description "Beta scope"'],
+	examples: ['memaster milestone add "Release 1.0"', 'memaster milestone add "Beta" --description "Beta scope"'],
 })
 	.description("add a milestone file")
 	.option("-d, --description <text>", "milestone description")
@@ -4513,8 +4519,8 @@ addHelpSchema(milestoneCmd.command("rename <from> <to>"), {
 	writes: "Renames the milestone file and, by default, updates matching local task milestone values",
 	output: "Rename summary, task update count, and file move path when changed",
 	examples: [
-		'backlog milestone rename "Release 1.0" "Release 2.0"',
-		'backlog milestone rename m-1 "Release 2.0" --no-update-tasks',
+		'memaster milestone rename "Release 1.0" "Release 2.0"',
+		'memaster milestone rename m-1 "Release 2.0" --no-update-tasks',
 	],
 })
 	.description("rename a milestone file and update local tasks by default")
@@ -4557,9 +4563,9 @@ addHelpSchema(milestoneCmd.command("remove <name>"), {
 	writes: "Moves the milestone file to the archived milestones directory and may clear or reassign local tasks",
 	output: "Removal summary and task handling count",
 	examples: [
-		'backlog milestone remove "Release 1.0"',
-		'backlog milestone remove "Release 1.0" --task-handling keep',
-		'backlog milestone remove "Release 1.0" --task-handling reassign --reassign-to "Release 2.0"',
+		'memaster milestone remove "Release 1.0"',
+		'memaster milestone remove "Release 1.0" --task-handling keep',
+		'memaster milestone remove "Release 1.0" --task-handling reassign --reassign-to "Release 2.0"',
 	],
 })
 	.description("remove a milestone file and clear, keep, or reassign matching tasks")
@@ -4588,7 +4594,7 @@ addHelpSchema(milestoneCmd.command("archive <name>"), {
 	optional: [],
 	writes: "Moves a milestone file into the archived milestones directory",
 	output: "Archive confirmation text",
-	examples: ["backlog milestone archive m-1"],
+	examples: ["memaster milestone archive m-1"],
 })
 	.description("archive a milestone by id or title")
 	.action(async (name: string) => {
@@ -4768,8 +4774,8 @@ boardCmd
 				await updateReadmeWithBoard(finalTasks, statuses, projectName, exportVersion);
 				console.log("Updated README.md with Kanban board.");
 			} else {
-				// Use filename argument or default to Backlog.md
-				const outputFile = filename || "Backlog.md";
+				// Use filename argument or default to Memaster
+				const outputFile = filename || "Memaster";
 				const outputPath = join(cwd, outputFile as string);
 
 				// Check if file exists and handle overwrite confirmation
@@ -4804,14 +4810,14 @@ addHelpSchema(docCmd.command("create <title>"), {
 		{
 			name: "path",
 			type: "Docs-relative path",
-			description: "Subdirectory under backlog/docs; absolute paths and .. are rejected",
+			description: "Subdirectory under memaster/docs; absolute paths and .. are rejected",
 		},
 		{ name: "type", type: choiceType(DOCUMENT_TYPE_VALUES), description: "Document type" },
 		{ name: "plain", type: "Boolean", description: "Use plain text output" },
 	],
 	writes: "Creates a document markdown file under the configured docs directory",
 	output: "Created document ID and path",
-	examples: ['backlog doc create "API Guidelines" -p guides/api'],
+	examples: ['memaster doc create "API Guidelines" -p guides/api'],
 })
 	.option("-p, --path <path>")
 	.option("-t, --type <type>", `document type (${DOCUMENT_TYPE_VALUES.join(", ")})`)
@@ -4828,7 +4834,7 @@ addHelpSchema(docCmd.command("create <title>"), {
 		});
 		console.log(`Created document ${document.id}`);
 		if (document.path) {
-			console.log(`Path: ${core.filesystem.backlogDirName}/docs/${document.path}`);
+			console.log(`Path: ${core.filesystem.memasterDirName}/docs/${document.path}`);
 		}
 	});
 
@@ -4837,13 +4843,13 @@ addHelpSchema(docCmd.command("update <docId>"), {
 	optional: [
 		{ name: "title", type: "String", description: "Replacement title" },
 		{ name: "content", type: "Markdown", description: "Replacement document body" },
-		{ name: "path", type: "Docs-relative path", description: "Move document under backlog/docs" },
+		{ name: "path", type: "Docs-relative path", description: "Move document under memaster/docs" },
 		{ name: "type", type: choiceType(DOCUMENT_TYPE_VALUES), description: "Document type" },
 		{ name: "tags", type: "Comma-separated strings", description: "Replacement tags" },
 	],
 	writes: "Updates document content, metadata, or docs-relative path",
 	output: "Updated document ID and path",
-	examples: ['backlog doc update doc-1 --content "Updated markdown"', "backlog doc update doc-1 -p guides"],
+	examples: ['memaster doc update doc-1 --content "Updated markdown"', "memaster doc update doc-1 -p guides"],
 })
 	.description("update a document")
 	.option("--title <title>", "update document title")
@@ -4865,7 +4871,7 @@ addHelpSchema(docCmd.command("update <docId>"), {
 
 		console.log(`Updated document ${document.id}`);
 		if (document.path) {
-			console.log(`Path: ${core.filesystem.backlogDirName}/docs/${document.path}`);
+			console.log(`Path: ${core.filesystem.memasterDirName}/docs/${document.path}`);
 		}
 	});
 
@@ -4898,9 +4904,9 @@ addHelpSchema(docCmd.command("archive <docId>"), {
 	required: [{ name: "docId", type: "Document ID", description: "Document to archive" }],
 	optional: [],
 	writes:
-		"Moves the document's file, unchanged, to the same relative path under backlog/archive/docs. Its ID stays reserved. The document stays viewable with doc view, becomes read-only, and leaves doc list and search. No task or draft is changed.",
+		"Moves the document's file, unchanged, to the same relative path under memaster/archive/docs. Its ID stays reserved. The document stays viewable with doc view, becomes read-only, and leaves doc list and search. No task or draft is changed.",
 	output: "Archive confirmation text, followed by the tasks and drafts whose documentation list names the moved file",
-	examples: ["backlog doc archive doc-1"],
+	examples: ["memaster doc archive doc-1"],
 })
 	.description("move a document into the archive, keeping its ID reserved")
 	.action((docId: string) => changeContentRecord("document", "archive", docId));
@@ -4909,10 +4915,10 @@ addHelpSchema(docCmd.command("restore <docId>"), {
 	required: [{ name: "docId", type: "Document ID", description: "Archived document to restore" }],
 	optional: [],
 	writes:
-		"Moves an archived document's file, unchanged, from backlog/archive/docs back to the same relative path under backlog/docs. It keeps its ID and can be listed, searched and updated again. A file already at that path is never replaced. No task or draft is changed.",
+		"Moves an archived document's file, unchanged, from memaster/archive/docs back to the same relative path under memaster/docs. It keeps its ID and can be listed, searched and updated again. A file already at that path is never replaced. No task or draft is changed.",
 	output:
 		"Restore confirmation text, followed by the tasks and drafts whose documentation list names the archive path the file left",
-	examples: ["backlog doc restore doc-1"],
+	examples: ["memaster doc restore doc-1"],
 })
 	.description("move an archived document back to the docs folder")
 	.action((docId: string) => changeContentRecord("document", "restore", docId));
@@ -4921,10 +4927,10 @@ addHelpSchema(docCmd.command("delete <docId>"), {
 	required: [{ name: "docId", type: "Document ID", description: "Archived document to delete" }],
 	optional: [],
 	writes:
-		"Permanently removes an archived document's file from backlog/archive/docs; a file that is a symbolic link is removed as a link. A document must be archived first (backlog doc archive). There is no prompt. Its ID is released once no other file and no committed file on any branch still uses the number. No task or draft is changed.",
+		"Permanently removes an archived document's file from memaster/archive/docs; a file that is a symbolic link is removed as a link. A document must be archived first (memaster doc archive). There is no prompt. Its ID is released once no other file and no committed file on any branch still uses the number. No task or draft is changed.",
 	output:
 		"Delete confirmation text, followed by the tasks and drafts whose documentation list names the removed file, by its archive path or by the path it had before it was archived",
-	examples: ["backlog doc archive doc-1", "backlog doc delete doc-1"],
+	examples: ["memaster doc archive doc-1", "memaster doc delete doc-1"],
 })
 	.description("permanently delete an archived document, releasing its ID")
 	.action((docId: string) => changeContentRecord("document", "delete", docId));
@@ -4937,7 +4943,7 @@ const docListCommand = addHelpSchema(docCmd.command("list"), {
 		{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" },
 	],
 	output: `Document list with IDs, titles, types, paths, and tags, ordered by title. ${LIST_WINDOW_OUTPUT_HELP}`,
-	examples: ["backlog doc list --plain", "backlog doc list --max-count 20 --plain"],
+	examples: ["memaster doc list --plain", "memaster doc list --max-count 20 --plain"],
 });
 addListWindowOptions(docListCommand)
 	.option("--plain", "use plain text output instead of interactive UI")
@@ -4987,9 +4993,9 @@ const docSearchCommand = addHelpSchema(docCmd.command("search <query>"), {
 	],
 	output: `Plain text Documents list with id, title, path, type, tags, score, and a follow-up doc view command. ${LIST_WINDOW_OUTPUT_HELP}`,
 	examples: [
-		'backlog doc search "architecture"',
-		'backlog doc search "runbook" --limit 5',
-		'backlog doc search "runbook" --max-count 5 --skip 5',
+		'memaster doc search "architecture"',
+		'memaster doc search "runbook" --limit 5',
+		'memaster doc search "runbook" --max-count 5 --skip 5',
 	],
 }).option("-l, --limit <number>", `limit results returned (1-${DOCUMENT_SEARCH_LIMIT_MAX})`);
 addListWindowOptions(docSearchCommand)
@@ -4997,7 +5003,7 @@ addListWindowOptions(docSearchCommand)
 	.action(async (query: string, options) => {
 		const normalizedQuery = query.trim();
 		if (normalizedQuery.length === 0) {
-			console.error('Query is required. Provide non-empty text, for example: backlog doc search "architecture"');
+			console.error('Query is required. Provide non-empty text, for example: memaster doc search "architecture"');
 			process.exitCode = 1;
 			return;
 		}
@@ -5043,7 +5049,7 @@ addHelpSchema(docCmd.command("view <docId>"), {
 	required: [{ name: "docId", type: "Document ID", description: "Document to display" }],
 	optional: [{ name: "plain", type: "Boolean", description: "Use text output instead of interactive UI" }],
 	output: "Document metadata and markdown content",
-	examples: ["backlog doc view doc-1", "backlog doc view doc-1 --plain"],
+	examples: ["memaster doc view doc-1", "memaster doc view doc-1 --plain"],
 })
 	.description("view a document")
 	.option("--plain", "use plain text output instead of interactive UI")
@@ -5109,7 +5115,7 @@ addDecisionSectionOptions(
 		writes: "Creates a decision markdown file; sections not given are empty",
 		output: "Created decision ID",
 		examples: [
-			'backlog decision create "Use PostgreSQL" --context "Need transactions" --decision "Use PostgreSQL" -s accepted',
+			'memaster decision create "Use PostgreSQL" --context "Need transactions" --decision "Use PostgreSQL" -s accepted',
 		],
 	}),
 )
@@ -5146,9 +5152,9 @@ addDecisionSectionOptions(
 		writes: "Updates named decision fields and updated_date when the record changes; preserves other content",
 		output: "Updated decision ID",
 		examples: [
-			'backlog decision edit decision-1 -t "Revised choice" --context "New context" --alternatives ""',
-			"backlog decision edit decision-1 -s superseded --superseded-by decision-2",
-			'backlog decision edit decision-1 --superseded-by ""',
+			'memaster decision edit decision-1 -t "Revised choice" --context "New context" --alternatives ""',
+			"memaster decision edit decision-1 -s superseded --superseded-by decision-2",
+			'memaster decision edit decision-1 --superseded-by ""',
 		],
 	}),
 )
@@ -5169,7 +5175,7 @@ addDecisionSectionOptions(
 		};
 		if (!Object.values(input).some((value) => value !== undefined)) {
 			console.error(
-				'Provide at least one edit field. For example: backlog decision edit decision-1 --context "New context"',
+				'Provide at least one edit field. For example: memaster decision edit decision-1 --context "New context"',
 			);
 			process.exitCode = 1;
 			return;
@@ -5188,7 +5194,7 @@ addHelpSchema(decisionCmd.command("view <decisionId>"), {
 	],
 	writes: "None; this is a read-only command",
 	output: "ID, title, date, status, replacement link, last update and content; archived records are marked read-only",
-	examples: ["backlog decision view decision-1 --plain", "backlog decision view decision-1 --json"],
+	examples: ["memaster decision view decision-1 --plain", "memaster decision view decision-1 --json"],
 })
 	.description("view an active or archived decision")
 	.option("--plain", "use plain text output (the default)")
@@ -5211,9 +5217,9 @@ addHelpSchema(decisionCmd.command("archive <decisionId>"), {
 	required: [{ name: "decisionId", type: "Decision ID", description: "Decision to archive" }],
 	optional: [],
 	writes:
-		"Moves the decision's file, unchanged and under the same name, to backlog/archive/decisions. Its ID stays reserved. The decision becomes read-only and leaves decision list and search. No task or draft is changed.",
+		"Moves the decision's file, unchanged and under the same name, to memaster/archive/decisions. Its ID stays reserved. The decision becomes read-only and leaves decision list and search. No task or draft is changed.",
 	output: "Archive confirmation text, followed by the tasks and drafts whose documentation list names the moved file",
-	examples: ["backlog decision archive decision-1"],
+	examples: ["memaster decision archive decision-1"],
 })
 	.description("move a decision into the archive, keeping its ID reserved")
 	.action((decisionId: string) => changeContentRecord("decision", "archive", decisionId));
@@ -5222,10 +5228,10 @@ addHelpSchema(decisionCmd.command("restore <decisionId>"), {
 	required: [{ name: "decisionId", type: "Decision ID", description: "Archived decision to restore" }],
 	optional: [],
 	writes:
-		"Moves an archived decision's file, unchanged and under the same name, from backlog/archive/decisions back to backlog/decisions. It keeps its ID and is listed again. A file of that name already in backlog/decisions is never replaced. No task or draft is changed.",
+		"Moves an archived decision's file, unchanged and under the same name, from memaster/archive/decisions back to memaster/decisions. It keeps its ID and is listed again. A file of that name already in memaster/decisions is never replaced. No task or draft is changed.",
 	output:
 		"Restore confirmation text, followed by the tasks and drafts whose documentation list names the archive path the file left",
-	examples: ["backlog decision restore decision-1"],
+	examples: ["memaster decision restore decision-1"],
 })
 	.description("move an archived decision back to the decisions folder")
 	.action((decisionId: string) => changeContentRecord("decision", "restore", decisionId));
@@ -5234,10 +5240,10 @@ addHelpSchema(decisionCmd.command("delete <decisionId>"), {
 	required: [{ name: "decisionId", type: "Decision ID", description: "Archived decision to delete" }],
 	optional: [],
 	writes:
-		"Permanently removes an archived decision's file from backlog/archive/decisions; a file that is a symbolic link is removed as a link. A decision must be archived first (backlog decision archive). There is no prompt. Its ID is released once no other file and no committed file on any branch still uses the number. No task or draft is changed.",
+		"Permanently removes an archived decision's file from memaster/archive/decisions; a file that is a symbolic link is removed as a link. A decision must be archived first (memaster decision archive). There is no prompt. Its ID is released once no other file and no committed file on any branch still uses the number. No task or draft is changed.",
 	output:
 		"Delete confirmation text, followed by the tasks and drafts whose documentation list names the removed file, by its archive path or by the path it had before it was archived",
-	examples: ["backlog decision archive decision-1", "backlog decision delete decision-1"],
+	examples: ["memaster decision archive decision-1", "memaster decision delete decision-1"],
 })
 	.description("permanently delete an archived decision, releasing its ID")
 	.action((decisionId: string) => changeContentRecord("decision", "delete", decisionId));
@@ -5252,7 +5258,11 @@ const decisionListCommand = addHelpSchema(decisionCmd.command("list"), {
 		{ name: "json", type: "Boolean", description: "Use versioned machine-readable JSON output" },
 	],
 	output: `Decision list with IDs, titles, and statuses, ordered by ID; versioned JSON with --json. ${LIST_WINDOW_OUTPUT_HELP}; JSON adds total and nextSkip`,
-	examples: ["backlog decision list --plain", "backlog decision list --json", "backlog decision list --max-count 20"],
+	examples: [
+		"memaster decision list --plain",
+		"memaster decision list --json",
+		"memaster decision list --max-count 20",
+	],
 }).description("list decisions");
 addListWindowOptions(decisionListCommand)
 	.option("--plain", "use plain text output")
@@ -5290,20 +5300,20 @@ const agentsCmd = addHelpSchema(program.command("agents"), {
 		{
 			name: "--update-instructions",
 			type: "Boolean",
-			description: "Interactively select instruction files and refresh the short Backlog.md CLI nudge",
+			description: "Interactively select instruction files and refresh the short Memaster CLI nudge",
 		},
 	],
 	writes:
-		"Creates or updates the managed Backlog.md CLI nudge in selected instruction files; preserves existing content outside the managed block",
+		"Creates or updates the managed Memaster CLI nudge in selected instruction files; preserves existing content outside the managed block",
 	output: "Interactive file selection followed by created, updated, or unchanged file summary",
-	examples: ["backlog agents --update-instructions"],
+	examples: ["memaster agents --update-instructions"],
 });
 
 agentsCmd
-	.description("manage the short Backlog.md CLI nudge in agent instruction files")
+	.description("manage the short Memaster CLI nudge in agent instruction files")
 	.option(
 		"--update-instructions",
-		"update the Backlog.md CLI nudge in agent instruction files while preserving existing content",
+		"update the Memaster CLI nudge in agent instruction files while preserving existing content",
 	)
 	.action(async (options) => {
 		if (!options.updateInstructions) {
@@ -5314,10 +5324,10 @@ agentsCmd
 			const cwd = await requireProjectRoot();
 			const core = new Core(cwd);
 
-			// Check if backlog project is initialized
+			// Check if memaster project is initialized
 			const config = await core.filesystem.loadConfig();
 			if (!config) {
-				console.error("No backlog project found. Initialize one first with: backlog init");
+				console.error("No memaster project found. Initialize one first with: memaster init");
 				process.exit(1);
 			}
 
@@ -5359,14 +5369,14 @@ const CONFIG_AVAILABLE_KEYS =
 	"Available keys: defaultEditor, projectName, defaultAssignee, defaultStatus, statuses, labels, priorities, types, projects, milestones, definitionOfDone, dateFormat, maxColumnWidth, defaultPort, autoOpenBrowser, hideEmptyColumns, remoteOperations, autoCommit, filesystemOnly, bypassGitHooks, zeroPaddedIds, checkActiveBranches, activeBranchDays";
 
 const configCmd = addHelpSchema(program.command("config"), {
-	reads: "Project Backlog.md configuration",
+	reads: "Project Memaster configuration",
 	required: [],
 	optional: [],
 	writes: "Interactive configuration updates when run without a subcommand",
 	output: "Interactive wizard results or subcommand output",
-	examples: ["backlog config", "backlog config list", "backlog config get defaultEditor"],
+	examples: ["memaster config", "memaster config list", "memaster config get defaultEditor"],
 })
-	.description("manage backlog configuration")
+	.description("manage memaster configuration")
 	.action(async () => {
 		try {
 			const cwd = await requireProjectRoot();
@@ -5374,7 +5384,7 @@ const configCmd = addHelpSchema(program.command("config"), {
 			const existingConfig = await core.filesystem.loadConfig();
 
 			if (!existingConfig) {
-				console.error("No backlog project found. Initialize one first with: backlog init");
+				console.error("No memaster project found. Initialize one first with: memaster init");
 				process.exit(1);
 			}
 
@@ -5419,7 +5429,7 @@ const configCmd = addHelpSchema(program.command("config"), {
 			}
 			if (shouldInstallClaude) {
 				await installClaudeAgent(cwd);
-				console.log("✓ Claude Code Backlog.md agent installed to .claude/agents/");
+				console.log("✓ Claude Code Memaster agent installed to .claude/agents/");
 			}
 			if (completionResult) {
 				const instructions = completionResult.instructions.trim();
@@ -5438,21 +5448,21 @@ const configCmd = addHelpSchema(program.command("config"), {
 					.map((line) => `  ${line}`)
 					.join("\n");
 				console.warn(
-					`⚠️  Shell completion installation failed:\n${indentedError}\n  Run \`backlog completion install\` later to retry.\n`,
+					`⚠️  Shell completion installation failed:\n${indentedError}\n  Run \`memaster completion install\` later to retry.\n`,
 				);
 			}
-			console.log("\nUse `backlog config list` to review all configuration values.");
+			console.log("\nUse `memaster config list` to review all configuration values.");
 		} catch (err) {
 			reportCommandFailure("Failed to update configuration", err);
 		}
 	});
 
 addHelpSchema(configCmd.command("get <key>"), {
-	reads: "Project Backlog.md configuration",
+	reads: "Project Memaster configuration",
 	required: [{ name: "key", type: choiceType(CONFIG_GET_KEYS), description: "Configuration value to print" }],
 	optional: [],
 	output: "The selected configuration value",
-	examples: ["backlog config get defaultEditor", "backlog config get types"],
+	examples: ["memaster config get defaultEditor", "memaster config get types"],
 })
 	.description("get a configuration value")
 	.action(async (key: string) => {
@@ -5462,7 +5472,7 @@ addHelpSchema(configCmd.command("get <key>"), {
 			const config = await core.filesystem.loadConfig();
 
 			if (!config) {
-				console.error("No backlog project found. Initialize one first with: backlog init");
+				console.error("No memaster project found. Initialize one first with: memaster init");
 				process.exit(1);
 			}
 
@@ -5564,12 +5574,12 @@ addHelpSchema(configCmd.command("set <key> <value>"), {
 		{ name: "value", type: "String", description: "New value; parsed based on key type" },
 	],
 	optional: [],
-	writes: "Updates the project Backlog.md configuration file",
+	writes: "Updates the project Memaster configuration file",
 	output: "Confirmation of the updated config value",
 	examples: [
-		'backlog config set defaultEditor "code --wait"',
-		"backlog config set autoCommit true",
-		'backlog config set defaultAssignee "@alice,@bob"',
+		'memaster config set defaultEditor "code --wait"',
+		"memaster config set autoCommit true",
+		'memaster config set defaultAssignee "@alice,@bob"',
 	],
 })
 	.description("set a configuration value")
@@ -5580,7 +5590,7 @@ addHelpSchema(configCmd.command("set <key> <value>"), {
 			const config = await core.filesystem.loadConfig();
 
 			if (!config) {
-				console.error("No backlog project found. Initialize one first with: backlog init");
+				console.error("No memaster project found. Initialize one first with: memaster init");
 				process.exit(1);
 			}
 
@@ -5749,17 +5759,17 @@ addHelpSchema(configCmd.command("set <key> <value>"), {
 					if (key === "milestones") {
 						console.error("milestones cannot be set directly.");
 						console.error(
-							"Use milestone files via milestone commands (e.g. `backlog milestone list`, `backlog milestone add`).",
+							"Use milestone files via milestone commands (e.g. `memaster milestone list`, `memaster milestone add`).",
 						);
 					} else if (key === "definitionOfDone") {
 						console.error("definitionOfDone cannot be set directly.");
 						console.error(
-							"Use `backlog config` for interactive editing, update the project config file (`backlog/config.yml`, `.backlog/config.yml`, or `backlog.config.yml`), or use Web UI Settings.",
+							"Use `memaster config` for interactive editing, update the project config file (`memaster/config.yml`, `.memaster/config.yml`, or `memaster.config.yml`), or use Web UI Settings.",
 						);
 					} else {
-						console.error(`${key} cannot be set directly. View current values with 'backlog config get ${key}'.`);
+						console.error(`${key} cannot be set directly. View current values with 'memaster config get ${key}'.`);
 						console.error(
-							"Edit the list in the project config file (`backlog/config.yml`, `.backlog/config.yml`, or `backlog.config.yml`) directly.",
+							"Edit the list in the project config file (`memaster/config.yml`, `.memaster/config.yml`, or `memaster.config.yml`) directly.",
 						);
 					}
 					process.exit(1);
@@ -5768,7 +5778,7 @@ addHelpSchema(configCmd.command("set <key> <value>"), {
 				case "prefixes":
 					console.error("Task prefix cannot be changed after initialization.");
 					console.error(
-						"The prefix is set during 'backlog init' and is permanent to avoid breaking existing task IDs.",
+						"The prefix is set during 'memaster init' and is permanent to avoid breaking existing task IDs.",
 					);
 					process.exit(1);
 					break;
@@ -5786,11 +5796,11 @@ addHelpSchema(configCmd.command("set <key> <value>"), {
 	});
 
 addHelpSchema(configCmd.command("list"), {
-	reads: "Project Backlog.md configuration",
+	reads: "Project Memaster configuration",
 	required: [],
 	optional: [],
 	output: "All public configuration values",
-	examples: ["backlog config list"],
+	examples: ["memaster config list"],
 })
 	.description("list all configuration values")
 	.action(async () => {
@@ -5800,7 +5810,7 @@ addHelpSchema(configCmd.command("list"), {
 			const config = await core.filesystem.loadConfig();
 
 			if (!config) {
-				console.error("No backlog project found. Initialize one first with: backlog init");
+				console.error("No memaster project found. Initialize one first with: memaster init");
 				process.exit(1);
 			}
 
@@ -5839,7 +5849,7 @@ addHelpSchema(configCmd.command("list"), {
 		}
 	});
 addHelpSchema(program.command("doctor"), {
-	reads: "Active and archived task files, document, decision, and draft files, plus Backlog Markdown references",
+	reads: "Active and archived task files, document, decision, and draft files, plus Memaster Markdown references",
 	required: [],
 	optional: [
 		{
@@ -5853,7 +5863,7 @@ addHelpSchema(program.command("doctor"), {
 		"With --fix, atomically renames duplicate task files and updates only their frontmatter IDs; ambiguous references are reported for human review. Archived task files stored outside the archive folder are then moved into it without changing IDs or replacing files",
 	output:
 		"Duplicate-ID diagnosis for tasks, documents, decisions, and drafts, a deterministic task repair preview, a reference-review report, a report of self-referential and cyclic task dependencies, and the archived task files stored outside the archive folder",
-	examples: ["backlog doctor", "backlog doctor --fix", "backlog doctor --fix --yes"],
+	examples: ["memaster doctor", "memaster doctor --fix", "memaster doctor --fix --yes"],
 })
 	.description(
 		"diagnose duplicate task, document, and decision IDs, report self-referential and cyclic dependencies, safely repair duplicate task IDs, and move archived tasks into the archive folder",
@@ -5917,9 +5927,9 @@ addHelpSchema(program.command("doctor"), {
 			printArchivedTaskMovePlan(archivedTaskMove, repairsDuplicates);
 			if (!options.fix) {
 				if (repairsDuplicates && plan.repairable) {
-					console.log("\nRun 'backlog doctor --fix' to apply this repair after reviewing the preview.");
+					console.log("\nRun 'memaster doctor --fix' to apply this repair after reviewing the preview.");
 				} else if (repairsDuplicates) {
-					console.log("\nResolve the blocked reasons above, then run 'backlog doctor' again.");
+					console.log("\nResolve the blocked reasons above, then run 'memaster doctor' again.");
 				}
 				if (hasFindings) process.exitCode = 1;
 				return;
@@ -6015,13 +6025,13 @@ addHelpSchema(program.command("doctor"), {
 
 // Cleanup command: bulk-archive finished tasks by age
 addHelpSchema(program.command("cleanup"), {
-	reads: "Tasks in terminal status from the configured backlog directory",
+	reads: "Tasks in terminal status from the configured memaster directory",
 	required: [],
 	optional: [],
 	writes: "Archives the selected terminal-status tasks: moves them off the board into the archive, keeping their IDs",
 	output:
 		"Interactive cleanup summary. The command asks for an age and a confirmation, so it needs an interactive terminal for both its input and its output; without that it exits non-zero and archives nothing",
-	examples: ["backlog cleanup"],
+	examples: ["memaster cleanup"],
 })
 	.description("archive tasks in the final status that are older than a chosen age")
 	.action(async () => {
@@ -6038,10 +6048,10 @@ addHelpSchema(program.command("cleanup"), {
 			const cwd = await requireProjectRoot();
 			const core = new Core(cwd);
 
-			// Check if backlog project is initialized
+			// Check if memaster project is initialized
 			const config = await core.filesystem.loadConfig();
 			if (!config) {
-				console.error("No backlog project found. Initialize one first with: backlog init");
+				console.error("No memaster project found. Initialize one first with: memaster init");
 				process.exit(1);
 			}
 
@@ -6136,8 +6146,8 @@ program
 	.action(async (options) => {
 		try {
 			const cwd = await requireProjectRoot();
-			const { BacklogServer, findNextAvailablePort, isPortAvailable } = await import("./server/index.ts");
-			const server = new BacklogServer(cwd);
+			const { MemasterServer, findNextAvailablePort, isPortAvailable } = await import("./server/index.ts");
+			const server = new MemasterServer(cwd);
 
 			// Load config to get default port
 			const core = new Core(cwd);
@@ -6217,7 +6227,7 @@ program
 			const config = await core.filesystem.loadConfig();
 
 			if (!config) {
-				console.error("No backlog project found. Initialize one first with: backlog init");
+				console.error("No memaster project found. Initialize one first with: memaster init");
 				process.exit(1);
 			}
 

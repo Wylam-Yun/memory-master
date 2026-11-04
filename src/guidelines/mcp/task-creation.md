@@ -106,7 +106,7 @@ remain the canonical workflow; this legacy MCP guide mirrors the same task lifec
 
 After creation, show the user each new task's ID, title, description, and acceptance criteria (e.g., "Created task-290 – API endpoint: …"). This provides visibility into what was created and allows the user to request corrections if needed.
 
-If you will continue from task creation into implementation in the same session, stop and read `backlog://workflow/task-execution` before viewing, assigning, planning, editing, or implementing a task. Task creation is complete once the work is tracked; execution uses a separate workflow.
+If you will continue from task creation into implementation in the same session, stop and read `memaster://workflow/task-execution` before viewing, assigning, planning, editing, or implementing a task. Task creation is complete once the work is tracked; execution uses a separate workflow.
 
 ### Common Anti-patterns to Avoid
 

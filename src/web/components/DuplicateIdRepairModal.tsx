@@ -53,7 +53,7 @@ export function DuplicateIdRepairModal({ isOpen, plan, onClose, onRepaired }: Du
 		>
 			<div className="space-y-5">
 				<p className="text-sm text-gray-700 dark:text-gray-300">
-					Backlog.md found {plan.groups.length} duplicate ID {plan.groups.length === 1 ? "group" : "groups"}. The
+					Memaster found {plan.groups.length} duplicate ID {plan.groups.length === 1 ? "group" : "groups"}. The
 					repair keeps one file in each group at its current ID and assigns new incremental IDs to the others.
 				</p>
 
@@ -86,7 +86,7 @@ export function DuplicateIdRepairModal({ isOpen, plan, onClose, onRepaired }: Du
 					<p className="mt-1 text-sm text-amber-900 dark:text-amber-200">
 						{plan.referenceScanComplete
 							? "References are not changed automatically because an old duplicate ID does not identify which task was meant."
-							: "Backlog.md could not inspect every Markdown file, so automatic repair is blocked until the failures below are resolved."}
+							: "Memaster could not inspect every Markdown file, so automatic repair is blocked until the failures below are resolved."}
 					</p>
 					{plan.references.length > 0 && (
 						<ul className="mt-3 max-h-40 space-y-2 overflow-y-auto text-xs text-amber-950 dark:text-amber-100">

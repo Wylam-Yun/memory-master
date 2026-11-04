@@ -5,7 +5,7 @@ shopt -s nullglob
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-CLI_PATH="${BACKLOG_SMOKE_CLI:-${REPO_ROOT}/src/cli.ts}"
+CLI_PATH="${MEMASTER_SMOKE_CLI:-${REPO_ROOT}/src/cli.ts}"
 BUN_BIN="${BUN_BIN:-bun}"
 JOB_COUNT="${JOB_COUNT:-8}"
 KEEP_TEMP="${KEEP_TEMP:-0}"
@@ -19,7 +19,7 @@ usage() {
 	cat <<EOF
 Usage: $(basename "$0") [--jobs N] [--keep-temp]
 
-Runs real parallel smoke tests against the local Backlog.md CLI:
+Runs real parallel smoke tests against the local Memaster CLI:
   1. concurrent task creation
   2. concurrent draft promotion
   3. concurrent task demotion
@@ -27,7 +27,7 @@ Runs real parallel smoke tests against the local Backlog.md CLI:
 
 Environment overrides:
   BUN_BIN            Bun executable to use (default: bun)
-  BACKLOG_SMOKE_CLI  Path to local CLI entrypoint (default: <repo>/src/cli.ts)
+  MEMASTER_SMOKE_CLI  Path to local CLI entrypoint (default: <repo>/src/cli.ts)
   JOB_COUNT          Number of concurrent creates for scenario 1 (default: 8)
   KEEP_TEMP          Keep temp repos after success (default: 0)
 EOF
@@ -74,10 +74,10 @@ init_repo() {
 	mkdir -p "${repo_dir}"
 	pushd "${repo_dir}" >/dev/null
 	git init -q
-	git config user.name "Backlog Smoke Test"
+	git config user.name "Memaster Smoke Test"
 	git config user.email "smoke@example.com"
 	run_cli init "Parallel Lock Smoke" --defaults --integration-mode none --check-branches false --include-remote false >/dev/null
-	set_check_active_branches_false "${repo_dir}/backlog/backlog.config.yml"
+	set_check_active_branches_false "${repo_dir}/memaster/memaster.config.yml"
 	popd >/dev/null
 }
 
@@ -176,7 +176,7 @@ scenario_parallel_create() {
 	done
 	wait_for_jobs
 
-	assert_sequential_ids "${repo_dir}/backlog/tasks" "task" "${JOB_COUNT}"
+	assert_sequential_ids "${repo_dir}/memaster/tasks" "task" "${JOB_COUNT}"
 	info "Scenario 1 passed"
 }
 
@@ -195,11 +195,11 @@ scenario_parallel_promote() {
 	start_job "${repo_dir}" "promote-b" draft promote draft-2
 	wait_for_jobs
 
-	assert_sequential_ids "${repo_dir}/backlog/tasks" "task" 2
+	assert_sequential_ids "${repo_dir}/memaster/tasks" "task" 2
 
-	local remaining_drafts=("${repo_dir}/backlog/drafts"/*.md)
+	local remaining_drafts=("${repo_dir}/memaster/drafts"/*.md)
 	if [[ ${#remaining_drafts[@]} -ne 0 ]]; then
-		ls -la "${repo_dir}/backlog/drafts" >&2 || true
+		ls -la "${repo_dir}/memaster/drafts" >&2 || true
 		fail "Expected no remaining drafts after promotion"
 	fi
 
@@ -221,11 +221,11 @@ scenario_parallel_demote() {
 	start_job "${repo_dir}" "demote-b" task demote task-2
 	wait_for_jobs
 
-	assert_sequential_ids "${repo_dir}/backlog/drafts" "draft" 2
+	assert_sequential_ids "${repo_dir}/memaster/drafts" "draft" 2
 
-	local remaining_tasks=("${repo_dir}/backlog/tasks"/*.md)
+	local remaining_tasks=("${repo_dir}/memaster/tasks"/*.md)
 	if [[ ${#remaining_tasks[@]} -ne 0 ]]; then
-		ls -la "${repo_dir}/backlog/tasks" >&2 || true
+		ls -la "${repo_dir}/memaster/tasks" >&2 || true
 		fail "Expected no remaining tasks after demotion"
 	fi
 
@@ -277,9 +277,9 @@ scenario_parallel_edit() {
 		fail "Every parallel edit failed; at least one must succeed"
 	fi
 
-	local task_files=("${repo_dir}"/backlog/tasks/${shared_id}\ -\ *.md)
+	local task_files=("${repo_dir}"/memaster/tasks/${shared_id}\ -\ *.md)
 	if [[ ${#task_files[@]} -ne 1 ]]; then
-		ls -la "${repo_dir}/backlog/tasks" >&2 || true
+		ls -la "${repo_dir}/memaster/tasks" >&2 || true
 		fail "Expected exactly one ${shared_id} file after parallel edits"
 	fi
 
@@ -342,7 +342,7 @@ main() {
 		fail "JOB_COUNT must be at least 2"
 	fi
 
-	TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/backlog-lock-smoke.XXXXXX")"
+	TMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/memaster-lock-smoke.XXXXXX")"
 	info "Using temp root: ${TMP_ROOT}"
 
 	scenario_parallel_create

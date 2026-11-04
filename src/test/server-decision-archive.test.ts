@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Core } from "../index.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Decision } from "../types/index.ts";
 import { createTestDirOutsideRepository, initializeFilesystemTestProject, retry, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 let serverPort = 0;
 
 const api = (path: string) => `http://127.0.0.1:${serverPort}${path}`;
@@ -19,11 +19,11 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 /**
- * A project with two decisions, the first of them archived the way `backlog decision archive` does
+ * A project with two decisions, the first of them archived the way `memaster decision archive` does
  * it, and a server started on it afterwards. The server gets no archive route in this change, so
  * what these tests cover is what it shares with core: its lists, its lookup by ID and its save.
  */
-describe("BacklogServer with an archived decision", () => {
+describe("MemasterServer with an archived decision", () => {
 	let archivedFile: string;
 
 	beforeEach(async () => {
@@ -33,9 +33,9 @@ describe("BacklogServer with an archived decision", () => {
 		await core.createDecisionFromInput({ title: "Retired runbook policy" });
 		await core.createDecisionFromInput({ title: "Current runbook policy" });
 		expect(await core.archiveContentRecord("decision", "decision-1")).not.toBeNull();
-		archivedFile = join(TEST_DIR, "backlog", "archive", "decisions", "decision-1 - Retired-runbook-policy.md");
+		archivedFile = join(TEST_DIR, "memaster", "archive", "decisions", "decision-1 - Retired-runbook-policy.md");
 
-		server = new BacklogServer(TEST_DIR);
+		server = new MemasterServer(TEST_DIR);
 		await server.start(0, false);
 		serverPort = server.getPort() ?? 0;
 		expect(serverPort).not.toBe(0);
@@ -64,10 +64,10 @@ describe("BacklogServer with an archived decision", () => {
 		expect(response.status).toBe(400);
 		expect(await response.json()).toEqual({
 			error:
-				"Decision decision-1 is archived. Archived decisions are read-only. Restore it first: backlog decision restore decision-1",
+				"Decision decision-1 is archived. Archived decisions are read-only. Restore it first: memaster decision restore decision-1",
 		});
 		expect(await readFile(archivedFile, "utf8")).toBe(before);
-		expect(await readdir(join(TEST_DIR, "backlog", "decisions"))).toEqual(["decision-2 - Current-runbook-policy.md"]);
+		expect(await readdir(join(TEST_DIR, "memaster", "decisions"))).toEqual(["decision-2 - Current-runbook-policy.md"]);
 	});
 
 	it("leaves the archived decision out of the sidebar list and out of search", async () => {

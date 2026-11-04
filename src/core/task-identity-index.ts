@@ -19,7 +19,7 @@ export interface TaskIdentityRecord {
 interface TaskIdentityPathContext {
 	repositoryRoot: string | null;
 	projectRoot: string;
-	backlogDirectory: string;
+	memasterDirectory: string;
 }
 
 interface TaskIdentity {
@@ -54,11 +54,11 @@ function joinPosix(...parts: string[]): string {
 		.join("/");
 }
 
-export function normalizeTaskLifecyclePath(path: string, backlogDirectory: string): string {
+export function normalizeTaskLifecyclePath(path: string, memasterDirectory: string): string {
 	for (const lifecycleDirectory of ARCHIVED_TASK_DIRECTORIES) {
-		const lifecyclePrefix = `${backlogDirectory}/${lifecycleDirectory}/`;
+		const lifecyclePrefix = `${memasterDirectory}/${lifecycleDirectory}/`;
 		if (path.startsWith(lifecyclePrefix)) {
-			return `${backlogDirectory}/tasks/${path.slice(lifecyclePrefix.length)}`;
+			return `${memasterDirectory}/tasks/${path.slice(lifecyclePrefix.length)}`;
 		}
 	}
 	return path;
@@ -80,17 +80,17 @@ function normalizeRecordPath(record: TaskIdentityRecord, context: TaskIdentityPa
 	}
 
 	path = toPosixPath(path);
-	const repositoryBacklogDirectory = joinPosix(projectPrefix, context.backlogDirectory);
-	const projectBacklogDirectory = toPosixPath(context.backlogDirectory);
+	const repositoryMemasterDirectory = joinPosix(projectPrefix, context.memasterDirectory);
+	const projectMemasterDirectory = toPosixPath(context.memasterDirectory);
 	if (
 		projectPrefix &&
-		(path === projectBacklogDirectory || path.startsWith(`${projectBacklogDirectory}/`)) &&
-		!(path === repositoryBacklogDirectory || path.startsWith(`${repositoryBacklogDirectory}/`))
+		(path === projectMemasterDirectory || path.startsWith(`${projectMemasterDirectory}/`)) &&
+		!(path === repositoryMemasterDirectory || path.startsWith(`${repositoryMemasterDirectory}/`))
 	) {
 		path = joinPosix(projectPrefix, path);
 	}
 
-	return normalizeTaskLifecyclePath(path, repositoryBacklogDirectory);
+	return normalizeTaskLifecyclePath(path, repositoryMemasterDirectory);
 }
 
 function recordKey(record: TaskIdentityRecord): string {

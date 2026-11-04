@@ -8,13 +8,13 @@ describe("TUI startup warning bar", () => {
 		const screen = createScreen({ smartCSR: false });
 		try {
 			const container = box({ parent: screen, width: "100%", height: "100%" });
-			const message = "Duplicate task IDs detected: TASK-1. Run 'backlog doctor' to preview a safe repair.";
+			const message = "Duplicate task IDs detected: TASK-1. Run 'memaster doctor' to preview a safe repair.";
 			const bar = createStartupWarningBar(container, message);
 
 			const barContent = bar as { getContent?: () => string; content?: string };
 			const content = String(barContent.getContent ? barContent.getContent() : (barContent.content ?? ""));
 			expect(content).toContain("Duplicate task IDs detected: TASK-1");
-			expect(content).toContain("backlog doctor");
+			expect(content).toContain("memaster doctor");
 			expect(bar.height).toBe(1);
 		} finally {
 			screen.destroy();

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
 import { ContentStore } from "../core/content-store.ts";
+import { Core } from "../core/memaster.ts";
 import { createTaskSearchIndex } from "../utils/task-search.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } from "./test-utils.ts";
@@ -174,7 +174,7 @@ describe("task project filtering", () => {
 		expect(searchHelp).toContain("--project <project>");
 		expect(searchHelp).toContain("project: one or more of configured projects: Web, API, Mobile");
 
-		for (const completionLine of ["backlog task list --project ", "backlog search --project "]) {
+		for (const completionLine of ["memaster task list --project ", "memaster search --project "]) {
 			const completion =
 				await $`bun ${cliPath} completion __complete ${completionLine} ${String(completionLine.length)}`
 					.cwd(testDir)

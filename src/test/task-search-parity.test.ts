@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
 import { ContentStore } from "../core/content-store.ts";
+import { Core } from "../core/memaster.ts";
 import { SearchService } from "../core/search-service.ts";
 import { withReadiness } from "../core/task-detail.ts";
 import { FileSystem } from "../file-system/operations.ts";
@@ -21,7 +21,7 @@ import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } fro
 
 /**
  * The local one-shot index (`task list --search`, the TUI views, the MCP adapter) and the
- * cross-branch SearchService (`backlog search`, the web API) must agree on what a query matches
+ * cross-branch SearchService (`memaster search`, the web API) must agree on what a query matches
  * and on what a filter means. These tests pin that agreement.
  */
 
@@ -74,7 +74,7 @@ describe("cross-surface search parity", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("task-search-parity");
 		filesystem = new FileSystem(TEST_DIR);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		for (const task of tasks) {
 			await filesystem.saveTask(task);
 		}
@@ -318,7 +318,7 @@ describe("filter wiring across surfaces", () => {
 		const coreTasks = await core.queryTasks({ filters: { project: "web" }, includeCrossBranch: false });
 		expect(coreTasks.map((task) => task.title)).toEqual(expected);
 
-		// SearchService backs `backlog search` and `GET /api/search`.
+		// SearchService backs `memaster search` and `GET /api/search`.
 		const searchService = await core.getSearchService();
 		const serviceTitles = searchService
 			.search({ types: ["task"], filters: { project: "web" } })

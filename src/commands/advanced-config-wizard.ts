@@ -1,5 +1,5 @@
 import * as clack from "@clack/prompts";
-import type { BacklogConfig } from "../types/index.ts";
+import type { MemasterConfig } from "../types/index.ts";
 import { isEditorAvailable as checkEditorAvailability, resolveEditor } from "../utils/editor.ts";
 
 interface PromptChoice {
@@ -32,7 +32,7 @@ export type PromptRunner = (
 export type EditorAvailabilityChecker = (editor: string) => Promise<boolean>;
 
 interface WizardOptions {
-	existingConfig?: BacklogConfig | null;
+	existingConfig?: MemasterConfig | null;
 	cancelMessage: string;
 	includeClaudePrompt?: boolean;
 	promptImpl?: PromptRunner;
@@ -40,7 +40,7 @@ interface WizardOptions {
 }
 
 export interface AdvancedConfigWizardResult {
-	config: Partial<BacklogConfig>;
+	config: Partial<MemasterConfig>;
 	installClaudeAgent: boolean;
 	installShellCompletions: boolean;
 }
@@ -228,7 +228,7 @@ export async function runAdvancedConfigWizard({
 			type: "confirm",
 			name: "installCompletions",
 			message: "Install shell completions now?",
-			hint: "Adds TAB completion support for backlog commands in your shell",
+			hint: "Adds TAB completion support for memaster commands in your shell",
 			initial: true,
 		},
 		{ onCancel },
@@ -295,7 +295,7 @@ export async function runAdvancedConfigWizard({
 		{
 			type: "confirm",
 			name: "autoCommit",
-			message: "Enable automatic commits for Backlog operations?",
+			message: "Enable automatic commits for Memaster operations?",
 			hint: "Creates commits automatically after CLI changes",
 			initial: autoCommit,
 		},
@@ -598,7 +598,7 @@ export async function runAdvancedConfigWizard({
 					type: "confirm",
 					name: "autoOpenBrowser",
 					message: "Automatically open browser when starting web UI?",
-					hint: "When enabled, 'backlog web' opens your browser",
+					hint: "When enabled, 'memaster web' opens your browser",
 					initial: autoOpenBrowser,
 				},
 			],
@@ -625,7 +625,7 @@ export async function runAdvancedConfigWizard({
 			{
 				type: "confirm",
 				name: "installClaudeAgent",
-				message: "Install Claude Code Backlog.md agent?",
+				message: "Install Claude Code Memaster agent?",
 				hint: "Adds configuration under .claude/agents/",
 				initial: false,
 			},

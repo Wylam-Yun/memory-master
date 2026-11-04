@@ -1,111 +1,111 @@
 # CLI Reference
 
-Full command reference for Backlog.md. For getting started, see [README.md](README.md).
+Full command reference for Memaster. For getting started, see [README.md](README.md).
 
-All examples use the `backlog` command, available after installing the `backlog.md` package globally (`npm i -g backlog.md`) or as a project dependency. For one-off runs without installing, use the full package name — `npx backlog.md <command>`, e.g. `npx backlog.md board`; without an install, `npx backlog` resolves to an unrelated third-party npm package, not this tool.
+All examples use the `memaster` command, available after installing the `memory-master` package globally (`npm i -g memory-master`) or as a project dependency. For one-off runs without installing, use the full package name — `npx memory-master <command>`, e.g. `npx memory-master board`; without an install, `npx memaster` resolves to an unrelated third-party npm package, not this tool.
 
 ## Project Setup
 
 | Action      | Example                                              |
 |-------------|------------------------------------------------------|
-| Initialize project | `backlog init [project-name]` (creates backlog structure with a minimal interactive flow) |
-| Re-initialize | `backlog init` (preserves existing config, allows updates) |
-| Advanced settings wizard | `backlog config` (no args) — launches the full interactive configuration flow |
+| Initialize project | `memaster init [project-name]` (creates memaster structure with a minimal interactive flow) |
+| Re-initialize | `memaster init` (preserves existing config, allows updates) |
+| Advanced settings wizard | `memaster config` (no args) — launches the full interactive configuration flow |
 
-`backlog init` keeps first-run setup focused on the essentials:
-- **Project name** – identifier for your backlog (defaults to the current directory on re-run).
-- **Backlog folder** – choose `backlog/`, `.backlog/`, or a custom project-relative path.
-- **Config location** – for built-in folders, choose folder-local `config.yml` or root `backlog.config.yml`; custom paths use root `backlog.config.yml`.
+`memaster init` keeps first-run setup focused on the essentials:
+- **Project name** – identifier for your memaster (defaults to the current directory on re-run).
+- **Memaster folder** – choose `memaster/`, `.memaster/`, or a custom project-relative path.
+- **Config location** – for built-in folders, choose folder-local `config.yml` or root `memaster.config.yml`; custom paths use root `memaster.config.yml`.
 - **Integration choice** – decide whether your AI tools use **CLI instructions** (recommended), the optional **MCP connector**, or no AI setup.
-- **Instruction files (CLI path)** – the CLI setup writes a short nudge to AGENTS.md by default in non-interactive setup. `--agent-instructions cursor` also selects AGENTS.md, and the interactive CLI and Web setup identify Cursor under that shared target. Existing user-managed `.cursor/rules` files may coexist; Backlog.md does not migrate or remove them, and repeated initialization preserves non-Backlog content in AGENTS.md.
+- **Instruction files (CLI path)** – the CLI setup writes a short nudge to AGENTS.md by default in non-interactive setup. `--agent-instructions cursor` also selects AGENTS.md, and the interactive CLI and Web setup identify Cursor under that shared target. Existing user-managed `.cursor/rules` files may coexist; Memaster does not migrate or remove them, and repeated initialization preserves non-Memaster content in AGENTS.md.
 - **Advanced settings prompt** – default answer "No" finishes init immediately; choosing "Yes" jumps straight into the advanced wizard documented in [ADVANCED-CONFIG.md](ADVANCED-CONFIG.md).
 
 The advanced wizard includes interactive Definition of Done defaults editing (add/remove/reorder/clear), so project checklist defaults can be managed without manual YAML edits.
 
-You can rerun the wizard anytime with `backlog config`. All existing CLI flags (for example `--defaults`, `--agent-instructions`) continue to provide fully non-interactive setups, and init also supports `--backlog-dir <path>` plus `--config-location <folder|root>` for scripted configuration.
+You can rerun the wizard anytime with `memaster config`. All existing CLI flags (for example `--defaults`, `--agent-instructions`) continue to provide fully non-interactive setups, and init also supports `--memaster-dir <path>` plus `--config-location <folder|root>` for scripted configuration.
 
-Humans and agents can run `backlog instructions` for workflow guides and `backlog instructions overview` for the overview.
+Humans and agents can run `memaster instructions` for workflow guides and `memaster instructions overview` for the overview.
 
 ## Documentation
 
-- Document IDs are global across all subdirectories under `backlog/docs`. You can organize files in nested folders (e.g., `backlog/docs/guides/`), and `backlog doc list` and `backlog doc view <id>` work across the entire tree.
-- Use `backlog doc create "New Guide" -p guides` to create a document in a docs subdirectory. The created output includes the persisted docs-relative file path, such as `backlog/docs/guides/doc-1 - New-Guide.md`.
-- Use `backlog doc update doc-1 --content "Updated markdown"` to update document content. Add `--title`, `-t/--type`, `--tags`, or `-p/--path` to update metadata or move the document while preserving omitted fields.
-- Use `backlog doc search "query"` for scoped document search with plain text output that includes document IDs and follow-up `backlog doc view <docId>` commands. Use `--limit <number>` to cap results.
-- Use `backlog doc archive doc-1` to archive a document you no longer need. Its file moves unchanged to the same relative path under `backlog/archive/docs/`, and its ID stays reserved, so no new document receives it. An archived document leaves `backlog doc list` and search, stays viewable with `backlog doc view <docId>`, and is read-only: `backlog doc update` on it fails until it is restored. Archiving changes no task. The command prints the tasks and drafts whose documentation list names the moved file, so you can update them.
-- Use `backlog doc restore doc-1` to bring an archived document back. Its file moves unchanged to the same relative path under `backlog/docs/`, and it keeps its ID and can be updated again. A file already at that path is never replaced.
-- Removing a document takes two steps: `backlog doc archive doc-1`, then `backlog doc delete doc-1`. Delete works only on an archived document and asks no question. It removes the file from `backlog/archive/docs/` (a file that is a symbolic link is removed as a link) and releases the ID once no other file and no committed file on any branch uses the number. Delete changes no task: it prints the tasks and drafts whose documentation list names the removed file, by its archive path or by the path it had before it was archived.
+- Document IDs are global across all subdirectories under `memaster/docs`. You can organize files in nested folders (e.g., `memaster/docs/guides/`), and `memaster doc list` and `memaster doc view <id>` work across the entire tree.
+- Use `memaster doc create "New Guide" -p guides` to create a document in a docs subdirectory. The created output includes the persisted docs-relative file path, such as `memaster/docs/guides/doc-1 - New-Guide.md`.
+- Use `memaster doc update doc-1 --content "Updated markdown"` to update document content. Add `--title`, `-t/--type`, `--tags`, or `-p/--path` to update metadata or move the document while preserving omitted fields.
+- Use `memaster doc search "query"` for scoped document search with plain text output that includes document IDs and follow-up `memaster doc view <docId>` commands. Use `--limit <number>` to cap results.
+- Use `memaster doc archive doc-1` to archive a document you no longer need. Its file moves unchanged to the same relative path under `memaster/archive/docs/`, and its ID stays reserved, so no new document receives it. An archived document leaves `memaster doc list` and search, stays viewable with `memaster doc view <docId>`, and is read-only: `memaster doc update` on it fails until it is restored. Archiving changes no task. The command prints the tasks and drafts whose documentation list names the moved file, so you can update them.
+- Use `memaster doc restore doc-1` to bring an archived document back. Its file moves unchanged to the same relative path under `memaster/docs/`, and it keeps its ID and can be updated again. A file already at that path is never replaced.
+- Removing a document takes two steps: `memaster doc archive doc-1`, then `memaster doc delete doc-1`. Delete works only on an archived document and asks no question. It removes the file from `memaster/archive/docs/` (a file that is a symbolic link is removed as a link) and releases the ID once no other file and no committed file on any branch uses the number. Delete changes no task: it prints the tasks and drafts whose documentation list names the removed file, by its archive path or by the path it had before it was archived.
 - Document paths are always relative to the docs directory. Absolute paths and traversal segments such as `..` are rejected.
 
 ## Task Management
 
 | Action      | Example                                              |
 |-------------|------------------------------------------------------|
-| Create task | `backlog task create "Add OAuth System"`                    |
-| Create with description | `backlog task create "Feature" -d "Add authentication system"` |
-| Create with assignee | `backlog task create "Feature" -a @sara`           |
-| Create with status | `backlog task create "Feature" -s "In Progress"`    |
-| Create with labels | `backlog task create "Feature" -l auth,backend`     |
-| Create with priority | `backlog task create "Feature" --priority high`     |
-| Create with due date | `backlog task create "Feature" --due-date 2026-08-10` |
-| Create with plan | `backlog task create "Feature" --plan "1. Research\n2. Implement"`     |
-| Create with AC | `backlog task create "Feature" --ac "Must work,Must be tested"` |
-| Add DoD items on create | `backlog task create "Feature" --dod "Run tests"` |
-| Create without DoD defaults | `backlog task create "Feature" --no-dod-defaults` |
-| Create with notes | `backlog task create "Feature" --notes "Started initial research"` |
-| Create with final summary | `backlog task create "Feature" --final-summary "Completion summary"` |
-| Create with deps | `backlog task create "Feature" --dep task-1,task-2` |
-| Create with refs | `backlog task create "Feature" --ref https://docs.example.com --ref src/api.ts` |
-| Create with docs | `backlog task create "Feature" --doc https://design-docs.example.com --doc docs/spec.md` |
-| Create sub task | `backlog task create -p 14 "Add Login with Google"`|
-| Create (all options) | `backlog task create "Feature" -d "Description" -a @sara -s "To Do" -l auth --priority high --ac "Must work" --notes "Initial setup done" --dep task-1 --ref src/api.ts --doc docs/spec.md -p 14` |
-| List tasks  | `backlog task list [-s <status>] [-a <assignee>] [-p <parent>] [--labels <labels>] [--search <query>] [--limit <n>]` |
-| List filtered | `backlog task list --labels frontend,bug --search "login" --limit 10 --plain` |
-| List in windows | `backlog task list --max-count 20 --skip 20 --plain` |
-| Count tasks | `backlog task list --status "To Do" --count` |
-| List as JSON | `backlog task list --status "To Do" --json` |
-| Watch as JSON | `backlog task list --json --watch` |
-| List by parent | `backlog task list --parent 42` or `backlog task list -p task-42` |
-| View detail | `backlog task 7` (interactive UI, press 'E' to edit in editor) |
-| View (AI mode) | `backlog task 7 --plain`                           |
-| View as JSON | `backlog task 7 --json` |
-| Edit        | `backlog task edit 7 -a @sara -l auth,backend`       |
-| Replace documentation | `backlog task edit 7 --doc docs/spec.md --doc docs/api.md` |
-| Add documentation | `backlog task edit 7 --add-doc docs/spec.md --add-doc docs/api.md` |
-| Remove documentation | `backlog task edit 7 --remove-doc docs/spec.md` |
-| Clear documentation | `backlog task edit 7 --clear-docs` |
-| Add plan    | `backlog task edit 7 --plan "Implementation approach"`    |
-| Add AC      | `backlog task edit 7 --ac "New criterion" --ac "Another one"` |
-| Add DoD     | `backlog task edit 7 --dod "Ship notes"` |
-| Remove AC   | `backlog task edit 7 --remove-ac 2` (removes AC #2)      |
-| Remove multiple ACs | `backlog task edit 7 --remove-ac 2 --remove-ac 4` (removes AC #2 and #4) |
-| Check AC    | `backlog task edit 7 --check-ac 1` (marks AC #1 as done) |
-| Check DoD   | `backlog task edit 7 --check-dod 1` (marks DoD #1 as done) |
-| Check multiple ACs | `backlog task edit 7 --check-ac 1 --check-ac 3` (marks AC #1 and #3 as done) |
-| Uncheck AC  | `backlog task edit 7 --uncheck-ac 3` (marks AC #3 as not done) |
-| Uncheck DoD | `backlog task edit 7 --uncheck-dod 3` (marks DoD #3 as not done) |
-| Mixed AC operations | `backlog task edit 7 --check-ac 1 --uncheck-ac 2 --remove-ac 4` |
-| Mixed DoD operations | `backlog task edit 7 --check-dod 1 --uncheck-dod 2 --remove-dod 4` |
-| Add notes   | `backlog task edit 7 --notes "Completed X, working on Y"` (replaces existing) |
-| Append notes | `backlog task edit 7 --append-notes "New findings"` |
-| Add comment | `backlog task edit 7 --comment "Question for review" --comment-author @sara` |
-| Add final summary | `backlog task edit 7 --final-summary "Completion summary"` |
-| Append final summary | `backlog task edit 7 --append-final-summary "More details"` |
-| Clear final summary | `backlog task edit 7 --clear-final-summary` |
-| Add deps    | `backlog task edit 7 --dep task-1 --dep task-2`     |
-| Set due date | `backlog task edit 7 --due-date 2026-08-10` |
-| Clear due date | `backlog task edit 7 --clear-due-date` |
-| Archive     | `backlog task archive 7` (move a task in any status off the board) |
-| Restore     | `backlog task restore 7` (move an archived task back to the board) |
-| Delete      | `backlog task delete 7` (permanently remove an archived task and release its ID once no other branch or worktree still holds the task) |
+| Create task | `memaster task create "Add OAuth System"`                    |
+| Create with description | `memaster task create "Feature" -d "Add authentication system"` |
+| Create with assignee | `memaster task create "Feature" -a @sara`           |
+| Create with status | `memaster task create "Feature" -s "In Progress"`    |
+| Create with labels | `memaster task create "Feature" -l auth,backend`     |
+| Create with priority | `memaster task create "Feature" --priority high`     |
+| Create with due date | `memaster task create "Feature" --due-date 2026-08-10` |
+| Create with plan | `memaster task create "Feature" --plan "1. Research\n2. Implement"`     |
+| Create with AC | `memaster task create "Feature" --ac "Must work,Must be tested"` |
+| Add DoD items on create | `memaster task create "Feature" --dod "Run tests"` |
+| Create without DoD defaults | `memaster task create "Feature" --no-dod-defaults` |
+| Create with notes | `memaster task create "Feature" --notes "Started initial research"` |
+| Create with final summary | `memaster task create "Feature" --final-summary "Completion summary"` |
+| Create with deps | `memaster task create "Feature" --dep task-1,task-2` |
+| Create with refs | `memaster task create "Feature" --ref https://docs.example.com --ref src/api.ts` |
+| Create with docs | `memaster task create "Feature" --doc https://design-docs.example.com --doc docs/spec.md` |
+| Create sub task | `memaster task create -p 14 "Add Login with Google"`|
+| Create (all options) | `memaster task create "Feature" -d "Description" -a @sara -s "To Do" -l auth --priority high --ac "Must work" --notes "Initial setup done" --dep task-1 --ref src/api.ts --doc docs/spec.md -p 14` |
+| List tasks  | `memaster task list [-s <status>] [-a <assignee>] [-p <parent>] [--labels <labels>] [--search <query>] [--limit <n>]` |
+| List filtered | `memaster task list --labels frontend,bug --search "login" --limit 10 --plain` |
+| List in windows | `memaster task list --max-count 20 --skip 20 --plain` |
+| Count tasks | `memaster task list --status "To Do" --count` |
+| List as JSON | `memaster task list --status "To Do" --json` |
+| Watch as JSON | `memaster task list --json --watch` |
+| List by parent | `memaster task list --parent 42` or `memaster task list -p task-42` |
+| View detail | `memaster task 7` (interactive UI, press 'E' to edit in editor) |
+| View (AI mode) | `memaster task 7 --plain`                           |
+| View as JSON | `memaster task 7 --json` |
+| Edit        | `memaster task edit 7 -a @sara -l auth,backend`       |
+| Replace documentation | `memaster task edit 7 --doc docs/spec.md --doc docs/api.md` |
+| Add documentation | `memaster task edit 7 --add-doc docs/spec.md --add-doc docs/api.md` |
+| Remove documentation | `memaster task edit 7 --remove-doc docs/spec.md` |
+| Clear documentation | `memaster task edit 7 --clear-docs` |
+| Add plan    | `memaster task edit 7 --plan "Implementation approach"`    |
+| Add AC      | `memaster task edit 7 --ac "New criterion" --ac "Another one"` |
+| Add DoD     | `memaster task edit 7 --dod "Ship notes"` |
+| Remove AC   | `memaster task edit 7 --remove-ac 2` (removes AC #2)      |
+| Remove multiple ACs | `memaster task edit 7 --remove-ac 2 --remove-ac 4` (removes AC #2 and #4) |
+| Check AC    | `memaster task edit 7 --check-ac 1` (marks AC #1 as done) |
+| Check DoD   | `memaster task edit 7 --check-dod 1` (marks DoD #1 as done) |
+| Check multiple ACs | `memaster task edit 7 --check-ac 1 --check-ac 3` (marks AC #1 and #3 as done) |
+| Uncheck AC  | `memaster task edit 7 --uncheck-ac 3` (marks AC #3 as not done) |
+| Uncheck DoD | `memaster task edit 7 --uncheck-dod 3` (marks DoD #3 as not done) |
+| Mixed AC operations | `memaster task edit 7 --check-ac 1 --uncheck-ac 2 --remove-ac 4` |
+| Mixed DoD operations | `memaster task edit 7 --check-dod 1 --uncheck-dod 2 --remove-dod 4` |
+| Add notes   | `memaster task edit 7 --notes "Completed X, working on Y"` (replaces existing) |
+| Append notes | `memaster task edit 7 --append-notes "New findings"` |
+| Add comment | `memaster task edit 7 --comment "Question for review" --comment-author @sara` |
+| Add final summary | `memaster task edit 7 --final-summary "Completion summary"` |
+| Append final summary | `memaster task edit 7 --append-final-summary "More details"` |
+| Clear final summary | `memaster task edit 7 --clear-final-summary` |
+| Add deps    | `memaster task edit 7 --dep task-1 --dep task-2`     |
+| Set due date | `memaster task edit 7 --due-date 2026-08-10` |
+| Clear due date | `memaster task edit 7 --clear-due-date` |
+| Archive     | `memaster task archive 7` (move a task in any status off the board) |
+| Restore     | `memaster task restore 7` (move an archived task back to the board) |
+| Delete      | `memaster task delete 7` (permanently remove an archived task and release its ID once no other branch or worktree still holds the task) |
 
-Mark finished work Done (or the configured final status). During periodic cleanup, Archive moves it off the board; Archive also takes canceled, duplicate, or invalid work off the board at any time. An archived task keeps its ID, its record, and every dependency and reference to it. It stays readable with `backlog task view`, where its status line ends in `(archived)`, and it is read-only. A dependency on an archived task counts as satisfied only when that task is in the final status.
+Mark finished work Done (or the configured final status). During periodic cleanup, Archive moves it off the board; Archive also takes canceled, duplicate, or invalid work off the board at any time. An archived task keeps its ID, its record, and every dependency and reference to it. It stays readable with `memaster task view`, where its status line ends in `(archived)`, and it is read-only. A dependency on an archived task counts as satisfied only when that task is in the final status.
 
-`backlog task restore` moves an archived task back to the board with the same ID and the status it had. Archived tasks cannot be edited: `backlog task edit` on one fails and names the restore command, so restore the task first.
+`memaster task restore` moves an archived task back to the board with the same ID and the status it had. Archived tasks cannot be edited: `memaster task edit` on one fails and names the restore command, so restore the task first.
 
-Deleting a task takes two steps: archive it, then run `backlog task delete`. Delete permanently removes the archived task and releases its ID once no other branch or worktree still holds the task, so a later task can receive it. It removes the dependencies and references other tasks and drafts hold to the deleted task and prints the tasks and drafts it changed. It asks no question, because archiving is the confirming step. A task that is not archived is not deleted, and neither is a task whose subtasks still exist, as tasks or as drafts.
+Deleting a task takes two steps: archive it, then run `memaster task delete`. Delete permanently removes the archived task and releases its ID once no other branch or worktree still holds the task, so a later task can receive it. It removes the dependencies and references other tasks and drafts hold to the deleted task and prints the tasks and drafts it changed. It asks no question, because archiving is the confirming step. A task that is not archived is not deleted, and neither is a task whose subtasks still exist, as tasks or as drafts.
 
-Projects that still hold tasks in a `completed` folder keep working: those tasks are read as archived tasks. `backlog doctor` reports them, and `backlog doctor --fix` moves them into `archive/tasks` without changing file names or IDs. If two records claim one task ID, `backlog doctor` reports the pair and `--fix` gives one of them a new ID; a task on the board always keeps its ID.
+Projects that still hold tasks in a `completed` folder keep working: those tasks are read as archived tasks. `memaster doctor` reports them, and `memaster doctor --fix` moves them into `archive/tasks` without changing file names or IDs. If two records claim one task ID, `memaster doctor` reports the pair and `--fix` gives one of them a new ID; a task on the board always keeps its ID.
 
 ### Task list order
 
@@ -113,12 +113,12 @@ Without `--sort`, `task list` orders tasks by ordinal, then priority, then ID: t
 
 ### Paging long lists
 
-`task list`, `search`, `draft list`, `milestone list`, `doc list`, `doc search`, and `decision list` print every match by default. `--max-count <n>` prints at most `n` items and `--skip <n>` leaves out the first `n`, as in `git log`. Both apply after filtering, sorting, and `--limit`. `task list` takes the window from the sorted list, so `--plain` and `--json` select the same tasks; plain output then groups only those tasks by status, as it does for `--limit`, unless `--sort priority` prints one flat list. The other lists take the window in the order their output prints: plain `search` prints tasks, then documents, then decisions, and `milestone list` prints active milestones before completed ones. Each list has a stable order: tasks, drafts, and decisions break ties by ID, documents sort by title and then path, search results by score and then corpus order, and milestones follow their files and then the tasks that name them. So consecutive windows of an unchanged backlog neither overlap nor leave items out. With `--json`, `search` windows its results in relevance order, so read all windows of a search in one output mode. The options print text instead of opening an interactive view.
+`task list`, `search`, `draft list`, `milestone list`, `doc list`, `doc search`, and `decision list` print every match by default. `--max-count <n>` prints at most `n` items and `--skip <n>` leaves out the first `n`, as in `git log`. Both apply after filtering, sorting, and `--limit`. `task list` takes the window from the sorted list, so `--plain` and `--json` select the same tasks; plain output then groups only those tasks by status, as it does for `--limit`, unless `--sort priority` prints one flat list. The other lists take the window in the order their output prints: plain `search` prints tasks, then documents, then decisions, and `milestone list` prints active milestones before completed ones. Each list has a stable order: tasks, drafts, and decisions break ties by ID, documents sort by title and then path, search results by score and then corpus order, and milestones follow their files and then the tasks that name them. So consecutive windows of an unchanged memaster neither overlap nor leave items out. With `--json`, `search` windows its results in relevance order, so read all windows of a search in one output mode. The options print text instead of opening an interactive view.
 
 Output cut by a window ends with the shown range, the total, and the command that prints the following items:
 
 ```text
-Showing 21-40 of 57 items. Next: backlog task list --status 'To Do' --max-count 20 --skip 40
+Showing 21-40 of 57 items. Next: memaster task list --status 'To Do' --max-count 20 --skip 40
 ```
 
 The last window has no `Next:` part, and a `--skip` past the end prints only `Showing 0 of 57 items.` Output that is not cut has no footer. `--count` prints only the number of items the same command would list, as `grep --count` does; it cannot be combined with `--json`. There are no short forms because `-m` already means `--milestone`. `--limit` keeps its behavior: it silently shortens the list before any window applies.
@@ -132,16 +132,16 @@ Task and milestone due dates are calendar days stored as `YYYY-MM-DD`. Use a pla
 Use `--json` when a script or integration needs structured output:
 
 ```bash
-backlog task list --status "To Do" --json | jq '.tasks[] | .id'
-backlog task view BACK-7 --json | jq '.task.acceptanceCriteria'
-backlog task BACK-7 --json
-backlog search "authentication" --json | jq '.results[] | [.type, .data.id]'
+memaster task list --status "To Do" --json | jq '.tasks[] | .id'
+memaster task view BACK-7 --json | jq '.task.acceptanceCriteria'
+memaster task BACK-7 --json
+memaster search "authentication" --json | jq '.results[] | [.type, .data.id]'
 ```
 
-Use `backlog task list --json --watch` to receive the full matching list immediately, then a full replacement whenever its JSON result changes. Every response uses exactly the same fields, envelope, indentation, and trailing newline as `task list --json`. Read successive complete JSON values, not individual lines or the whole stream as one document. For example:
+Use `memaster task list --json --watch` to receive the full matching list immediately, then a full replacement whenever its JSON result changes. Every response uses exactly the same fields, envelope, indentation, and trailing newline as `task list --json`. Read successive complete JSON values, not individual lines or the whole stream as one document. For example:
 
 ```bash
-backlog task list --json --watch | jq --unbuffered -c '.tasks'
+memaster task list --json --watch | jq --unbuffered -c '.tasks'
 ```
 
 Each response replaces the subscriber's previous list, including an empty `tasks` array. Filters, sorting, limits, and local editable task scope are unchanged; archived tasks, drafts, and other branches are not added to the list. Dependency and configuration changes can update derived fields or which tasks match. Unchanged results are suppressed, and rapid edits or slow consumers may coalesce intermediate states. The command reconciles periodically as well as on file notifications; this is a current-state subscription, not an edit history. Restart it to receive a fresh full list.
@@ -177,7 +177,7 @@ Absent scalar fields are `null`, and absent collections are `[]`. Date-only valu
 ### Replacing legacy sections without markers
 
 Replacing or clearing an old description, plan, notes, or final summary can be refused when it has no section markers
-and contains another `##` heading. That heading might belong to the section or start a separate section, so Backlog.md
+and contains another `##` heading. That heading might belong to the section or start a separate section, so Memaster
 leaves the file unchanged instead of guessing. Unchanged content and appends remain supported and keep an ambiguous
 section unmarked, so a later replacement still requires a person to choose its boundary.
 
@@ -208,15 +208,15 @@ The CLI preserves input literally — `\n` sequences are not auto-converted. Use
 **1. Repeat `--append-*` for each line (works in every shell, including Claude Code / Codex / agent sandboxes):**
 
 ```bash
-backlog task edit 7 --notes "First line"
-backlog task edit 7 --append-notes "Second line"
-backlog task edit 7 --append-notes "Third line"
+memaster task edit 7 --notes "First line"
+memaster task edit 7 --append-notes "Second line"
+memaster task edit 7 --append-notes "Third line"
 ```
 
 **2. Real newlines inside double quotes (single command):**
 
 ```bash
-backlog task create "Feature" --desc "Line1
+memaster task create "Feature" --desc "Line1
 Line2
 
 Final paragraph"
@@ -224,38 +224,38 @@ Final paragraph"
 
 The same shape works for `--plan`, `--notes`, `--comment`, `--final-summary`, and the `--append-*` variants.
 
-**3. Shell-specific shorthand (interactive shells only — rejected by tree-sitter-based agent sandboxes, see [#595](https://github.com/MrLesk/Backlog.md/issues/595)):**
+**3. Shell-specific shorthand (interactive shells only — rejected by tree-sitter-based agent sandboxes, see [#595](https://github.com/Wylam-Yun/memory-master/issues/595)):**
 
 - **Bash/Zsh (ANSI-C quoting)**
 
   ```bash
-  backlog task edit 7 --notes $'Line1\nLine2'
+  memaster task edit 7 --notes $'Line1\nLine2'
   ```
 
 - **POSIX sh (printf substitution)**
 
   ```bash
-  backlog task create "Feature" --desc "$(printf 'Line1\nLine2\n\nFinal paragraph')"
+  memaster task create "Feature" --desc "$(printf 'Line1\nLine2\n\nFinal paragraph')"
   ```
 
 - **PowerShell (backtick-n)**
 
   ```powershell
-  backlog task create "Feature" --desc "Line1`nLine2`n`nFinal paragraph"
+  memaster task create "Feature" --desc "Line1`nLine2`n`nFinal paragraph"
   ```
 
 ### Literal backticks in task text
 
-When task text includes Markdown code spans, quote it so the shell passes the backticks literally. Unescaped backticks in double-quoted or unquoted arguments are command substitution in many shells, and Backlog.md cannot recover the original text after the shell has already executed it.
+When task text includes Markdown code spans, quote it so the shell passes the backticks literally. Unescaped backticks in double-quoted or unquoted arguments are command substitution in many shells, and Memaster cannot recover the original text after the shell has already executed it.
 
 Use single-quoted CLI arguments for values that contain literal backticks:
 
 ```bash
-backlog task create 'Document `backlog init` setup' \
-  --ac 'Instructions mention `backlog init --defaults` literally'
+memaster task create 'Document `memaster init` setup' \
+  --ac 'Instructions mention `memaster init --defaults` literally'
 ```
 
-If single quotes are not practical in your shell, escape each literal backtick before running the command. Do not rely on Backlog.md to sanitize accidental command output after substitution.
+If single quotes are not practical in your shell, escape each literal backtick before running the command. Do not rely on Memaster to sanitize accidental command output after substitution.
 
 ## Milestone Management
 
@@ -263,36 +263,36 @@ Milestones are managed through milestone files. Use CLI commands instead of edit
 
 | Action | Example |
 |--------|---------|
-| List milestones | `backlog milestone list --plain` |
-| List completed milestones too | `backlog milestone list --show-completed --plain` |
-| Add milestone | `backlog milestone add "Release 1.0"` |
-| Add with description | `backlog milestone add "Beta" --description "Beta scope"` |
-| Add with due date | `backlog milestone add "Beta" --due-date 2026-08-10` |
-| Rename and update tasks | `backlog milestone rename "Release 1.0" "Release 2.0"` |
-| Set due date without renaming | `backlog milestone rename "Release 1.0" "Release 1.0" --due-date 2026-08-10` |
-| Clear due date | `backlog milestone rename "Release 1.0" "Release 1.0" --clear-due-date` |
-| Rename without task updates | `backlog milestone rename m-1 "Release 2.0" --no-update-tasks` |
-| Remove and clear task milestones | `backlog milestone remove "Release 1.0"` |
-| Remove and keep task values | `backlog milestone remove "Release 1.0" --task-handling keep` |
-| Remove and reassign tasks | `backlog milestone remove "Release 1.0" --task-handling reassign --reassign-to "Release 2.0"` |
-| Archive milestone | `backlog milestone archive m-1` |
+| List milestones | `memaster milestone list --plain` |
+| List completed milestones too | `memaster milestone list --show-completed --plain` |
+| Add milestone | `memaster milestone add "Release 1.0"` |
+| Add with description | `memaster milestone add "Beta" --description "Beta scope"` |
+| Add with due date | `memaster milestone add "Beta" --due-date 2026-08-10` |
+| Rename and update tasks | `memaster milestone rename "Release 1.0" "Release 2.0"` |
+| Set due date without renaming | `memaster milestone rename "Release 1.0" "Release 1.0" --due-date 2026-08-10` |
+| Clear due date | `memaster milestone rename "Release 1.0" "Release 1.0" --clear-due-date` |
+| Rename without task updates | `memaster milestone rename m-1 "Release 2.0" --no-update-tasks` |
+| Remove and clear task milestones | `memaster milestone remove "Release 1.0"` |
+| Remove and keep task values | `memaster milestone remove "Release 1.0" --task-handling keep` |
+| Remove and reassign tasks | `memaster milestone remove "Release 1.0" --task-handling reassign --reassign-to "Release 2.0"` |
+| Archive milestone | `memaster milestone archive m-1` |
 
 `milestone remove` task handling modes are `clear` (default), `keep`, and `reassign`. `--reassign-to` is required when using `--task-handling reassign`, and the target must be an active milestone file.
 
 ## Search
 
-Find tasks, documents, and decisions across your entire backlog with fuzzy search:
+Find tasks, documents, and decisions across your entire memaster with fuzzy search:
 
 | Action             | Example                                              |
 |--------------------|------------------------------------------------------|
-| Search tasks       | `backlog search "auth"`                        |
-| Filter by status   | `backlog search "api" --status "In Progress"`   |
-| Filter by priority | `backlog search "bug" --priority high`        |
-| Combine filters    | `backlog search "web" --status "To Do" --priority medium` |
-| Plain text output  | `backlog search "feature" --plain` (for scripts/AI) |
-| JSON output        | `backlog search "feature" --json` (for structured integrations) |
-| Find by modified file | `backlog search --modified-file src/path.ts --plain` |
-| Page results       | `backlog search "api" --max-count 20 --skip 20 --plain` |
+| Search tasks       | `memaster search "auth"`                        |
+| Filter by status   | `memaster search "api" --status "In Progress"`   |
+| Filter by priority | `memaster search "bug" --priority high`        |
+| Combine filters    | `memaster search "web" --status "To Do" --priority medium` |
+| Plain text output  | `memaster search "feature" --plain` (for scripts/AI) |
+| JSON output        | `memaster search "feature" --json` (for structured integrations) |
+| Find by modified file | `memaster search --modified-file src/path.ts --plain` |
+| Page results       | `memaster search "api" --max-count 20 --skip 20 --plain` |
 
 **Search features:**
 - **Fuzzy matching** -- finds "authentication" when searching for "auth"
@@ -304,9 +304,9 @@ Find tasks, documents, and decisions across your entire backlog with fuzzy searc
 
 | Action      | Example                                              |
 |-------------|------------------------------------------------------|
-| Create draft | `backlog task create "Feature" --draft`             |
-| Draft flow  | `backlog draft create "Spike GraphQL"` → `backlog draft promote 3.1` |
-| Demote to draft| `backlog task demote <id>` |
+| Create draft | `memaster task create "Feature" --draft`             |
+| Draft flow  | `memaster draft create "Spike GraphQL"` → `memaster draft promote 3.1` |
+| Demote to draft| `memaster task demote <id>` |
 
 ## Dependency Management
 
@@ -314,10 +314,10 @@ Manage task dependencies to express execution order:
 
 | Action      | Example                                              |
 |-------------|------------------------------------------------------|
-| Add dependencies | `backlog task edit 7 --dep task-1 --dep task-2`     |
-| Add multiple deps | `backlog task edit 7 --dep task-1,task-5,task-9`    |
-| Create with deps | `backlog task create "Feature" --dep task-1,task-2` |
-| View dependencies | `backlog task 7` (shows dependencies in task view)  |
+| Add dependencies | `memaster task edit 7 --dep task-1 --dep task-2`     |
+| Add multiple deps | `memaster task edit 7 --dep task-1,task-5,task-9`    |
+| Create with deps | `memaster task create "Feature" --dep task-1,task-2` |
+| View dependencies | `memaster task 7` (shows dependencies in task view)  |
 | Validate dependencies | Use task commands to automatically validate dependencies |
 
 **Dependency Features:**
@@ -348,90 +348,90 @@ Dependents (2 direct, 2 total):
 - **Dependents.** "Dependents" means the tasks this one blocks. It is the reverse of the task's own dependency list, and nothing on it is editable from here; change it on the task that declares it.
 - **Visibility.** The graph resolves against exactly what task detail can already see: the current checkout including archived tasks for the CLI, TUI, and MCP, and the configured cross-branch corpus in the browser. An archived task keeps its ID, so a dependency on it keeps resolving; it reads as `[completed]` only when it is in the final status and keeps blocking otherwise.
 - **Cycles and repeats.** Every task appears once. A relationship that points back into the branch above it is marked `(cycle)`, and a task already shown elsewhere in the same section is marked `(shown above)` rather than being expanded again.
-- **Unresolved identities.** `unknown task ID` means no visible task claims that ID. `ambiguous task ID` means more than one record claims it, so nothing is chosen. Neither is ever treated as satisfied, and the graph never traverses past one, so anything behind it is left out rather than reported as resolved. Diagnose and repair duplicate IDs with `backlog doctor` before trusting a graph that reports one.
+- **Unresolved identities.** `unknown task ID` means no visible task claims that ID. `ambiguous task ID` means more than one record claims it, so nothing is chosen. Neither is ever treated as satisfied, and the graph never traverses past one, so anything behind it is left out rather than reported as resolved. Diagnose and repair duplicate IDs with `memaster doctor` before trusting a graph that reports one.
 
 ## Board Operations
 
 | Action      | Example                                              |
 |-------------|------------------------------------------------------|
-| Kanban board      | `backlog board` (interactive UI, press 'E' to edit in editor) |
-| Export board | `backlog board export [file]` (exports Kanban board to markdown) |
-| Export with version | `backlog board export --export-version "v1.0.0"` (includes version in export) |
+| Kanban board      | `memaster board` (interactive UI, press 'E' to edit in editor) |
+| Export board | `memaster board export [file]` (exports Kanban board to markdown) |
+| Export with version | `memaster board export --export-version "v1.0.0"` (includes version in export) |
 
 ## Statistics & Overview
 
 | Action      | Example                                              |
 |-------------|------------------------------------------------------|
-| Project overview | `backlog overview` (interactive TUI showing project statistics) |
+| Project overview | `memaster overview` (interactive TUI showing project statistics) |
 
 ## Web Interface
 
 | Action      | Example                                              |
 |-------------|------------------------------------------------------|
-| Web interface | `backlog browser` (launches the local-machine-only web UI on `127.0.0.1:6420`) |
-| Web custom port | `backlog browser --port 8080 --no-open` |
+| Web interface | `memaster browser` (launches the local-machine-only web UI on `127.0.0.1:6420`) |
+| Web custom port | `memaster browser --port 8080 --no-open` |
 
 The Web UI listens only on `127.0.0.1`; it is not reachable from other devices on the LAN or VPN.
 
-To keep the Web UI running in the background with auto-start on boot, see [Running Backlog.md as a Service](backlog/docs/doc-003%20-%20Running-Backlog-Browser-as-a-Service.md).
+To keep the Web UI running in the background with auto-start on boot, see [Running Memaster as a Service](memaster/docs/doc-003%20-%20Running-Memaster-Browser-as-a-Service.md).
 
 ## Documentation
 
 | Action      | Example                                              |
 |-------------|------------------------------------------------------|
-| Create doc | `backlog doc create "API Guidelines"` |
-| Create with path | `backlog doc create "Setup Guide" -p guides/setup` |
-| Create with type | `backlog doc create "Architecture" -t guide` |
-| Update content | `backlog doc update doc-1 --content "Updated markdown"` |
-| Update metadata/path | `backlog doc update doc-1 --title "Setup Handbook" -t guide --tags setup,runbook -p guides` |
-| List docs | `backlog doc list` |
-| Search docs | `backlog doc search "architecture" --limit 5` |
-| View doc | `backlog doc view doc-1` |
-| Archive doc | `backlog doc archive doc-1` (move the document to `backlog/archive/docs/`; its ID stays reserved and it becomes read-only) |
-| Restore doc | `backlog doc restore doc-1` (move an archived document back to `backlog/docs/` with the same ID) |
-| Delete doc | `backlog doc delete doc-1` (archived documents only; no prompt; removes the file and releases the ID) |
+| Create doc | `memaster doc create "API Guidelines"` |
+| Create with path | `memaster doc create "Setup Guide" -p guides/setup` |
+| Create with type | `memaster doc create "Architecture" -t guide` |
+| Update content | `memaster doc update doc-1 --content "Updated markdown"` |
+| Update metadata/path | `memaster doc update doc-1 --title "Setup Handbook" -t guide --tags setup,runbook -p guides` |
+| List docs | `memaster doc list` |
+| Search docs | `memaster doc search "architecture" --limit 5` |
+| View doc | `memaster doc view doc-1` |
+| Archive doc | `memaster doc archive doc-1` (move the document to `memaster/archive/docs/`; its ID stays reserved and it becomes read-only) |
+| Restore doc | `memaster doc restore doc-1` (move an archived document back to `memaster/docs/` with the same ID) |
+| Delete doc | `memaster doc delete doc-1` (archived documents only; no prompt; removes the file and releases the ID) |
 
-Document and decision updates automatically keep unknown top-level YAML frontmatter keys, including their written values and comments. No configuration is needed. If preserving a YAML reference would break it or prevent applying a change to a Backlog-owned field, the save fails with a clear error and leaves the file and path unchanged. For example, `owner: *name` refers to the value marked with `&name`; edit that reference or its anchor in the file before trying again.
+Document and decision updates automatically keep unknown top-level YAML frontmatter keys, including their written values and comments. No configuration is needed. If preserving a YAML reference would break it or prevent applying a change to a Memaster-owned field, the save fails with a clear error and leaves the file and path unchanged. For example, `owner: *name` refers to the value marked with `&name`; edit that reference or its anchor in the file before trying again.
 
 ## Decisions
 
 | Action      | Example                                              |
 |-------------|------------------------------------------------------|
-| Create decision | `backlog decision create "Use PostgreSQL for primary database"` |
-| Create with content | `backlog decision create "Use PostgreSQL" --context "Need transactions" --decision "Use PostgreSQL" --consequences "Run backups" --alternatives "SQLite"` |
-| Create with status | `backlog decision create "Migrate to TypeScript" -s proposed` |
-| View decision | `backlog decision view decision-1 --plain` (also reads archived decisions); use `--json` for versioned JSON |
-| Edit content or title | `backlog decision edit decision-1 -t "Revised choice" --context "New context" --alternatives ""` |
-| Change status | `backlog decision edit decision-1 -s superseded` (the status is free-form; legacy sections gain markers in place and other content is preserved) |
-| Set replacement | `backlog decision edit decision-1 --superseded-by decision-2` (does not change status; combine with `-s superseded` if needed) |
-| Clear replacement | `backlog decision edit decision-1 --superseded-by ""` |
-| Archive decision | `backlog decision archive decision-1` (move the decision to `backlog/archive/decisions/`; its ID stays reserved and it becomes read-only) |
-| Restore decision | `backlog decision restore decision-1` (move an archived decision back to `backlog/decisions/` with the same ID) |
-| Delete decision | `backlog decision delete decision-1` (archived decisions only; no prompt; removes the file and releases the ID) |
+| Create decision | `memaster decision create "Use PostgreSQL for primary database"` |
+| Create with content | `memaster decision create "Use PostgreSQL" --context "Need transactions" --decision "Use PostgreSQL" --consequences "Run backups" --alternatives "SQLite"` |
+| Create with status | `memaster decision create "Migrate to TypeScript" -s proposed` |
+| View decision | `memaster decision view decision-1 --plain` (also reads archived decisions); use `--json` for versioned JSON |
+| Edit content or title | `memaster decision edit decision-1 -t "Revised choice" --context "New context" --alternatives ""` |
+| Change status | `memaster decision edit decision-1 -s superseded` (the status is free-form; legacy sections gain markers in place and other content is preserved) |
+| Set replacement | `memaster decision edit decision-1 --superseded-by decision-2` (does not change status; combine with `-s superseded` if needed) |
+| Clear replacement | `memaster decision edit decision-1 --superseded-by ""` |
+| Archive decision | `memaster decision archive decision-1` (move the decision to `memaster/archive/decisions/`; its ID stays reserved and it becomes read-only) |
+| Restore decision | `memaster decision restore decision-1` (move an archived decision back to `memaster/decisions/` with the same ID) |
+| Delete decision | `memaster decision delete decision-1` (archived decisions only; no prompt; removes the file and releases the ID) |
 
 The four section flags replace content; an empty value clears that section and omitted flags keep existing content. Multi-line values need real newlines; in bash/zsh, use `--context $'First line\nSecond line'`. A literal `\n` stays literal. Decision saves preserve text outside Context, Decision, Consequences and Alternatives, including unknown sections. Changes set `updated_date`; an unchanged save keeps it. `superseded_by` names one existing decision and cannot refer to itself. Omitted links survive later edits; `decision list --plain` and `--json` show the replacement. The first save wraps existing sections in marker comments without moving them. Duplicate known headings are refused because the target section is unclear. Keep reserved section marker lines out of section input. When auto-commit is enabled, a decision stored outside the Git repository is refused before writing; disable auto-commit to edit that file.
 
-- Use `backlog decision archive decision-1` to archive a decision that is no longer wanted. Its file moves unchanged, under the same name, to `backlog/archive/decisions/`, and its ID stays reserved, so no new decision receives it. An archived decision leaves `backlog decision list` and search and is read-only until it is restored. Read it with `backlog decision view decision-1 --plain` or `--json`; restore it before editing. Archiving changes no task: the command prints the tasks and drafts whose documentation list names the moved file.
-- Use `backlog decision restore decision-1` to bring an archived decision back to `backlog/decisions/` with the same ID. A file of that name already there is never replaced.
-- Removing a decision takes two steps: `backlog decision archive decision-1`, then `backlog decision delete decision-1`. Delete works only on an archived decision and asks no question. It removes the file from `backlog/archive/decisions/` (a file that is a symbolic link is removed as a link) and releases the ID once no other file and no committed file on any branch uses the number. Delete changes no task: it prints the tasks and drafts whose documentation list names the removed file, by its archive path or by the path it had before it was archived.
+- Use `memaster decision archive decision-1` to archive a decision that is no longer wanted. Its file moves unchanged, under the same name, to `memaster/archive/decisions/`, and its ID stays reserved, so no new decision receives it. An archived decision leaves `memaster decision list` and search and is read-only until it is restored. Read it with `memaster decision view decision-1 --plain` or `--json`; restore it before editing. Archiving changes no task: the command prints the tasks and drafts whose documentation list names the moved file.
+- Use `memaster decision restore decision-1` to bring an archived decision back to `memaster/decisions/` with the same ID. A file of that name already there is never replaced.
+- Removing a decision takes two steps: `memaster decision archive decision-1`, then `memaster decision delete decision-1`. Delete works only on an archived decision and asks no question. It removes the file from `memaster/archive/decisions/` (a file that is a symbolic link is removed as a link) and releases the ID once no other file and no committed file on any branch uses the number. Delete changes no task: it prints the tasks and drafts whose documentation list names the removed file, by its archive path or by the path it had before it was archived.
 
 ## Agent Instructions
 
 | Action                                          | Example                                              |
 |-------------------------------------------------|------------------------------------------------------|
-| Open the local CLI documentation entry point | `backlog` |
-| List workflow guides | `backlog instructions` |
-| Required first read for task workflow | `backlog instructions overview` |
-| Read a detailed workflow guide | `backlog instructions task-execution` |
-| Update CLI agent instruction files | `backlog agents --update-instructions` (updates CLAUDE.md, AGENTS.md, GEMINI.md, .github/copilot-instructions.md) |
+| Open the local CLI documentation entry point | `memaster` |
+| List workflow guides | `memaster instructions` |
+| Required first read for task workflow | `memaster instructions overview` |
+| Read a detailed workflow guide | `memaster instructions task-execution` |
+| Update CLI agent instruction files | `memaster agents --update-instructions` (updates CLAUDE.md, AGENTS.md, GEMINI.md, .github/copilot-instructions.md) |
 
 ## Maintenance
 
 | Action      | Example                                                                                      |
 |-------------|----------------------------------------------------------------------------------------------|
-| Cleanup done tasks | `backlog cleanup` (archive old finished tasks to clean up the kanban board; asks for an age, so its input and its output must both be an interactive terminal) |
+| Cleanup done tasks | `memaster cleanup` (archive old finished tasks to clean up the kanban board; asks for an age, so its input and its output must both be an interactive terminal) |
 
-Full help: `backlog --help`
+Full help: `memaster --help`
 
 ---
 
@@ -442,21 +442,21 @@ Full help: `backlog --help`
 Export your Kanban board to a clean, shareable markdown file:
 
 ```bash
-# Export to default Backlog.md file
-backlog board export
+# Export to default Memaster file
+memaster board export
 
 # Export to custom file
-backlog board export project-status.md
+memaster board export project-status.md
 
 # Force overwrite existing file
-backlog board export --force
+memaster board export --force
 
 # Export to README.md with board markers
-backlog board export --readme
+memaster board export --readme
 
 # Include a custom version string in the export
-backlog board export --export-version "v1.2.3"
-backlog board export --readme --export-version "Release 2024.12.1-beta"
+memaster board export --export-version "v1.2.3"
+memaster board export --readme --export-version "Release 2024.12.1-beta"
 ```
 
 Perfect for sharing project status, creating reports, or storing snapshots in version control.
@@ -465,23 +465,23 @@ Perfect for sharing project status, creating reports, or storing snapshots in ve
 
 ## Shell Tab Completion
 
-Backlog.md can install tab completion for bash, zsh, fish, and PowerShell.
+Memaster can install tab completion for bash, zsh, fish, and PowerShell.
 
 **Quick Installation:**
 ```bash
 # Auto-detect and install for your current shell
-backlog completion install
+memaster completion install
 
 # Or specify shell explicitly
-backlog completion install --shell bash
-backlog completion install --shell zsh
-backlog completion install --shell fish
-backlog completion install --shell pwsh
+memaster completion install --shell bash
+memaster completion install --shell zsh
+memaster completion install --shell fish
+memaster completion install --shell pwsh
 ```
 
 **What you get:**
-- Command completion: `backlog <TAB>` → shows all commands
-- Dynamic task IDs: `backlog task edit <TAB>` → shows actual task IDs from your backlog
+- Command completion: `memaster <TAB>` → shows all commands
+- Dynamic task IDs: `memaster task edit <TAB>` → shows actual task IDs from your memaster
 - Smart flags: `--status <TAB>` → shows configured status values
 - Context-aware suggestions for priorities, labels, and assignees
 

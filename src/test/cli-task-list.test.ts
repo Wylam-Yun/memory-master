@@ -16,7 +16,7 @@ const CLI_PATH = getTestCliPath();
  */
 async function writeUnparseableArchivedTask(): Promise<void> {
 	await writeFile(
-		join(TEST_DIR, "backlog", "archive", "tasks", "task-99 - Broken.md"),
+		join(TEST_DIR, "memaster", "archive", "tasks", "task-99 - Broken.md"),
 		"---\nid: TASK-99\ntitle: [unclosed\nstatus: Done\n---\n\nbroken\n",
 	);
 }
@@ -48,7 +48,7 @@ describe("CLI Integration", () => {
 
 	describe("task list command", () => {
 		beforeEach(async () => {
-			// Set up a git repository and initialize backlog
+			// Set up a git repository and initialize memaster
 			await $`git init -b main`.cwd(TEST_DIR).quiet();
 
 			const core = new Core(TEST_DIR);
@@ -853,7 +853,7 @@ describe("CLI Integration", () => {
 
 			expect(result.exitCode).toBe(1);
 			expect(out).toContain("--limit must be a positive integer (1 or greater).");
-			expect(out).toContain("Try 'backlog task list --help' for options.");
+			expect(out).toContain("Try 'memaster task list --help' for options.");
 		});
 	});
 });

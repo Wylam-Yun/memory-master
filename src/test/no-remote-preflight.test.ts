@@ -3,15 +3,15 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, join as joinPath } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { GitOperations } from "../git/operations.ts";
-import type { BacklogConfig } from "../types/index.ts";
+import type { MemasterConfig } from "../types/index.ts";
 
 describe("Missing git remote preflight", () => {
 	let tempDir: string;
 
 	beforeEach(async () => {
-		tempDir = await mkdtemp(join(tmpdir(), "backlog-noremote-"));
+		tempDir = await mkdtemp(join(tmpdir(), "memaster-noremote-"));
 		await $`git init`.cwd(tempDir).quiet();
 		await writeFile(join(tempDir, "README.md"), "# Test");
 		await $`git add README.md`.cwd(tempDir).quiet();
@@ -30,7 +30,7 @@ describe("Missing git remote preflight", () => {
 			milestones: [],
 			dateFormat: "YYYY-MM-DD",
 			remoteOperations: true,
-		} as BacklogConfig);
+		} as MemasterConfig);
 
 		// Capture console.warn to ensure no warning is printed during fetch
 		const originalWarn = console.warn;
@@ -50,7 +50,7 @@ describe("Missing git remote preflight", () => {
 	});
 
 	it("GitOperations.fetch() silently skips when only a differently named remote exists", async () => {
-		await $`git remote add upstream https://example.invalid/backlog.git`.cwd(tempDir).quiet();
+		await $`git remote add upstream https://example.invalid/memaster.git`.cwd(tempDir).quiet();
 		const gitOps = new GitOperations(tempDir, {
 			projectName: "Test",
 			statuses: ["To Do", "Done"],
@@ -58,14 +58,14 @@ describe("Missing git remote preflight", () => {
 			milestones: [],
 			dateFormat: "YYYY-MM-DD",
 			remoteOperations: true,
-		} as BacklogConfig);
+		} as MemasterConfig);
 
 		// Without the per-remote preflight this runs `git fetch origin` and rejects with exit code 128.
 		await expect(gitOps.fetch()).resolves.toBeUndefined();
 	});
 
 	it("Core cross-branch loading handles remoteOperations=true without a remote", async () => {
-		const config: BacklogConfig = {
+		const config: MemasterConfig = {
 			projectName: "Test",
 			statuses: ["To Do", "Done"],
 			labels: [],
@@ -75,7 +75,7 @@ describe("Missing git remote preflight", () => {
 			remoteOperations: true,
 		};
 
-		await mkdir(join(tempDir, "backlog", "tasks"), { recursive: true });
+		await mkdir(join(tempDir, "memaster", "tasks"), { recursive: true });
 		const core = new Core(tempDir, { enableWatchers: false });
 		await core.filesystem.saveConfig(config);
 

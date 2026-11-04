@@ -121,7 +121,7 @@ describe("CLI draft edit", () => {
 				labels: [],
 				dependencies: [],
 			});
-		const draftsDir = join(TEST_DIR, "backlog", "drafts");
+		const draftsDir = join(TEST_DIR, "memaster", "drafts");
 		await Bun.write(join(draftsDir, "draft-7 - Alpha.md"), await draft("Alpha"));
 		await Bun.write(join(draftsDir, "draft-7 - Beta.md"), await draft("Beta"));
 
@@ -136,7 +136,7 @@ describe("CLI draft edit", () => {
 	});
 
 	it("fails closed when padded and unpadded files claim the same numeric id", async () => {
-		const draftsDir = join(TEST_DIR, "backlog", "drafts");
+		const draftsDir = join(TEST_DIR, "memaster", "drafts");
 		const write = (filename: string, id: string, title: string) =>
 			Bun.write(
 				join(draftsDir, filename),
@@ -166,7 +166,7 @@ describe("CLI draft edit", () => {
 	});
 
 	it("fails closed on draft view when padded and unpadded files claim the same numeric id", async () => {
-		const draftsDir = join(TEST_DIR, "backlog", "drafts");
+		const draftsDir = join(TEST_DIR, "memaster", "drafts");
 		const write = (filename: string, id: string, title: string) =>
 			Bun.write(
 				join(draftsDir, filename),
@@ -260,7 +260,7 @@ describe("CLI draft edit", () => {
 	});
 
 	it("resolves zero-padded drafts through the same loose numeric rule as the TUI", async () => {
-		const draftsDir = join(TEST_DIR, "backlog", "drafts");
+		const draftsDir = join(TEST_DIR, "memaster", "drafts");
 		await Bun.write(
 			join(draftsDir, "draft-001 - Padded.md"),
 			serializeTask({
@@ -315,7 +315,7 @@ describe("CLI draft edit", () => {
 		const core = new Core(TEST_DIR);
 		expect((await core.filesystem.listHealthyDrafts()).length).toBe(2);
 
-		const draftsDir = join(TEST_DIR, "backlog", "drafts");
+		const draftsDir = join(TEST_DIR, "memaster", "drafts");
 		const files = await Array.fromAsync(new Bun.Glob("draft-*.md").scan({ cwd: draftsDir }));
 		for (const file of files) {
 			if (file.includes("Damaged")) {
@@ -335,10 +335,10 @@ describe("CLI draft edit", () => {
 		const result = await $`bun ${CLI_PATH} draft edit ${draft.id} --check-ac 7`.cwd(TEST_DIR).nothrow().quiet();
 		const output = normalizeCliOutput(result.stdout.toString() + result.stderr.toString());
 		expect(result.exitCode).toBe(1);
-		expect(output).toContain(`backlog draft view ${draft.id} --plain`);
-		expect(output).toContain(`backlog draft edit ${draft.id} --help`);
-		expect(output).not.toContain("backlog task view");
-		expect(output).not.toContain("backlog task edit");
+		expect(output).toContain(`memaster draft view ${draft.id} --plain`);
+		expect(output).toContain(`memaster draft edit ${draft.id} --help`);
+		expect(output).not.toContain("memaster task view");
+		expect(output).not.toContain("memaster task edit");
 	});
 
 	it("requires a task id outside interactive mode like task edit does", async () => {
@@ -452,7 +452,7 @@ describe("atomic draft editing", () => {
 			const core = new Core(TEST_DIR);
 			const reloaded = await core.filesystem.loadDraft(draftId);
 			expect(reloaded?.title).toBe("Archive race");
-			const archivedFiles = (await readdir(join(TEST_DIR, "backlog", "archive", "drafts")).catch(() => [])).length;
+			const archivedFiles = (await readdir(join(TEST_DIR, "memaster", "archive", "drafts")).catch(() => [])).length;
 			expect(archivedFiles).toBe(0);
 
 			// After release, archiving succeeds cleanly.
@@ -462,7 +462,7 @@ describe("atomic draft editing", () => {
 	);
 
 	it("picker lists unrelated healthy drafts beside colliding ones and only selection fails closed", async () => {
-		const draftsDir = join(TEST_DIR, "backlog", "drafts");
+		const draftsDir = join(TEST_DIR, "memaster", "drafts");
 		const writeTwin = (filename: string, id: string, title: string) =>
 			Bun.write(
 				join(draftsDir, filename),
@@ -646,7 +646,7 @@ describe("draft wizard selection binding", () => {
 
 	it("selecting a drifted row fails closed against that file and never edits its twin", async () => {
 		const core = new Core(TEST_DIR);
-		const draftsDir = join(TEST_DIR, "backlog", "drafts");
+		const draftsDir = join(TEST_DIR, "memaster", "drafts");
 		const drifted = serializeTask({
 			id: "DRAFT-2",
 			title: "Alpha",
@@ -735,7 +735,7 @@ describe("draft identity sweep", () => {
 	});
 
 	const writeDraftFile = async (filename: string, id: string, title: string): Promise<string> => {
-		const filePath = join(TEST_DIR, "backlog", "drafts", filename);
+		const filePath = join(TEST_DIR, "memaster", "drafts", filename);
 		await Bun.write(
 			filePath,
 			serializeTask({
@@ -753,7 +753,7 @@ describe("draft identity sweep", () => {
 
 	it("converges a padded file to one file instead of minting a duplicate", async () => {
 		await writeDraftFile("draft-001 - Padded.md", "DRAFT-1", "Padded");
-		const draftsDir = join(TEST_DIR, "backlog", "drafts");
+		const draftsDir = join(TEST_DIR, "memaster", "drafts");
 
 		const renamed = await $`bun ${CLI_PATH} draft edit 1 -t "Converged"`.cwd(TEST_DIR).nothrow().quiet();
 		expect(renamed.exitCode).toBe(0);
@@ -773,7 +773,7 @@ describe("draft identity sweep", () => {
 
 	it("never deletes an unparsable padded twin during allocation or convergence", async () => {
 		// Unparsable content: the numeric id is only proclaimed by the filename.
-		const notesPath = join(TEST_DIR, "backlog", "drafts", "draft-001 - Notes.md");
+		const notesPath = join(TEST_DIR, "memaster", "drafts", "draft-001 - Notes.md");
 		const brokenYaml = "---\nid: [oops\ntitle: Notes\n---\nbroken yaml";
 		await Bun.write(notesPath, brokenYaml);
 
@@ -817,7 +817,7 @@ describe("interactive draft picker collision guard", () => {
 			try {
 				const core = new Core(TEST_DIR);
 				await initializeFilesystemTestProject(core, "Picker Collision Project");
-				const draftsDir = join(TEST_DIR, "backlog", "drafts");
+				const draftsDir = join(TEST_DIR, "memaster", "drafts");
 				await Bun.write(
 					join(draftsDir, "draft-1 - Alpha.md"),
 					serializeTask({
@@ -836,7 +836,7 @@ describe("interactive draft picker collision guard", () => {
 				const script = `log_user 1\nspawn {${CLI_RUNTIME}} {${CLI_PATH}} draft edit\nset timeout 15\nsleep 3\nsend "\\x03"\nexpect {\n\teof {}\n\ttimeout { exit 2 }\n}`;
 				const proc = Bun.spawnSync({
 					cmd: ["expect", "-c", script],
-					env: { ...process.env, TERM: "xterm", BACKLOG_CWD: TEST_DIR },
+					env: { ...process.env, TERM: "xterm", MEMASTER_CWD: TEST_DIR },
 					stdout: "pipe",
 					stderr: "pipe",
 				});
@@ -875,7 +875,7 @@ describe("draft identity edge cases", () => {
 	});
 
 	it("groups dotted-segment padding variants so direct ids and the picker fail closed", async () => {
-		const draftsDir = join(TEST_DIR, "backlog", "drafts");
+		const draftsDir = join(TEST_DIR, "memaster", "drafts");
 		const twin = (filename: string, id: string, title: string) =>
 			Bun.write(
 				join(draftsDir, filename),
@@ -916,11 +916,11 @@ describe("draft identity edge cases", () => {
 		expect(result.exitCode).toBe(1);
 		expect(output).toContain("Invalid draft id");
 		expect(await Bun.file(foreignPath).text()).toBe(foreignContent);
-		expect((await readdir(join(TEST_DIR, "backlog", "drafts"))).length).toBe(0);
+		expect((await readdir(join(TEST_DIR, "memaster", "drafts"))).length).toBe(0);
 	});
 
 	it("fails closed when a path-form id names one member of a duplicate pair", async () => {
-		const draftsDir = join(TEST_DIR, "backlog", "drafts");
+		const draftsDir = join(TEST_DIR, "memaster", "drafts");
 		const alphaPath = join(draftsDir, "draft-1 - Alpha.md");
 		const twinPath = join(draftsDir, "draft-01 - Beta.md");
 		await Bun.write(
@@ -961,7 +961,7 @@ describe("draft identity edge cases", () => {
 
 	it("still accepts an in-drafts-dir path for a unique draft", async () => {
 		await $`bun ${CLI_PATH} draft create "Solo draft"`.cwd(TEST_DIR).nothrow().quiet();
-		const draftsDir = join(TEST_DIR, "backlog", "drafts");
+		const draftsDir = join(TEST_DIR, "memaster", "drafts");
 		const soloPath = (await readdir(draftsDir))
 			.filter((file) => file.endsWith(".md"))
 			.map((file) => join(draftsDir, file))

@@ -12,7 +12,7 @@ let TEST_DIR: string;
 let core: Core;
 let urlDraftPath: string;
 
-/** Run `backlog task <args>` in the test project and return what a caller of the CLI sees. */
+/** Run `memaster task <args>` in the test project and return what a caller of the CLI sees. */
 async function task(...args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
 	const result = await $`bun ${[CLI_PATH, "task", ...args]}`.cwd(TEST_DIR).nothrow().quiet();
 	return { exitCode: result.exitCode, stdout: result.stdout.toString(), stderr: result.stderr.toString() };

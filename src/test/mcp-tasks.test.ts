@@ -27,7 +27,7 @@ let mcpServer: McpServer;
 async function loadConfig(server: McpServer) {
 	const config = await server.filesystem.loadConfig();
 	if (!config) {
-		throw new Error("Failed to load backlog configuration for tests");
+		throw new Error("Failed to load memaster configuration for tests");
 	}
 	return config;
 }
@@ -86,7 +86,7 @@ describe("MCP task tools (MVP)", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("mcp-tasks");
 		mcpServer = new McpServer(TEST_DIR, "Test instructions");
-		await mcpServer.filesystem.ensureBacklogStructure();
+		await mcpServer.filesystem.ensureMemasterStructure();
 
 		await initializeFilesystemTestProject(mcpServer, "Test Project");
 
@@ -266,7 +266,7 @@ describe("MCP task tools (MVP)", () => {
 		});
 		const text = (listResult.content ?? []).map((entry) => ("text" in entry ? entry.text : "")).join("\n\n");
 		expect(text).toContain("duplicate task ID");
-		expect(text).toContain("backlog doctor");
+		expect(text).toContain("memaster doctor");
 		expect(text).toContain("task-1 - Alpha.md");
 		expect(text.toLowerCase()).not.toContain("prompt");
 		expect(text.toLowerCase()).not.toContain("agent");
@@ -308,7 +308,7 @@ describe("MCP task tools (MVP)", () => {
 			const refused = await call(name, args);
 			expect(refused.isError).toBe(true);
 			expect(getText(refused.content)).toContain(
-				"Task TASK-2 is archived. Archived tasks are read-only. Restore it to the board first: backlog task restore TASK-2",
+				"Task TASK-2 is archived. Archived tasks are read-only. Restore it to the board first: memaster task restore TASK-2",
 			);
 		}
 
@@ -520,11 +520,11 @@ describe("MCP task tools (MVP)", () => {
 		expect(view.isError).toBe(true);
 		expect(getText(view.content)).toBe("Task TASK-1 not found.");
 		expect((await $`git log -1 --format=%s`.cwd(TEST_DIR).text()).trim()).toBe(
-			failedStep === "commit" ? "Archive before deletion failure" : "backlog: Delete task TASK-1",
+			failedStep === "commit" ? "Archive before deletion failure" : "memaster: Delete task TASK-1",
 		);
 		if (failedStep === "lock release") {
 			expect((await $`git show --name-status --format= HEAD`.cwd(TEST_DIR).text()).trim()).toBe(
-				"D\tbacklog/archive/tasks/task-1 - Delete-failure-target.md",
+				"D\tmemaster/archive/tasks/task-1 - Delete-failure-target.md",
 			);
 		}
 	});
@@ -756,7 +756,7 @@ describe("MCP task tools (MVP)", () => {
 			},
 		});
 		expect(editResult.isError).toBe(true);
-		expect(getText(editResult.content)).toContain("Comment body cannot contain Backlog comment markers.");
+		expect(getText(editResult.content)).toContain("Comment body cannot contain Memaster comment markers.");
 
 		const viewResult = await mcpServer.testInterface.callTool({
 			params: { name: "task_view", arguments: { id: "task-1" } },

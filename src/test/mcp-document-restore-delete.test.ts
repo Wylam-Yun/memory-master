@@ -20,8 +20,8 @@ async function call(name: string, args: Record<string, unknown>): Promise<ToolRe
 }
 
 const git = async (...args: string[]) => (await $`git ${args}`.cwd(TEST_DIR).quiet().text()).trim();
-const docsPath = (...segments: string[]) => join(TEST_DIR, "backlog", "docs", ...segments);
-const archivePath = (...segments: string[]) => join(TEST_DIR, "backlog", "archive", "docs", ...segments);
+const docsPath = (...segments: string[]) => join(TEST_DIR, "memaster", "docs", ...segments);
+const archivePath = (...segments: string[]) => join(TEST_DIR, "memaster", "archive", "docs", ...segments);
 
 async function exists(path: string): Promise<boolean> {
 	return (await lstat(path).catch(() => null)) !== null;
@@ -110,15 +110,15 @@ describe("MCP document_restore and document_delete", () => {
 
 	it("deletes the archived file and names the tasks and drafts that list either path, changing none", async () => {
 		const name = await createArchivedDocument("Obsolete");
-		await mcpServer.createTaskFromInput({ title: "Archive path", documentation: [`backlog/archive/docs/${name}`] });
-		await mcpServer.createTaskFromInput({ title: "Old path", documentation: [`./backlog/docs/${name}#usage`] });
+		await mcpServer.createTaskFromInput({ title: "Archive path", documentation: [`memaster/archive/docs/${name}`] });
+		await mcpServer.createTaskFromInput({ title: "Old path", documentation: [`./memaster/docs/${name}#usage`] });
 		await mcpServer.createTaskFromInput({
 			title: "A URL",
-			documentation: [`https://example.com/backlog/docs/${name}`],
+			documentation: [`https://example.com/memaster/docs/${name}`],
 		});
-		await mcpServer.createTaskFromInput({ title: "Draft", status: "Draft", documentation: [`backlog/docs/${name}`] });
-		const tasksBefore = await readFolder(join(TEST_DIR, "backlog", "tasks"));
-		const draftsBefore = await readFolder(join(TEST_DIR, "backlog", "drafts"));
+		await mcpServer.createTaskFromInput({ title: "Draft", status: "Draft", documentation: [`memaster/docs/${name}`] });
+		const tasksBefore = await readFolder(join(TEST_DIR, "memaster", "tasks"));
+		const draftsBefore = await readFolder(join(TEST_DIR, "memaster", "drafts"));
 
 		const deleted = await call("document_delete", { id: "doc-1" });
 
@@ -127,8 +127,8 @@ describe("MCP document_restore and document_delete", () => {
 		expect(deleted.text).toBe("Deleted document doc-1.\nStill listed as documentation by: TASK-1, TASK-2, DRAFT-1.");
 		expect(await exists(archivePath(name))).toBe(false);
 		expect((await call("document_view", { id: "doc-1" })).code).toBe("DOCUMENT_NOT_FOUND");
-		expect(await readFolder(join(TEST_DIR, "backlog", "tasks"))).toEqual(tasksBefore);
-		expect(await readFolder(join(TEST_DIR, "backlog", "drafts"))).toEqual(draftsBefore);
+		expect(await readFolder(join(TEST_DIR, "memaster", "tasks"))).toEqual(tasksBefore);
+		expect(await readFolder(join(TEST_DIR, "memaster", "drafts"))).toEqual(draftsBefore);
 	});
 
 	it("releases the ID of a deleted document for the next document_create", async () => {
@@ -159,7 +159,7 @@ describe("MCP document_restore and document_delete", () => {
 		const taken = await call("document_restore", { id: "doc-2" });
 		expect(taken.code).toBe("VALIDATION_ERROR");
 		expect(taken.text).toContain(
-			`Document doc-2 cannot be restored: the docs folder already has a file at backlog/docs/${second}.`,
+			`Document doc-2 cannot be restored: the docs folder already has a file at memaster/docs/${second}.`,
 		);
 		expect(await exists(archivePath(second))).toBe(true);
 
@@ -186,7 +186,7 @@ describe("MCP document_restore and document_delete", () => {
 	it("names the restore command in the read-only message of document_update and document_archive", async () => {
 		await createArchivedDocument("Archived");
 		const message =
-			"Document doc-1 is archived. Archived documents are read-only. Restore it first: backlog doc restore doc-1";
+			"Document doc-1 is archived. Archived documents are read-only. Restore it first: memaster doc restore doc-1";
 
 		const update = await call("document_update", { id: "doc-1", content: "New body" });
 		const archive = await call("document_archive", { id: "doc-1" });
@@ -204,15 +204,15 @@ describe("MCP document_restore and document_delete", () => {
 		await git("commit", "-m", "Set up the project");
 
 		expect((await call("document_restore", { id: "doc-1" })).isError).toBe(false);
-		expect(await git("log", "-1", "--format=%s")).toBe("backlog: Restore document doc-1");
+		expect(await git("log", "-1", "--format=%s")).toBe("memaster: Restore document doc-1");
 		expect(await git("show", "--name-status", "--format=", "HEAD")).toBe(
-			`R100\tbacklog/archive/docs/${name}\tbacklog/docs/${name}`,
+			`R100\tmemaster/archive/docs/${name}\tmemaster/docs/${name}`,
 		);
 
 		expect((await call("document_archive", { id: "doc-1" })).isError).toBe(false);
 		expect((await call("document_delete", { id: "doc-1" })).isError).toBe(false);
-		expect(await git("log", "-1", "--format=%s")).toBe("backlog: Delete document doc-1");
-		expect(await git("show", "--name-status", "--format=", "HEAD")).toBe(`D\tbacklog/archive/docs/${name}`);
+		expect(await git("log", "-1", "--format=%s")).toBe("memaster: Delete document doc-1");
+		expect(await git("show", "--name-status", "--format=", "HEAD")).toBe(`D\tmemaster/archive/docs/${name}`);
 		expect(await git("status", "--porcelain")).toBe("");
 	});
 
@@ -234,8 +234,8 @@ describe("MCP document_restore and document_delete", () => {
 			});
 			expect(created.isError).toBe(false);
 			const name = "doc-1 - Mixed-auto-commit.md";
-			const activePath = `backlog/docs/guides/http/${name}`;
-			const archivedPath = `backlog/archive/docs/guides/http/${name}`;
+			const activePath = `memaster/docs/guides/http/${name}`;
+			const archivedPath = `memaster/archive/docs/guides/http/${name}`;
 			await writeFile(join(TEST_DIR, "unstaged.txt"), "original\n");
 			await git("add", "-A");
 			await git("commit", "-m", "Track the active document");
@@ -253,7 +253,7 @@ describe("MCP document_restore and document_delete", () => {
 			await git("add", "staged.txt");
 			await writeFile(join(TEST_DIR, "staged.txt"), "unstaged edit of staged work\n");
 			await writeFile(join(TEST_DIR, "unstaged.txt"), "user edit\n");
-			const unrelatedPaths = ["staged.txt", "unstaged.txt", "backlog/config.yml"];
+			const unrelatedPaths = ["staged.txt", "unstaged.txt", "memaster/config.yml"];
 			const stagedBefore = await git("diff", "--cached", "--", ...unrelatedPaths);
 			const unstagedBefore = await git("diff", "--", ...unrelatedPaths);
 			const commitsBefore = Number(await git("rev-list", "--count", "HEAD"));

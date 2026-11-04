@@ -32,7 +32,7 @@ const PAGES = [
 		listPath: "/documentation",
 		recordPath: "/api/docs/doc-1",
 		archivePath: "/api/docs/doc-1/archive",
-		restoreCommand: "backlog doc restore doc-1",
+		restoreCommand: "memaster doc restore doc-1",
 		record: (archived: boolean): Document => ({
 			id: "doc-1",
 			title: "Retired runbook",
@@ -66,7 +66,7 @@ const PAGES = [
 		listPath: "/decisions",
 		recordPath: "/api/decisions/decision-1",
 		archivePath: "/api/decisions/decision-1/archive",
-		restoreCommand: "backlog decision restore decision-1",
+		restoreCommand: "memaster decision restore decision-1",
 		record: (archived: boolean): Decision => ({
 			id: "decision-1",
 			title: "Retired runbook",

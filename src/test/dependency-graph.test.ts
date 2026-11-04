@@ -256,8 +256,8 @@ describe("buildDependencyGraph", () => {
 		// `task view <archived-id>` hands the viewer the archived record to display while the viewer
 		// also loads the archived corpus, so the same file arrives in both lists. That is one record,
 		// not two records claiming one identity.
-		const completed = task("task-1", [], { status: "Done", filePath: "/p/backlog/archive/tasks/task-1 - Done.md" });
-		const dependent = task("task-2", ["task-1"], { filePath: "/p/backlog/tasks/task-2 - Next.md" });
+		const completed = task("task-1", [], { status: "Done", filePath: "/p/memaster/archive/tasks/task-1 - Done.md" });
+		const dependent = task("task-2", ["task-1"], { filePath: "/p/memaster/tasks/task-2 - Next.md" });
 		const graph = buildDependencyGraph(completed, {
 			tasks: [dependent, completed],
 			archivedTasks: [completed],
@@ -282,8 +282,8 @@ describe("buildDependencyGraph", () => {
 	});
 
 	it("still fails closed when two different files claim one identity", () => {
-		const first = task("task-1", [], { filePath: "/p/backlog/tasks/task-1 - Alpha.md" });
-		const second = task("TASK-01", [], { filePath: "/p/backlog/tasks/task-01 - Beta.md" });
+		const first = task("task-1", [], { filePath: "/p/memaster/tasks/task-1 - Alpha.md" });
+		const second = task("TASK-01", [], { filePath: "/p/memaster/tasks/task-01 - Beta.md" });
 		const graph = buildDependencyGraph(task("task-2", ["task-1"]), {
 			tasks: [task("task-2", ["task-1"]), first, second],
 			statuses: STATUSES,

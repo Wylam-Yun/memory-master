@@ -42,7 +42,7 @@ interface TaskListProps {
 type TaskSortColumn = "id" | "title" | "status" | "priority" | "ordinal" | "milestone" | "created";
 type SortDirection = "asc" | "desc";
 
-// The table sorts that `backlog task list --sort` also has, with the `--sort` value each one is.
+// The table sorts that `memaster task list --sort` also has, with the `--sort` value each one is.
 // Their order comes from sortTasks, so the table and the CLI agree. Every other column and
 // direction is a sort only this table has.
 const SHARED_SORTS: Partial<Record<`${TaskSortColumn}:${SortDirection}`, string>> = {

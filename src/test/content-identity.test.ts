@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { chmod, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { serializeDecision, serializeDocument } from "../markdown/serializer.ts";
 import type { Decision, Document } from "../types/index.ts";
 import { decisionIdKey } from "../utils/decision-id.ts";
@@ -120,10 +120,10 @@ describe("ambiguous content identity", () => {
 		expect((error as AmbiguousIdError).message).toContain("Document ID doc-1 is ambiguous; 2 files match:");
 		// Each file is named from the project root, so its folder (docs or archive) is part of the name.
 		expect((error as AmbiguousIdError).candidates).toEqual([
-			"backlog/docs/doc-1 - Alpha.md",
-			"backlog/docs/nested/doc-01 - Beta.md",
+			"memaster/docs/doc-1 - Alpha.md",
+			"memaster/docs/nested/doc-01 - Beta.md",
 		]);
-		expect((error as AmbiguousIdError).message).toContain("backlog doctor");
+		expect((error as AmbiguousIdError).message).toContain("memaster doctor");
 	});
 
 	it("fails closed when a decision ID matches several files", async () => {
@@ -135,8 +135,8 @@ describe("ambiguous content identity", () => {
 		expect((error as AmbiguousIdError).message).toContain("Decision ID decision-1 is ambiguous; 2 files match:");
 		// Each file is named by its path from the project root, as for documents.
 		expect((error as AmbiguousIdError).candidates).toEqual([
-			"backlog/decisions/decision-01 - Beta.md",
-			"backlog/decisions/decision-1 - Alpha.md",
+			"memaster/decisions/decision-01 - Beta.md",
+			"memaster/decisions/decision-1 - Alpha.md",
 		]);
 	});
 
@@ -170,12 +170,12 @@ describe("diagnoseContentIdentity", () => {
 
 		const report = await core.diagnoseContentIdentity();
 		expect(report.documents.duplicates).toEqual([
-			{ id: "doc-1", paths: ["backlog/docs/doc-1 - Alpha.md", "backlog/docs/nested/doc-01 - Beta.md"] },
+			{ id: "doc-1", paths: ["memaster/docs/doc-1 - Alpha.md", "memaster/docs/nested/doc-01 - Beta.md"] },
 		]);
 		expect(report.decisions.duplicates).toEqual([
 			{
 				id: "decision-3",
-				paths: ["backlog/decisions/decision-003 - Delta.md", "backlog/decisions/decision-3 - Gamma.md"],
+				paths: ["memaster/decisions/decision-003 - Delta.md", "memaster/decisions/decision-3 - Gamma.md"],
 			},
 		]);
 	});
@@ -185,8 +185,8 @@ describe("diagnoseContentIdentity", () => {
 		await writeDecision("decision-blank.md", { ...makeDecision("", "Unidentified decision"), id: "" });
 
 		const report = await core.diagnoseContentIdentity();
-		expect(report.documents.missingIds).toEqual(["backlog/docs/no-id.md"]);
-		expect(report.decisions.missingIds).toEqual(["backlog/decisions/decision-blank.md"]);
+		expect(report.documents.missingIds).toEqual(["memaster/docs/no-id.md"]);
+		expect(report.decisions.missingIds).toEqual(["memaster/decisions/decision-blank.md"]);
 		expect(report.documents.duplicates).toEqual([]);
 		expect(report.decisions.duplicates).toEqual([]);
 	});
@@ -218,8 +218,8 @@ describe("unreadable content files", () => {
 		await writeRaw(core.filesystem.decisionsDir, "decision-2 - Broken.md", malformedFrontmatter("decision-9"));
 
 		const report = await core.diagnoseContentIdentity();
-		expect(report.documents.unreadable).toEqual(["backlog/docs/nested/doc-2 - Broken.md"]);
-		expect(report.decisions.unreadable).toEqual(["backlog/decisions/decision-2 - Broken.md"]);
+		expect(report.documents.unreadable).toEqual(["memaster/docs/nested/doc-2 - Broken.md"]);
+		expect(report.decisions.unreadable).toEqual(["memaster/decisions/decision-2 - Broken.md"]);
 		expect(report.documents.duplicates).toEqual([]);
 		expect(report.documents.missingIds).toEqual([]);
 		expect(hasContentIdentityIssues(report)).toBe(true);
@@ -252,7 +252,7 @@ describe("unreadable content directories", () => {
 			expect(unreadable).toEqual([""]);
 
 			const report = await core.diagnoseContentIdentity();
-			expect(report.documents.unreadable).toEqual(["backlog/docs"]);
+			expect(report.documents.unreadable).toEqual(["memaster/docs"]);
 			expect(hasContentIdentityIssues(report)).toBe(true);
 		} finally {
 			await chmod(core.filesystem.docsDir, 0o755);

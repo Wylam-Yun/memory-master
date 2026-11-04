@@ -8,7 +8,7 @@ import { createServer } from "node:tls";
 const fixtures = join(import.meta.dir, "fixtures/certificate-trust");
 
 test.concurrent("native fetch preserves a configured private HTTPS proxy", async () => {
-	const root = await mkdtemp(join(tmpdir(), "backlog-git-user-trust-"));
+	const root = await mkdtemp(join(tmpdir(), "memaster-git-user-trust-"));
 	const env = Object.fromEntries(
 		Object.entries(process.env).filter(
 			([key]) => !/^(git_.+|https?_proxy|all_proxy|no_proxy|ssl_cert_.+|curl_ca_bundle)$/i.test(key),

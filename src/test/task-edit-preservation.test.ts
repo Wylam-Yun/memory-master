@@ -15,7 +15,7 @@ describe("Task edit section preservation", () => {
 		TEST_DIR = createUniqueTestDir("test-task-edit-preservation");
 		await mkdir(TEST_DIR, { recursive: true });
 
-		// Initialize backlog project using Core
+		// Initialize memaster project using Core
 		const core = new Core(TEST_DIR);
 		await initializeFilesystemTestProject(core, "Task Edit Preservation Test");
 	});
@@ -25,7 +25,7 @@ describe("Task edit section preservation", () => {
 	});
 
 	it("preserves legacy task file identity and body when editing only labels", async () => {
-		const tasksDir = join(TEST_DIR, "backlog", "tasks");
+		const tasksDir = join(TEST_DIR, "memaster", "tasks");
 		const taskPath = join(tasksDir, "task-1 - hello world.md");
 		await Bun.write(
 			taskPath,

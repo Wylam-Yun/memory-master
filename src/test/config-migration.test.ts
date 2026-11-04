@@ -1,27 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { FileSystem } from "../file-system/operations.ts";
 import { createUniqueTestDir, safeCleanup, withTimeout } from "./test-utils.ts";
 
 describe("Config loading and legacy migration", () => {
 	let testRoot: string;
-	let backlogDir: string;
+	let memasterDir: string;
 	let configPath: string;
 
 	beforeEach(async () => {
 		testRoot = createUniqueTestDir("test-config-migration");
-		backlogDir = join(testRoot, "backlog");
-		configPath = join(backlogDir, "config.yml");
-		await mkdir(backlogDir, { recursive: true });
+		memasterDir = join(testRoot, "memaster");
+		configPath = join(memasterDir, "config.yml");
+		await mkdir(memasterDir, { recursive: true });
 	});
 
 	afterEach(async () => {
 		await safeCleanup(testRoot);
 	});
 
-	it("should load config from standard backlog directory", async () => {
+	it("should load config from standard memaster directory", async () => {
 		const config = `project_name: "Test Project"
 statuses: ["To Do", "In Progress", "Done"]
 labels: []
@@ -41,13 +41,13 @@ auto_commit: false`;
 		expect(loadedConfig?.projectName).toBe("Test Project");
 	});
 
-	it("should load config from .backlog directory without migrating it", async () => {
-		// Create a .backlog directory instead of backlog
-		const hiddenBacklogDir = join(testRoot, ".backlog");
-		const hiddenConfigPath = join(hiddenBacklogDir, "config.yml");
+	it("should load config from .memaster directory without migrating it", async () => {
+		// Create a .memaster directory instead of memaster
+		const hiddenMemasterDir = join(testRoot, ".memaster");
+		const hiddenConfigPath = join(hiddenMemasterDir, "config.yml");
 
-		await rm(backlogDir, { recursive: true, force: true });
-		await mkdir(hiddenBacklogDir, { recursive: true });
+		await rm(memasterDir, { recursive: true, force: true });
+		await mkdir(hiddenMemasterDir, { recursive: true });
 
 		const hiddenConfig = `project_name: "Legacy Project"
 statuses: ["To Do", "In Progress", "Done"]
@@ -68,11 +68,11 @@ auto_commit: false`;
 		expect(config?.projectName).toBe("Legacy Project");
 
 		// Check that the directory stayed in place
-		const newBacklogExists = await Bun.file(join(testRoot, "backlog", "config.yml")).exists();
-		const oldBacklogExists = await Bun.file(join(testRoot, ".backlog", "config.yml")).exists();
+		const newMemasterExists = await Bun.file(join(testRoot, "memaster", "config.yml")).exists();
+		const oldMemasterExists = await Bun.file(join(testRoot, ".memaster", "config.yml")).exists();
 
-		expect(newBacklogExists).toBe(false);
-		expect(oldBacklogExists).toBe(true);
+		expect(newMemasterExists).toBe(false);
+		expect(oldMemasterExists).toBe(true);
 	});
 
 	it("migrates legacy config milestones into milestone files and removes config milestones key", async () => {

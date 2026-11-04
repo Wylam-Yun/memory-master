@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { chmod, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import {
 	createUniqueTestDir,
@@ -25,7 +25,7 @@ async function runCli(args: string[]) {
 async function readRecordFiles(): Promise<Record<string, Buffer>> {
 	const files: Record<string, Buffer> = {};
 	for (const directory of ["tasks", "drafts"]) {
-		const directoryPath = join(TEST_DIR, "backlog", directory);
+		const directoryPath = join(TEST_DIR, "memaster", directory);
 		for (const name of (await readdir(directoryPath)).sort()) {
 			files[`${directory}/${name}`] = await readFile(join(directoryPath, name));
 		}

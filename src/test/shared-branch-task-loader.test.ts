@@ -1,15 +1,15 @@
 import { describe, expect, it } from "bun:test";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { BranchTaskLoader } from "../core/task-loader.ts";
 import type { GitBranchTip, GitOperations } from "../git/operations.ts";
-import type { BacklogConfig, Task } from "../types/index.ts";
+import type { MemasterConfig, Task } from "../types/index.ts";
 import { pinTimeZone } from "./pin-timezone.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup, treeBlobs } from "./test-utils.ts";
 
 pinTimeZone("Asia/Taipei");
 
-const config: BacklogConfig = {
+const config: MemasterConfig = {
 	projectName: "Loader test",
 	statuses: ["To Do", "In Progress", "Done"],
 	labels: [],
@@ -47,7 +47,7 @@ function deferred(): { promise: Promise<void>; resolve: () => void } {
 
 describe("shared immutable branch task loading", () => {
 	it("reads a newer local copy's branch twin only under most_progressed, in either storage format", async () => {
-		const path = "backlog/tasks/task-1 - Local.md";
+		const path = "memaster/tasks/task-1 - Local.md";
 		// most_recent: the local copy is newer than the branch's last commit, so the branch copy cannot
 		// win and is not read. most_progressed: the branch copy may carry a status further along
 		// whatever the dates say, so it is read once and the identity index compares the two.
@@ -92,8 +92,8 @@ describe("shared immutable branch task loading", () => {
 	});
 
 	it("reuses immutable blobs across commits and lifecycle paths after the snapshot changes", async () => {
-		const activePath = "backlog/tasks/task-1 - Shared.md";
-		const archivedPath = "backlog/archive/tasks/task-1 - Shared.md";
+		const activePath = "memaster/tasks/task-1 - Shared.md";
+		const archivedPath = "memaster/archive/tasks/task-1 - Shared.md";
 		const sharedBlob = "f".repeat(40);
 		let reads = 0;
 		const git = {
@@ -129,7 +129,7 @@ describe("shared immutable branch task loading", () => {
 
 		const next = [current, { name: "feature", commit: "c".repeat(40), current: false }];
 		await loader.load(next, config, [], true);
-		loader.retainSnapshot(next, { backlogDir: "backlog", prefix: "task", activeBranchDays: 30 });
+		loader.retainSnapshot(next, { memasterDir: "memaster", prefix: "task", activeBranchDays: 30 });
 		const retained = await loader.load(next, config, [], true);
 		expect(reads).toBe(1);
 		expect(retained.entries[0]?.task).toMatchObject({ title: "Shared", source: "local-branch", branch: "feature" });
@@ -145,14 +145,14 @@ describe("shared immutable branch task loading", () => {
 			createdDate: "2026-08-10",
 			labels: [],
 			dependencies: [],
-			filePath: "/tmp/working-copy-task-corpus-test/backlog/tasks/task-1 - Shared.md",
+			filePath: "/tmp/working-copy-task-corpus-test/memaster/tasks/task-1 - Shared.md",
 		};
 		const completed: Task = {
 			...active,
 			id: "TASK-001",
 			title: "Completed lifecycle",
 			status: "Done",
-			filePath: "/tmp/working-copy-task-corpus-test/backlog/completed/task-1 - Shared.md",
+			filePath: "/tmp/working-copy-task-corpus-test/memaster/completed/task-1 - Shared.md",
 		};
 		core.fs.listTasks = async () => [active];
 		core.fs.listArchivedTasks = async () => [completed];
@@ -164,8 +164,8 @@ describe("shared immutable branch task loading", () => {
 	it("deduplicates same-SHA refs and reuses unchanged tree, history, and task reads", async () => {
 		const sharedCommit = "1".repeat(40);
 		const changedCommit = "2".repeat(40);
-		const sharedPath = "backlog/tasks/task-1 - Shared.md";
-		const changedPath = "backlog/tasks/task-2 - Changed.md";
+		const sharedPath = "memaster/tasks/task-1 - Shared.md";
+		const changedPath = "memaster/tasks/task-2 - Changed.md";
 		const treeCalls = new Map<string, number>();
 		const historyCalls = new Map<string, number>();
 		const showCalls = new Map<string, number>();
@@ -234,7 +234,7 @@ describe("shared immutable branch task loading", () => {
 		const projectRoot = createUniqueTestDir("working-copy-branch-fallback");
 		const core = new Core(projectRoot, { enableWatchers: true });
 		const branchCommit = "9".repeat(40);
-		const branchPath = "backlog/tasks/task-1 - Shared.md";
+		const branchPath = "memaster/tasks/task-1 - Shared.md";
 		const localTask: Task = {
 			id: "TASK-1",
 			title: "Working copy",
@@ -303,8 +303,8 @@ describe("shared immutable branch task loading", () => {
 		const core = new Core(projectRoot, { enableWatchers: true });
 		const goodCommit = "a".repeat(40);
 		const flakyCommit = "b".repeat(40);
-		const goodPath = "backlog/tasks/task-1 - Healthy.md";
-		const flakyPath = "backlog/tasks/task-2 - Recovered.md";
+		const goodPath = "memaster/tasks/task-1 - Healthy.md";
+		const flakyPath = "memaster/tasks/task-2 - Recovered.md";
 		const treeCalls = new Map<string, number>();
 		const historyCalls = new Map<string, number>();
 		const hydrationCalls = new Map<string, number>();
@@ -429,7 +429,7 @@ describe("shared immutable branch task loading", () => {
 
 	it("keeps immutable history cache results independent of the moving active-window cutoff", async () => {
 		const branchCommit = "6".repeat(40);
-		const path = "backlog/tasks/task-1 - Cached.md";
+		const path = "memaster/tasks/task-1 - Cached.md";
 		const fileModified = new Date("2026-07-12T00:00:00Z");
 		const originalNow = Date.now;
 		let logicalNow = new Date("2026-08-10T12:00:00Z").getTime();
@@ -472,7 +472,7 @@ describe("shared immutable branch task loading", () => {
 
 	it("uses the unborn branch name when no ref is marked current", async () => {
 		const featureCommit = "7".repeat(40);
-		const path = "backlog/tasks/task-1 - Feature.md";
+		const path = "memaster/tasks/task-1 - Feature.md";
 		const git = {
 			getCurrentBranch: async () => "blank",
 			listTreeBlobs: async (commit: string) => treeBlobs(commit, path),
@@ -524,7 +524,7 @@ describe("shared immutable branch task loading", () => {
 				remoteOperations: false,
 			});
 			const featureCommit = "9".repeat(40);
-			const path = "backlog/tasks/task-1 - Feature.md";
+			const path = "memaster/tasks/task-1 - Feature.md";
 			let currentBranch = "blank";
 			core.git.listRecentBranchTips = async () => [{ name: "feature/task", commit: featureCommit, current: false }];
 			core.git.getCurrentBranch = async () => currentBranch;
@@ -560,7 +560,7 @@ describe("shared immutable branch task loading", () => {
 				remoteOperations: false,
 			});
 			const featureCommit = "a".repeat(40);
-			const path = "backlog/tasks/task-1 - Feature.md";
+			const path = "memaster/tasks/task-1 - Feature.md";
 			const fileModified = new Date("2026-07-11T12:00:00Z");
 			let historyCalls = 0;
 			core.git.listRecentBranchTips = async () => [
@@ -659,7 +659,7 @@ describe("shared immutable branch task loading", () => {
 			releaseOldFetch = resolve;
 		});
 		const internals = core as unknown as {
-			refreshRemoteRefsForTaskRead: (loadedConfig: BacklogConfig) => Promise<void>;
+			refreshRemoteRefsForTaskRead: (loadedConfig: MemasterConfig) => Promise<void>;
 		};
 		const loadedConfig = { ...config, checkActiveBranches: true, remoteOperations: true };
 		const oldRefresh = internals.refreshRemoteRefsForTaskRead(loadedConfig);
@@ -693,7 +693,7 @@ describe("shared immutable branch task loading", () => {
 		});
 		const internals = core as unknown as {
 			refreshRemoteRefsForTaskRead: (
-				loadedConfig: BacklogConfig,
+				loadedConfig: MemasterConfig,
 				git?: GitOperations,
 				options?: { force?: boolean },
 			) => Promise<void>;
@@ -766,11 +766,11 @@ describe("shared immutable branch task loading", () => {
 		expect((await loading).map((task) => task.title)).toEqual(["New root task"]);
 	});
 
-	it("retries local reads when the selected backlog directory changes on the same filesystem", async () => {
+	it("retries local reads when the selected memaster directory changes on the same filesystem", async () => {
 		for (const read of ["working-copy", "query"] as const) {
 			const core = new Core(`/tmp/logical-root-${read}`);
 			const filesystem = core.fs;
-			filesystem.setBacklogDirectory("root-a");
+			filesystem.setMemasterDirectory("root-a");
 			const oldTask: Task = {
 				id: "TASK-1",
 				title: "Root A task",
@@ -804,7 +804,7 @@ describe("shared immutable branch task loading", () => {
 			const loading =
 				read === "working-copy" ? core.loadWorkingCopyTasks(true) : core.queryTasks({ includeCrossBranch: false });
 			await firstLoad.promise;
-			filesystem.setBacklogDirectory("root-b");
+			filesystem.setMemasterDirectory("root-b");
 			releaseFirstLoad.resolve();
 
 			expect((await loading).map((task) => task.title)).toEqual(["Root B task"]);
@@ -902,7 +902,7 @@ describe("shared immutable branch task loading", () => {
 	it("uses hidden local completed tasks to suppress older active branch state", async () => {
 		const core = new Core("/tmp/hidden-local-completed");
 		const branchCommit = "d".repeat(40);
-		const branchPath = "backlog/tasks/task-1 - Shared.md";
+		const branchPath = "memaster/tasks/task-1 - Shared.md";
 		const completedTask: Task = {
 			id: "TASK-1",
 			title: "Completed locally",
@@ -911,7 +911,7 @@ describe("shared immutable branch task loading", () => {
 			createdDate: "2026-08-10",
 			labels: [],
 			dependencies: [],
-			filePath: "/tmp/hidden-local-completed/backlog/completed/task-1 - Shared.md",
+			filePath: "/tmp/hidden-local-completed/memaster/completed/task-1 - Shared.md",
 		};
 		core.fs.loadConfig = async () => ({ ...config, remoteOperations: false });
 		core.fs.listArchivedTasks = async () => [completedTask];
@@ -1107,7 +1107,7 @@ describe("shared immutable branch task loading", () => {
 		const alphaCommit = "3".repeat(40);
 		const betaCommit = "4".repeat(40);
 		const gammaCommit = "5".repeat(40);
-		const path = "backlog/completed/task-1 - Shared.md";
+		const path = "memaster/completed/task-1 - Shared.md";
 		const showCalls = new Map<string, number>();
 		const started = new Map([
 			[alphaCommit, deferred()],
@@ -1165,8 +1165,8 @@ describe("shared immutable branch task loading", () => {
 		const oldCommit = "a".repeat(40);
 		const newCommit = "b".repeat(40);
 		const currentCommit = "c".repeat(40);
-		const oldPath = "backlog/tasks/task-1 - Old.md";
-		const newPath = "backlog/tasks/task-2 - New.md";
+		const oldPath = "memaster/tasks/task-1 - Old.md";
+		const newPath = "memaster/tasks/task-2 - New.md";
 		const currentTip: GitBranchTip = { name: "main", commit: currentCommit, current: true };
 		const oldTips: GitBranchTip[] = [currentTip, { name: "origin/feature", commit: oldCommit, current: false }];
 		const newTips: GitBranchTip[] = [currentTip, { name: "origin/feature", commit: newCommit, current: false }];

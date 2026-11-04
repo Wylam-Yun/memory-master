@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, utimes } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { $ } from "bun";
-import { Core, TaskArchivedError, TaskFileExistsError } from "../core/backlog.ts";
+import { Core, TaskArchivedError, TaskFileExistsError } from "../core/memaster.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { Document, Task } from "../types/index.ts";
 import { AmbiguousTaskIdError } from "../utils/task-path.ts";
@@ -29,7 +29,7 @@ describe("Core", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("test-core");
 		core = new Core(TEST_DIR);
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 
 		// Initialize git repository for testing
 		await $`git init -b main`.cwd(TEST_DIR).quiet();
@@ -49,16 +49,16 @@ describe("Core", () => {
 			expect(config?.defaultStatus).toBe("To Do");
 		});
 
-		it("should use root backlog.config.yml for custom backlog directories", async () => {
-			await initializeTestProject(core, "Custom Root Project", false, "planning/backlog-data");
+		it("should use root memaster.config.yml for custom memaster directories", async () => {
+			await initializeTestProject(core, "Custom Root Project", false, "planning/memaster-data");
 
-			expect(await Bun.file(join(TEST_DIR, "backlog.config.yml")).exists()).toBe(true);
-			expect(await Bun.file(join(TEST_DIR, "planning", "backlog-data", "config.yml")).exists()).toBe(false);
+			expect(await Bun.file(join(TEST_DIR, "memaster.config.yml")).exists()).toBe(true);
+			expect(await Bun.file(join(TEST_DIR, "planning", "memaster-data", "config.yml")).exists()).toBe(false);
 
 			const freshCore = new Core(TEST_DIR);
 			const config = await freshCore.filesystem.loadConfig();
 			expect(config?.projectName).toBe("Custom Root Project");
-			expect(freshCore.filesystem.backlogDirName).toBe("planning/backlog-data");
+			expect(freshCore.filesystem.memasterDirName).toBe("planning/memaster-data");
 		});
 	});
 
@@ -331,7 +331,7 @@ describe("Core", () => {
 			expect(await core.archiveTask("task-1", true)).toBe(true);
 
 			const lastCommit = await core.gitOps.getLastCommitMessage();
-			expect(lastCommit).toContain("backlog: Archive task TASK-1");
+			expect(lastCommit).toContain("memaster: Archive task TASK-1");
 		});
 
 		it("dispatches demote auto-commit with both moved paths", async () => {
@@ -350,7 +350,7 @@ describe("Core", () => {
 				expect(demoted.success).toBe(true);
 
 				const commit = await commitCalled;
-				expect(commit.message).toContain("backlog: Demote task TASK-1");
+				expect(commit.message).toContain("memaster: Demote task TASK-1");
 				expect(commit.paths.map(toPosixPath).some((path) => path.includes("/tasks/"))).toBe(true);
 				expect(commit.paths.map(toPosixPath).some((path) => path.includes("/drafts/"))).toBe(true);
 			} finally {
@@ -578,7 +578,7 @@ describe("Core", () => {
 			await $`git commit -m "Add branch-only task"`.cwd(TEST_DIR).quiet();
 			await $`git switch main`.cwd(TEST_DIR).quiet();
 			await $`git switch --orphan blank`.cwd(TEST_DIR).quiet();
-			await core.filesystem.ensureBacklogStructure();
+			await core.filesystem.ensureMemasterStructure();
 			await core.filesystem.saveConfig(branchConfig);
 
 			expect((await core.loadTasks()).map((task) => task.title)).toEqual(["Task on another branch"]);
@@ -696,10 +696,10 @@ describe("Core", () => {
 			await expect(core.getTask("TASK-1")).rejects.toBeInstanceOf(AmbiguousTaskIdError);
 		});
 
-		it("normalizes local and Git paths for a nested project with a custom backlog directory", async () => {
+		it("normalizes local and Git paths for a nested project with a custom memaster directory", async () => {
 			const nestedRoot = join(TEST_DIR, "packages", "app");
 			const nestedCore = new Core(nestedRoot);
-			await initializeTestProject(nestedCore, "Nested Project", false, "planning/backlog-data");
+			await initializeTestProject(nestedCore, "Nested Project", false, "planning/memaster-data");
 			const config = await nestedCore.filesystem.loadConfig();
 			if (!config) {
 				throw new Error("Expected nested config to be loaded");
@@ -751,7 +751,7 @@ describe("Core", () => {
 		});
 
 		it("keeps the task active when a branch archived it into a leftover completed folder", async () => {
-			await commitPaddedTaskArchivedOnBranch(join(core.filesystem.backlogDir, "completed"));
+			await commitPaddedTaskArchivedOnBranch(join(core.filesystem.memasterDir, "completed"));
 
 			const tasks = await core.loadTasks(undefined, undefined, { includeArchived: true });
 			const task = tasks.find((candidate) => candidate.id === "BACK-1" || candidate.id === "BACK-001");
@@ -788,7 +788,7 @@ describe("Core", () => {
 				const message = toPosixPath(String(error));
 				expect(message).toContain("task-prefixed - Legacy one.md");
 				expect(message).toContain("task-prefixed - Legacy two.md");
-				expect(message).toContain("backlog doctor");
+				expect(message).toContain("memaster doctor");
 			}
 		});
 
@@ -991,7 +991,7 @@ describe("Core", () => {
 		it("should handle task creation without auto-commit when git fails", async () => {
 			// Create task in directory without git
 			const nonGitCore = new Core(join(TEST_DIR, "no-git"));
-			await nonGitCore.filesystem.ensureBacklogStructure();
+			await nonGitCore.filesystem.ensureMemasterStructure();
 
 			// This should succeed even without git
 			await nonGitCore.createTask(sampleTask, false);
@@ -1193,8 +1193,8 @@ describe("Core", () => {
 			await $`git add -A`.cwd(TEST_DIR).quiet();
 			const diffResult = await $`git diff --name-status -M HEAD`.cwd(TEST_DIR).quiet();
 			const diff = diffResult.stdout.toString();
-			const previousPath = "backlog/docs/doc-1 - Operations-Guide.md";
-			const renamedPath = "backlog/docs/doc-1 - Operations-Guide-Renamed.md";
+			const previousPath = "memaster/docs/doc-1 - Operations-Guide.md";
+			const renamedPath = "memaster/docs/doc-1 - Operations-Guide-Renamed.md";
 			const escapeForRegex = (value: string) => value.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&");
 			expect(diff).toMatch(
 				new RegExp(`^R\\d*\\t${escapeForRegex(previousPath)}\\t${escapeForRegex(renamedPath)}`, "m"),
@@ -1253,7 +1253,7 @@ describe("Core", () => {
 			expect(promoted).toBe(true);
 
 			const lastCommit = await core.gitOps.getLastCommitMessage();
-			expect(lastCommit).toContain(`backlog: Promote draft ${draft.id.toUpperCase()}`);
+			expect(lastCommit).toContain(`memaster: Promote draft ${draft.id.toUpperCase()}`);
 		});
 
 		it("should archive draft with auto-commit", async () => {
@@ -1270,7 +1270,7 @@ describe("Core", () => {
 			expect(archived).toBe(true);
 
 			const lastCommit = await core.gitOps.getLastCommitMessage();
-			expect(lastCommit).toContain(`backlog: Archive draft ${draft.id.toUpperCase()}`);
+			expect(lastCommit).toContain(`memaster: Archive draft ${draft.id.toUpperCase()}`);
 		});
 
 		it("should preserve draft metadata through the canonical create path", async () => {

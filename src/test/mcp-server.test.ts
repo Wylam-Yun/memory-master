@@ -30,7 +30,7 @@ async function bootstrapServer(): Promise<McpServer> {
 	// Use normal mode instructions for bootstrapped test server
 	const server = new McpServer(TEST_DIR, "Test instructions");
 
-	await server.filesystem.ensureBacklogStructure();
+	await server.filesystem.ensureMemasterStructure();
 	await $`git init -b main`.cwd(TEST_DIR).quiet();
 
 	await initializeTestProject(server, "Test Project");
@@ -51,7 +51,7 @@ describe("McpServer bootstrap", () => {
 		const server = await bootstrapServer();
 
 		const tools = await server.testInterface.listTools();
-		expect(tools.tools.map((tool) => tool.name)).toEqual(["get_backlog_instructions"]);
+		expect(tools.tools.map((tool) => tool.name)).toEqual(["get_memaster_instructions"]);
 		expect(tools.tools[0]?.inputSchema).toEqual({
 			type: "object",
 			properties: {
@@ -66,10 +66,10 @@ describe("McpServer bootstrap", () => {
 
 		const resources = await server.testInterface.listResources();
 		expect(resources.resources.map((r) => r.uri)).toEqual([
-			"backlog://workflow/overview",
-			"backlog://workflow/task-creation",
-			"backlog://workflow/task-execution",
-			"backlog://workflow/task-finalization",
+			"memaster://workflow/overview",
+			"memaster://workflow/task-creation",
+			"memaster://workflow/task-execution",
+			"memaster://workflow/task-finalization",
 		]);
 
 		const prompts = await server.testInterface.listPrompts();
@@ -85,7 +85,7 @@ describe("McpServer bootstrap", () => {
 		const server = await bootstrapServer();
 
 		const result = await server.testInterface.readResource({
-			params: { uri: "backlog://workflow/overview" },
+			params: { uri: "memaster://workflow/overview" },
 		});
 
 		expect(result.contents).toHaveLength(1);
@@ -108,13 +108,13 @@ describe("McpServer bootstrap", () => {
 		const server = await bootstrapServer();
 
 		const result = await server.testInterface.readResource({
-			params: { uri: "backlog://workflow/task-creation" },
+			params: { uri: "memaster://workflow/task-creation" },
 		});
 
 		expect(result.contents).toHaveLength(1);
 		expect(getContentsText(result.contents)).toBe(MCP_TASK_CREATION_GUIDE);
 		expect(getContentsText(result.contents)).toContain(
-			"If you will continue from task creation into implementation in the same session, stop and read `backlog://workflow/task-execution` before viewing, assigning, planning, editing, or implementing a task.",
+			"If you will continue from task creation into implementation in the same session, stop and read `memaster://workflow/task-execution` before viewing, assigning, planning, editing, or implementing a task.",
 		);
 
 		await server.stop();
@@ -124,7 +124,7 @@ describe("McpServer bootstrap", () => {
 		const server = await bootstrapServer();
 
 		const result = await server.testInterface.readResource({
-			params: { uri: "backlog://workflow/task-execution" },
+			params: { uri: "memaster://workflow/task-execution" },
 		});
 
 		expect(result.contents).toHaveLength(1);
@@ -137,7 +137,7 @@ describe("McpServer bootstrap", () => {
 		const server = await bootstrapServer();
 
 		const result = await server.testInterface.readResource({
-			params: { uri: "backlog://workflow/task-finalization" },
+			params: { uri: "memaster://workflow/task-finalization" },
 		});
 
 		expect(result.contents).toHaveLength(1);
@@ -197,7 +197,7 @@ describe("McpServer bootstrap", () => {
 	it("workflow guides say how a document is archived", () => {
 		for (const guide of [MCP_WORKFLOW_OVERVIEW, MCP_WORKFLOW_OVERVIEW_TOOLS]) {
 			expect(guide).toContain(
-				"- `document_archive` moves a document's file unchanged to the same relative path under `backlog/archive/docs/`.",
+				"- `document_archive` moves a document's file unchanged to the same relative path under `memaster/archive/docs/`.",
 			);
 			expect(guide).toContain("The ID stays reserved.");
 			expect(guide).toContain(
@@ -212,7 +212,7 @@ describe("McpServer bootstrap", () => {
 	it("workflow guides say how a document is restored and deleted", () => {
 		for (const guide of [MCP_WORKFLOW_OVERVIEW, MCP_WORKFLOW_OVERVIEW_TOOLS]) {
 			expect(guide).toContain(
-				"- `document_restore` moves an archived document's file back, unchanged, to the same relative path under `backlog/docs/`.",
+				"- `document_restore` moves an archived document's file back, unchanged, to the same relative path under `memaster/docs/`.",
 			);
 			expect(guide).toContain("Removing a document takes two steps: `document_archive`, then `document_delete`.");
 			expect(guide).toContain("Delete works only on an archived document and asks no question.");
@@ -315,12 +315,12 @@ describe("McpServer bootstrap", () => {
 		const server = await bootstrapServer();
 
 		const overview = await server.testInterface.callTool({
-			params: { name: "get_backlog_instructions", arguments: {} },
+			params: { name: "get_memaster_instructions", arguments: {} },
 		});
 		expect(getText(overview.content)).toBe(MCP_WORKFLOW_OVERVIEW_TOOLS);
 
 		const creation = await server.testInterface.callTool({
-			params: { name: "get_backlog_instructions", arguments: { instruction: "task-creation" } },
+			params: { name: "get_memaster_instructions", arguments: { instruction: "task-creation" } },
 		});
 		expect(getText(creation.content)).toBe(MCP_TASK_CREATION_GUIDE);
 
@@ -331,7 +331,7 @@ describe("McpServer bootstrap", () => {
 		TEST_DIR = createUniqueTestDir("mcp-server-factory");
 
 		const bootstrap = new McpServer(TEST_DIR, "Bootstrap instructions");
-		await bootstrap.filesystem.ensureBacklogStructure();
+		await bootstrap.filesystem.ensureMemasterStructure();
 		await $`git init -b main`.cwd(TEST_DIR).quiet();
 		await initializeTestProject(bootstrap, "Factory Project");
 		await bootstrap.stop();
@@ -340,7 +340,7 @@ describe("McpServer bootstrap", () => {
 
 		const tools = await server.testInterface.listTools();
 		expect(tools.tools.map((tool) => tool.name)).toEqual([
-			"get_backlog_instructions",
+			"get_memaster_instructions",
 			"task_create",
 			"task_list",
 			"task_search",
@@ -370,12 +370,12 @@ describe("McpServer bootstrap", () => {
 
 		const resources = await server.testInterface.listResources();
 		expect(resources.resources.map((r) => r.uri)).toEqual([
-			"backlog://workflow/overview",
-			"backlog://workflow/task-creation",
-			"backlog://workflow/task-execution",
-			"backlog://workflow/task-finalization",
+			"memaster://workflow/overview",
+			"memaster://workflow/task-creation",
+			"memaster://workflow/task-execution",
+			"memaster://workflow/task-finalization",
 		]);
-		expect(MCP_WORKFLOW_OVERVIEW).toContain("## Backlog.md Overview (MCP)");
+		expect(MCP_WORKFLOW_OVERVIEW).toContain("## Memaster Overview (MCP)");
 
 		const resourceTemplates = await server.testInterface.listResourceTemplates();
 		expect(resourceTemplates.resourceTemplates).toEqual([]);

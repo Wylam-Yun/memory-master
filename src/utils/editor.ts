@@ -1,5 +1,5 @@
 import { platform } from "node:os";
-import type { BacklogConfig } from "../types/index.ts";
+import type { MemasterConfig } from "../types/index.ts";
 
 /**
  * Get the default editor based on the operating system
@@ -24,7 +24,7 @@ function getPlatformDefaultEditor(): string {
  * Resolve the editor command based on configuration, environment, and platform defaults
  * Priority: EDITOR env var -> config.defaultEditor -> platform default
  */
-export function resolveEditor(config?: BacklogConfig | null): string {
+export function resolveEditor(config?: MemasterConfig | null): string {
 	// First check environment variable
 	const editorEnv = process.env.EDITOR;
 	if (editorEnv) {
@@ -66,7 +66,7 @@ export async function isEditorAvailable(
 /**
  * Open a file in the editor
  */
-export async function openInEditor(filePath: string, config?: BacklogConfig | null): Promise<boolean> {
+export async function openInEditor(filePath: string, config?: MemasterConfig | null): Promise<boolean> {
 	const editor = resolveEditor(config);
 
 	try {

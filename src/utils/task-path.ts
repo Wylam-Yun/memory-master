@@ -1,5 +1,5 @@
 import { basename, join } from "node:path";
-import { type Core, createRuntimeCore } from "../core/backlog.ts";
+import { type Core, createRuntimeCore } from "../core/memaster.ts";
 import type { Task } from "../types/index.ts";
 import { AmbiguousIdError } from "./entity-id.ts";
 import { buildGlobPattern, escapeRegex, extractAnyPrefix, extractIdFromFilename } from "./prefix-config.ts";
@@ -49,13 +49,13 @@ export function taskNotFoundMessage(taskId: string): string {
  * exist to avoid.
  */
 export const LOCAL_TASK_LOOKUP_HINT =
-	"Task lookups read only the local working copy; use 'backlog browser' to see tasks from other branches.";
+	"Task lookups read only the local working copy; use 'memaster browser' to see tasks from other branches.";
 
 export class AmbiguousTaskIdError extends AmbiguousIdError {
 	readonly taskId: string;
 
 	constructor(taskId: string, candidates: string[]) {
-		super("Task", canonicalTaskId(taskId), candidates, "Run 'backlog doctor' to preview a safe repair.");
+		super("Task", canonicalTaskId(taskId), candidates, "Run 'memaster doctor' to preview a safe repair.");
 		this.name = "AmbiguousTaskIdError";
 		this.taskId = taskId;
 	}

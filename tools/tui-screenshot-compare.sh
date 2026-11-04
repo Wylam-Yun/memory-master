@@ -21,7 +21,7 @@ SCREENSHOT_DIR=".tui-screenshots"
 FRAME_DURATION="1.5"
 
 # Launch + render tuning (env-overridable)
-BACKLOG_BIN="${BACKLOG_BIN:-${PROJECT_DIR}/dist/backlog}"
+MEMASTER_BIN="${MEMASTER_BIN:-${PROJECT_DIR}/dist/memaster}"
 GHOSTTY_BIN="${GHOSTTY_BIN:-/Applications/Ghostty.app/Contents/MacOS/ghostty}"
 FONT_SIZE="${FONT_SIZE:-14}"
 COLS="${COLS:-100}"
@@ -146,8 +146,8 @@ capture_pairing() {
 	local out="${dir}/${key}"
 	mkdir -p "$out"
 
-	local title="backlogshot-$$-${key}"
-	local sock="backlogshot_$$_${key//-/_}"
+	local title="memastershot-$$-${key}"
+	local sock="memastershot_$$_${key//-/_}"
 	local launcher="${TMPDIR:-/tmp}/${sock}.sh"
 
 	# The TUI runs inside an isolated tmux server (-L <sock>) so navigation is
@@ -157,7 +157,7 @@ capture_pairing() {
 	{
 		echo "tmux set -g status off"
 		printf 'cd %q\n' "$PROJECT_DIR"
-		printf 'exec %q board view\n' "$BACKLOG_BIN"
+		printf 'exec %q board view\n' "$MEMASTER_BIN"
 	} > "$launcher"
 	local tui_cmd="tmux -L ${sock} new-session -s s -x ${COLS} -y ${ROWS} bash ${launcher}"
 
@@ -225,8 +225,8 @@ do_capture() {
 	mkdir -p "$dir"
 
 	echo "=== Capturing TUI screenshots: ${label} ==="
-	echo "Binary: ${BACKLOG_BIN}"
-	[[ -x "$BACKLOG_BIN" ]] || die "Backlog binary not found at ${BACKLOG_BIN}. Run 'bun run build' (or set BACKLOG_BIN)."
+	echo "Binary: ${MEMASTER_BIN}"
+	[[ -x "$MEMASTER_BIN" ]] || die "Memaster binary not found at ${MEMASTER_BIN}. Run 'bun run build' (or set MEMASTER_BIN)."
 
 	while IFS= read -r line; do
 		[[ -n "$line" ]] || continue
@@ -430,7 +430,7 @@ case "${1:-}" in
 		Default pairings (key | theme | font):
 		$(all_pairings | sed 's/^/  /')
 
-		Auto-capture launches the TUI (via the compiled ${BACKLOG_BIN##*/} binary) inside an
+		Auto-capture launches the TUI (via the compiled ${MEMASTER_BIN##*/} binary) inside an
 		isolated tmux session in a new Ghostty window per pairing, navigates the
 		views (board, task list, detail, filters) via tmux send-keys, and screenshots
 		each by window ID. Navigation never sends keystrokes to your other windows.
@@ -449,7 +449,7 @@ case "${1:-}" in
 		  $0 compare main pr                  # generate left|right comparisons
 
 		Environment:
-		  BACKLOG_BIN   TUI binary to launch (default: ./dist/backlog)
+		  MEMASTER_BIN   TUI binary to launch (default: ./dist/memaster)
 		  GHOSTTY_BIN   Ghostty executable path
 		  PAIRINGS      Override pairing list ("key|theme|font" lines)
 		  FONT_SIZE=14  Font size for all captures

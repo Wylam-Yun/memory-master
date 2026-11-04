@@ -1,4 +1,4 @@
-import type { Core } from "../core/backlog.ts";
+import type { Core } from "../core/memaster.ts";
 import { getTaskStatistics } from "../core/statistics.ts";
 import { createLoadingScreen } from "../ui/loading.ts";
 import { renderOverviewTui } from "../ui/overview-tui.ts";

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, mock, spyOn } from "bun:te
 import { mkdir, rename, stat, unlink } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { $ } from "bun";
-import { Core, formatCleanupResult } from "../core/backlog.ts";
+import { Core, formatCleanupResult } from "../core/memaster.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { Task } from "../types/index.ts";
 import { pinTimeZone } from "./pin-timezone.ts";
@@ -34,7 +34,7 @@ describe("Cleanup functionality", () => {
 		// Initialize git repo
 		await $`git init -b main`.cwd(TEST_DIR).quiet();
 
-		// Initialize backlog project
+		// Initialize memaster project
 		core = new Core(TEST_DIR);
 		await initializeTestProject(core, "Cleanup Test Project");
 	});
@@ -45,11 +45,11 @@ describe("Cleanup functionality", () => {
 	});
 
 	describe("Core functionality", () => {
-		it("creates the archive folder, and no completed folder, in the backlog structure", async () => {
-			await core.filesystem.ensureBacklogStructure();
-			expect(core.filesystem.archiveTasksDir).toBe(join(TEST_DIR, "backlog", "archive", "tasks"));
+		it("creates the archive folder, and no completed folder, in the memaster structure", async () => {
+			await core.filesystem.ensureMemasterStructure();
+			expect(core.filesystem.archiveTasksDir).toBe(join(TEST_DIR, "memaster", "archive", "tasks"));
 			expect((await stat(core.filesystem.archiveTasksDir)).isDirectory()).toBe(true);
-			expect(await stat(join(TEST_DIR, "backlog", "completed")).catch(() => null)).toBeNull();
+			expect(await stat(join(TEST_DIR, "memaster", "completed")).catch(() => null)).toBeNull();
 		});
 
 		it("should move a Done task into the archive", async () => {
@@ -600,7 +600,7 @@ describe("Cleanup functionality", () => {
 			expect(await boardIds()).toEqual(["TASK-1"]);
 		});
 
-		it("words the result in the lines `backlog cleanup` and the browser both show", () => {
+		it("words the result in the lines `memaster cleanup` and the browser both show", () => {
 			const lines = formatCleanupResult(
 				{
 					archivedTaskIds: ["TASK-3"],

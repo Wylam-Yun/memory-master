@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { lstat, mkdir, readdir, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeTestProject, isWindows, safeCleanup } from "./test-utils.ts";
 
@@ -132,7 +132,7 @@ describe("changing a decision's status from the CLI", () => {
 		await mkdir(TEST_DIR, { recursive: true });
 		await $`git init -b main`.cwd(TEST_DIR).quiet();
 		await initializeTestProject(new Core(TEST_DIR), "Decision Status Test");
-		decisionsDir = join(TEST_DIR, "backlog", "decisions");
+		decisionsDir = join(TEST_DIR, "memaster", "decisions");
 		await mkdir(decisionsDir, { recursive: true });
 	});
 
@@ -277,7 +277,7 @@ describe("changing a decision's status from the CLI", () => {
 		const original = asWrittenOnWindows(decisionWith("status: accepted"));
 		await writeDecisionFile(filename, original);
 		expect((await cli("decision", "archive", "decision-1")).exitCode).toBe(0);
-		const archiveDir = join(TEST_DIR, "backlog", "archive", "decisions");
+		const archiveDir = join(TEST_DIR, "memaster", "archive", "decisions");
 		const archived = await snapshotDecisions(archiveDir);
 		const active = await snapshotDecisions();
 
@@ -286,7 +286,7 @@ describe("changing a decision's status from the CLI", () => {
 		expect(result.exitCode).toBe(1);
 		expect(result.stdout.toString()).toBe("");
 		expect(result.stderr.toString()).toBe(
-			"Decision decision-1 is archived. Archived decisions are read-only. Restore it first: backlog decision restore decision-1\n",
+			"Decision decision-1 is archived. Archived decisions are read-only. Restore it first: memaster decision restore decision-1\n",
 		);
 		expect(await snapshotDecisions(archiveDir)).toEqual(archived);
 		expect(await snapshotDecisions()).toEqual(active);
@@ -303,7 +303,7 @@ describe("changing a decision's status from the CLI", () => {
 			"decision-2 - Active.md",
 			decisionWith("status: accepted").replace("decision-1", "decision-2"),
 		);
-		const archiveDir = join(TEST_DIR, "backlog", "archive", "decisions");
+		const archiveDir = join(TEST_DIR, "memaster", "archive", "decisions");
 		await mkdir(archiveDir, { recursive: true });
 		await writeFile(
 			join(archiveDir, "decision-002 - Archived.md"),
@@ -317,8 +317,8 @@ describe("changing a decision's status from the CLI", () => {
 		expect(result.exitCode).toBe(1);
 		expect(result.stdout.toString()).toBe("");
 		expect(result.stderr.toString()).toContain("Decision ID decision-2 is ambiguous; 2 files match:");
-		expect(result.stderr.toString()).toContain("backlog/decisions/decision-2 - Active.md");
-		expect(result.stderr.toString()).toContain("backlog/archive/decisions/decision-002 - Archived.md");
+		expect(result.stderr.toString()).toContain("memaster/decisions/decision-2 - Active.md");
+		expect(result.stderr.toString()).toContain("memaster/archive/decisions/decision-002 - Archived.md");
 		expect(await snapshotDecisions()).toEqual(active);
 		expect(await snapshotDecisions(archiveDir)).toEqual(archived);
 	});
@@ -376,8 +376,8 @@ describe("changing a decision's status from the CLI", () => {
 
 		const commit = await $`git show --name-only --pretty=format:%s`.cwd(TEST_DIR).text();
 		expect(commit.trim().split("\n")).toEqual([
-			"backlog: Update decision decision-1",
-			"backlog/decisions/decision-1 - Use-Postgres.md",
+			"memaster: Update decision decision-1",
+			"memaster/decisions/decision-1 - Use-Postgres.md",
 		]);
 		expect((await $`git status --porcelain`.cwd(TEST_DIR).text()).trim()).toBe("?? unrelated.txt");
 	});
@@ -388,7 +388,7 @@ describe("changing a decision's status from the CLI", () => {
 		expect(groupHelp).toContain(`${CHANGE_STATUS[1]} [options] <decisionId>`);
 
 		const help = (await cli(...CHANGE_STATUS, "--help")).stdout.toString();
-		expect(help).toContain(`Usage: backlog ${command} [options] <decisionId>`);
+		expect(help).toContain(`Usage: memaster ${command} [options] <decisionId>`);
 		expect(help).toContain(`${STATUS_FLAG}, --status <status>`);
 		expect(help).toContain("set decision status (free-form)");
 		expect(help).toContain("Input schema:");
@@ -399,6 +399,6 @@ describe("changing a decision's status from the CLI", () => {
 			"Writes:\n  - Updates named decision fields and updated_date when the record changes; preserves other content",
 		);
 		expect(help).toContain("Output:\n  - Updated decision ID");
-		expect(help).toContain(`backlog ${command} decision-1 ${STATUS_FLAG} superseded`);
+		expect(help).toContain(`memaster ${command} decision-1 ${STATUS_FLAG} superseded`);
 	});
 });

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { Task } from "../types/index.ts";
 import {
@@ -143,7 +143,7 @@ describe("loadTasksForUnifiedView", () => {
 	});
 
 	it("builds a concise board warning from active and completed collisions", async () => {
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		const makeTask = (id: string, title: string): Task => ({
 			id,
 			title,
@@ -161,7 +161,7 @@ describe("loadTasksForUnifiedView", () => {
 		);
 
 		expect(await getDuplicateTaskStartupWarning(core)).toBe(
-			"Duplicate task IDs detected: TASK-1. Run 'backlog doctor' to preview a safe repair.",
+			"Duplicate task IDs detected: TASK-1. Run 'memaster doctor' to preview a safe repair.",
 		);
 	});
 

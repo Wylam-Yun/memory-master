@@ -62,7 +62,7 @@ async function main() {
 	const [asset, checksum] = assets[target];
 	const bytes = await download(`https://github.com/oven-sh/bun/releases/download/bun-v${version}/${asset}`);
 	if (createHash("sha256").update(bytes).digest("hex") !== checksum) throw new Error("Bun release checksum mismatch");
-	const directory = path.join(process.env.RUNNER_TEMP ?? tmpdir(), `backlog-bun-${version}`, target);
+	const directory = path.join(process.env.RUNNER_TEMP ?? tmpdir(), `memaster-bun-${version}`, target);
 	mkdirSync(directory, { recursive: true });
 	const archive = path.join(directory, asset);
 	const executable = path.join(directory, target.includes("windows") ? "bun.exe" : "bun");
@@ -81,7 +81,7 @@ async function main() {
 	);
 	if (extracted.status !== 0) throw new Error("Could not extract the verified Bun executable");
 	chmodSync(executable, 0o755);
-	if (process.env.GITHUB_ENV) appendFileSync(process.env.GITHUB_ENV, `BACKLOG_BUILD_EXECUTABLE_PATH=${executable}\n`);
+	if (process.env.GITHUB_ENV) appendFileSync(process.env.GITHUB_ENV, `MEMASTER_BUILD_EXECUTABLE_PATH=${executable}\n`);
 	if (target === host && process.env.GITHUB_PATH) appendFileSync(process.env.GITHUB_PATH, `${directory}\n`);
 	console.log(`Verified Bun ${version} for ${target}: ${executable}`);
 }

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } from "./test-utils.ts";
 
@@ -93,21 +93,21 @@ describe("CLI task types", () => {
 			expect(output).toContain("--type <type>");
 			expect(output).toContain("type: one of configured task types: Bug, Epic");
 		}
-		expect(createHelp).toContain('backlog task create "Fix session expiry" --type "Bug"');
-		expect(editHelp).toContain('backlog task edit TASK-1 --type "Bug"');
+		expect(createHelp).toContain('memaster task create "Fix session expiry" --type "Bug"');
+		expect(editHelp).toContain('memaster task edit TASK-1 --type "Bug"');
 		expect(createHelp).not.toContain("--type bug");
 		expect(editHelp).not.toContain("--type feature");
 	});
 
 	it("completes configured task types only for task type flags", async () => {
-		for (const line of ["backlog task create --type ", "backlog task edit TASK-1 --type "]) {
+		for (const line of ["memaster task create --type ", "memaster task edit TASK-1 --type "]) {
 			const result = await $`bun ${CLI_PATH} completion __complete ${line} ${String(line.length)}`
 				.cwd(TEST_DIR)
 				.quiet();
 			expect(result.stdout.toString().trim().split("\n")).toEqual(["Bug", "Epic"]);
 		}
 
-		const searchLine = "backlog search --type ";
+		const searchLine = "memaster search --type ";
 		const searchResult = await $`bun ${CLI_PATH} completion __complete ${searchLine} ${String(searchLine.length)}`
 			.cwd(TEST_DIR)
 			.quiet();

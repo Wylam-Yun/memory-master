@@ -6,7 +6,7 @@ import { setTimeout as delay } from "node:timers/promises";
 // The process that started this one: the parent, and also the launcher's parent when the npm launcher is the parent.
 // Captured when the CLI loads, before parsing and project lookup, so a starter that exits during setup still counts.
 const parent = process.ppid;
-const [launcher, launcherParent] = (process.env.BACKLOG_LAUNCHER ?? "").split(":").map(Number);
+const [launcher, launcherParent] = (process.env.MEMASTER_LAUNCHER ?? "").split(":").map(Number);
 const starters = launcher === parent ? [parent, launcherParent] : [parent];
 
 /** POSIX reparents orphans; Windows does not, so the PIDs are probed as well. */

@@ -16,7 +16,7 @@ describe("CLI --plain for task create/edit", () => {
 
 		// Initialize git repo first using shell API (same as other tests)
 
-		// Initialize backlog project using Core
+		// Initialize memaster project using Core
 		const core = new Core(TEST_DIR);
 		await initializeFilesystemTestProject(core, "Plain Create/Edit Project");
 	});

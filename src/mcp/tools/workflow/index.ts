@@ -42,11 +42,11 @@ function createWorkflowTool(): McpToolHandler {
 
 	return createSimpleValidatedTool(
 		{
-			name: "get_backlog_instructions",
+			name: "get_memaster_instructions",
 			description:
-				"Retrieve Backlog.md workflow guidance in markdown format. Defaults to the overview when no instruction is selected.",
+				"Retrieve Memaster workflow guidance in markdown format. Defaults to the overview when no instruction is selected.",
 			inputSchema: workflowInstructionsSchema,
-			annotations: { title: "Backlog Instructions", readOnlyHint: true, destructiveHint: false },
+			annotations: { title: "Memaster Instructions", readOnlyHint: true, destructiveHint: false },
 		},
 		workflowInstructionsSchema,
 		async (input: WorkflowInstructionsInput) => {

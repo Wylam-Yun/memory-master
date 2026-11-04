@@ -1,11 +1,11 @@
 /**
- * Default directory structure for backlog projects
+ * Default directory structure for memaster projects
  */
 export const DEFAULT_DIRECTORIES = {
-	/** Main backlog directory */
-	BACKLOG: "backlog",
-	/** Hidden backlog directory */
-	HIDDEN_BACKLOG: ".backlog",
+	/** Main memaster directory */
+	MEMASTER: "memaster",
+	/** Hidden memaster directory */
+	HIDDEN_MEMASTER: ".memaster",
 	/** Active tasks directory */
 	TASKS: "tasks",
 	/** Draft tasks directory */
@@ -31,10 +31,10 @@ export const DEFAULT_DIRECTORIES = {
 } as const;
 
 /**
- * Every directory archived tasks are read from, relative to the backlog directory.
+ * Every directory archived tasks are read from, relative to the memaster directory.
  *
  * Archiving writes to the first. The second is a folder older projects can still hold archived
- * tasks in; they are read like any other archived task until `backlog doctor --fix` moves them.
+ * tasks in; they are read like any other archived task until `memaster doctor --fix` moves them.
  */
 export const ARCHIVED_TASK_DIRECTORIES = [DEFAULT_DIRECTORIES.ARCHIVE_TASKS, "completed"] as const;
 
@@ -46,8 +46,8 @@ export const DEFAULT_FILES = {
 	CONFIG: "config.yml",
 	/** Alternate config filename accepted for discovery */
 	CONFIG_YAML: "config.yaml",
-	/** Root-level backlog configuration file */
-	ROOT_CONFIG: "backlog.config.yml",
+	/** Root-level memaster configuration file */
+	ROOT_CONFIG: "memaster.config.yml",
 } as const;
 
 /**

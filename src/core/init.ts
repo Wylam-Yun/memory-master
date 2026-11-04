@@ -6,8 +6,7 @@ import {
 	installClaudeAgent,
 } from "../agent-instructions.ts";
 import { DEFAULT_INIT_CONFIG } from "../constants/index.ts";
-import type { BacklogConfig } from "../types/index.ts";
-import { normalizeProjectBacklogDirectory } from "../utils/backlog-directory.ts";
+import type { MemasterConfig } from "../types/index.ts";
 import {
 	formatMcpClientSetupCommand,
 	getMcpClientSetupCommand,
@@ -15,11 +14,12 @@ import {
 	type McpClientSetupKey,
 	runMcpClientSetupCommand,
 } from "../utils/mcp-client-setup.ts";
+import { normalizeProjectMemasterDirectory } from "../utils/memaster-directory.ts";
 import { getTaskPrefixError } from "../utils/prefix-config.ts";
-import type { Core } from "./backlog.ts";
+import type { Core } from "./memaster.ts";
 
-export const MCP_SERVER_NAME = "backlog";
-export const MCP_GUIDE_URL = "https://github.com/MrLesk/Backlog.md#-mcp-integration-model-context-protocol";
+export const MCP_SERVER_NAME = "memaster";
+export const MCP_GUIDE_URL = "https://github.com/Wylam-Yun/memory-master#-mcp-integration-model-context-protocol";
 
 export type IntegrationMode = "mcp" | "cli" | "none";
 export type McpClient = "claude" | "codex" | "gemini" | "kiro" | "guide";
@@ -49,8 +49,8 @@ function formatAgentInstructionResults(results: AgentInstructionWriteResult[]): 
 
 export interface InitializeProjectOptions {
 	projectName: string;
-	backlogDirectory?: string;
-	backlogDirectorySource?: "backlog" | ".backlog" | "custom";
+	memasterDirectory?: string;
+	memasterDirectorySource?: "memaster" | ".memaster" | "custom";
 	configLocation?: "folder" | "root";
 	integrationMode: IntegrationMode;
 	mcpClients?: McpClient[];
@@ -72,14 +72,14 @@ export interface InitializeProjectOptions {
 		taskPrefix?: string;
 	};
 	/** Existing config for re-initialization */
-	existingConfig?: BacklogConfig | null;
+	existingConfig?: MemasterConfig | null;
 }
 
 export interface InitializeProjectResult {
 	success: boolean;
 	projectName: string;
 	isReInitialization: boolean;
-	config: BacklogConfig;
+	config: MemasterConfig;
 	mcpResults?: Record<string, string>;
 }
 
@@ -87,7 +87,7 @@ async function runMcpClientCommand(client: McpClientSetupKey): Promise<string> {
 	const { label, command, args } = getMcpClientSetupCommand(client, MCP_SERVER_NAME);
 	try {
 		await runMcpClientSetupCommand(command, args);
-		return `Added Backlog MCP server to ${label}`;
+		return `Added Memaster MCP server to ${label}`;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		throw new Error(
@@ -139,7 +139,7 @@ export async function initializeProject(
 	// Build config, preserving existing values for re-initialization.
 	// Re-init should be idempotent for fields that init does not explicitly manage.
 	const d = DEFAULT_INIT_CONFIG;
-	const baseConfig: BacklogConfig = {
+	const baseConfig: MemasterConfig = {
 		projectName,
 		statuses: ["To Do", "In Progress", "Done"],
 		labels: [],
@@ -163,7 +163,7 @@ export async function initializeProject(
 			task: normalizedAdvancedConfig.taskPrefix || "task",
 		},
 	};
-	const config: BacklogConfig = {
+	const config: MemasterConfig = {
 		...baseConfig,
 		...(existingConfig ?? {}),
 		projectName,
@@ -211,40 +211,40 @@ export async function initializeProject(
 	if (isReInitialization) {
 		await core.filesystem.saveConfig(config);
 	} else {
-		const normalizedBacklogDirectory = normalizeProjectBacklogDirectory(options.backlogDirectory);
-		const inferredBacklogDirectorySource = normalizedBacklogDirectory
-			? normalizedBacklogDirectory === ".backlog"
-				? ".backlog"
-				: normalizedBacklogDirectory === "backlog"
-					? "backlog"
+		const normalizedMemasterDirectory = normalizeProjectMemasterDirectory(options.memasterDirectory);
+		const inferredMemasterDirectorySource = normalizedMemasterDirectory
+			? normalizedMemasterDirectory === ".memaster"
+				? ".memaster"
+				: normalizedMemasterDirectory === "memaster"
+					? "memaster"
 					: "custom"
 			: undefined;
 		if (
-			options.backlogDirectorySource &&
-			inferredBacklogDirectorySource &&
-			options.backlogDirectorySource !== inferredBacklogDirectorySource
+			options.memasterDirectorySource &&
+			inferredMemasterDirectorySource &&
+			options.memasterDirectorySource !== inferredMemasterDirectorySource
 		) {
-			throw new Error("Backlog directory source and backlog directory value must agree.");
+			throw new Error("Memaster directory source and memaster directory value must agree.");
 		}
-		const effectiveBacklogDirectorySource = options.backlogDirectorySource ?? inferredBacklogDirectorySource;
-		if (effectiveBacklogDirectorySource === "custom" && !normalizedBacklogDirectory) {
-			throw new Error("Backlog directory must be a valid project-relative path.");
+		const effectiveMemasterDirectorySource = options.memasterDirectorySource ?? inferredMemasterDirectorySource;
+		if (effectiveMemasterDirectorySource === "custom" && !normalizedMemasterDirectory) {
+			throw new Error("Memaster directory must be a valid project-relative path.");
 		}
 		const effectiveConfigLocation =
-			options.configLocation ?? (effectiveBacklogDirectorySource === "custom" ? "root" : "folder");
-		if (effectiveBacklogDirectorySource === "custom" && effectiveConfigLocation !== "root") {
-			throw new Error("Custom backlog directories require root config discovery.");
+			options.configLocation ?? (effectiveMemasterDirectorySource === "custom" ? "root" : "folder");
+		if (effectiveMemasterDirectorySource === "custom" && effectiveConfigLocation !== "root") {
+			throw new Error("Custom memaster directories require root config discovery.");
 		}
-		const selectedBacklogDirectory =
-			normalizedBacklogDirectory ??
-			(effectiveBacklogDirectorySource === ".backlog"
-				? ".backlog"
-				: effectiveBacklogDirectorySource === "backlog"
-					? "backlog"
-					: "backlog");
-		core.filesystem.setBacklogDirectory(selectedBacklogDirectory);
+		const selectedMemasterDirectory =
+			normalizedMemasterDirectory ??
+			(effectiveMemasterDirectorySource === ".memaster"
+				? ".memaster"
+				: effectiveMemasterDirectorySource === "memaster"
+					? "memaster"
+					: "memaster");
+		core.filesystem.setMemasterDirectory(selectedMemasterDirectory);
 		core.filesystem.setConfigLocation(effectiveConfigLocation);
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		await core.filesystem.saveConfig(config);
 		await core.ensureConfigLoaded();
 	}

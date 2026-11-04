@@ -5,13 +5,13 @@ import { $ } from "bun";
 import type { ContentStore } from "../core/content-store.ts";
 import { FileSystem } from "../file-system/operations.ts";
 import { serializeTask } from "../markdown/serializer.ts";
-import { BacklogServer } from "../server/index.ts";
-import type { BacklogConfig, Task } from "../types/index.ts";
+import { MemasterServer } from "../server/index.ts";
+import type { MemasterConfig, Task } from "../types/index.ts";
 import { archiveTaskFile, createUniqueTestDir, retry, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
 let filesystem: FileSystem;
-let server: BacklogServer | null = null;
+let server: MemasterServer | null = null;
 let serverPort = 0;
 let auxiliaryWorktreeDir: string | null = null;
 let remoteRepoDir: string | null = null;
@@ -50,7 +50,7 @@ async function replaceWatchedConfigFile(configPath: string, content: string): Pr
 }
 
 async function startServer(): Promise<void> {
-	server = new BacklogServer(TEST_DIR);
+	server = new MemasterServer(TEST_DIR);
 	await server.start(0, false);
 	const port = server.getPort();
 	expect(port).not.toBeNull();
@@ -85,7 +85,7 @@ async function restartWithActiveBranchCollision(
 	await filesystem.saveTask({ ...mainTask, id: "BACK-002", title: "Inherited unchanged task" });
 
 	await $`git init -b main`.cwd(TEST_DIR).quiet();
-	await $`git add backlog`.cwd(TEST_DIR).quiet();
+	await $`git add memaster`.cwd(TEST_DIR).quiet();
 	await $`git commit -m "Add main task"`.cwd(TEST_DIR).quiet();
 	await $`git switch -c collision-shadow`.cwd(TEST_DIR).quiet();
 
@@ -106,7 +106,7 @@ async function restartWithActiveBranchCollision(
 		);
 	}
 
-	await $`git add backlog`.cwd(TEST_DIR).quiet();
+	await $`git add memaster`.cwd(TEST_DIR).quiet();
 	await $`git commit -m "Add branch collision"`.cwd(TEST_DIR).quiet();
 	await $`git switch main`.cwd(TEST_DIR).quiet();
 	await startServer();
@@ -125,7 +125,7 @@ async function restartWithActiveRemoteCollision(useSamePath = false): Promise<vo
 	const mainTaskPath = await filesystem.saveTask(mainTask);
 
 	await $`git init -b main`.cwd(TEST_DIR).quiet();
-	await $`git add backlog`.cwd(TEST_DIR).quiet();
+	await $`git add memaster`.cwd(TEST_DIR).quiet();
 	await $`git commit -m "Add main task"`.cwd(TEST_DIR).quiet();
 
 	remoteRepoDir = createUniqueTestDir("server-task-collision-remote");
@@ -146,7 +146,7 @@ async function restartWithActiveRemoteCollision(useSamePath = false): Promise<vo
 			serializeTask({ ...mainTask, title: "Remote path collision" }),
 		);
 	}
-	await $`git add backlog`.cwd(TEST_DIR).quiet();
+	await $`git add memaster`.cwd(TEST_DIR).quiet();
 	await $`git commit -m "Move task on remote main"`.cwd(TEST_DIR).quiet();
 	await $`git push origin HEAD:main`.cwd(TEST_DIR).quiet();
 	await $`git switch main`.cwd(TEST_DIR).quiet();
@@ -167,11 +167,11 @@ async function restartWithActiveLegacyCollision(): Promise<void> {
 	const localTaskPath = await filesystem.saveTask(localTask);
 
 	await $`git init -b main`.cwd(TEST_DIR).quiet();
-	await $`git add backlog`.cwd(TEST_DIR).quiet();
+	await $`git add memaster`.cwd(TEST_DIR).quiet();
 	await $`git commit -m "Add local legacy task"`.cwd(TEST_DIR).quiet();
 	await $`git switch -c legacy-collision-shadow`.cwd(TEST_DIR).quiet();
 	await Bun.write(localTaskPath, serializeTask({ ...localTask, title: "Changed legacy branch task" }));
-	await $`git add backlog`.cwd(TEST_DIR).quiet();
+	await $`git add memaster`.cwd(TEST_DIR).quiet();
 	await $`git commit -m "Change legacy task on branch"`.cwd(TEST_DIR).quiet();
 	await $`git switch main`.cwd(TEST_DIR).quiet();
 	await startServer();
@@ -190,7 +190,7 @@ async function replaceCollisionBranchTask(replacementId: string, title: string):
 		join(branchFilesystem.tasksDir, `${replacementId.toLowerCase()} - Branch-replacement.md`),
 		serializeTask({ ...routedTask, id: replacementId, title }),
 	);
-	await $`git add backlog`.cwd(auxiliaryWorktreeDir).quiet();
+	await $`git add memaster`.cwd(auxiliaryWorktreeDir).quiet();
 	await $`git commit -m "Replace colliding branch task"`.cwd(auxiliaryWorktreeDir).quiet();
 	await $`git worktree remove --force ${auxiliaryWorktreeDir}`.cwd(TEST_DIR).quiet();
 	await safeCleanup(auxiliaryWorktreeDir);
@@ -203,7 +203,7 @@ async function addCollisionBranchTask(task: Task): Promise<void> {
 	try {
 		const branchFilesystem = new FileSystem(auxiliaryWorktreeDir);
 		await branchFilesystem.saveTask(task);
-		await $`git add backlog`.cwd(auxiliaryWorktreeDir).quiet();
+		await $`git add memaster`.cwd(auxiliaryWorktreeDir).quiet();
 		await $`git commit -m "Add branch task"`.cwd(auxiliaryWorktreeDir).quiet();
 	} finally {
 		await $`git worktree remove --force ${auxiliaryWorktreeDir}`.cwd(TEST_DIR).quiet().nothrow();
@@ -212,11 +212,11 @@ async function addCollisionBranchTask(task: Task): Promise<void> {
 	}
 }
 
-describe("BacklogServer task SPA fallback", () => {
+describe("MemasterServer task SPA fallback", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("server-task-spa-fallback");
 		filesystem = new FileSystem(TEST_DIR);
-		await filesystem.ensureBacklogStructure();
+		await filesystem.ensureMemasterStructure();
 		await filesystem.saveConfig({
 			projectName: "Task SPA Fallback",
 			statuses: ["To Do", "In Progress", "Done"],
@@ -450,7 +450,7 @@ describe("BacklogServer task SPA fallback", () => {
 		const { error } = (await response.json()) as { error: string };
 		expect(error).toContain("back-prefixed - Legacy one.md");
 		expect(error).toContain("back-prefixed - Legacy two.md");
-		expect(error).toContain("backlog doctor");
+		expect(error).toContain("memaster doctor");
 	});
 
 	it("never returns or mutates an adjacent huge task ID and fails closed on ambiguity", async () => {
@@ -488,7 +488,7 @@ describe("BacklogServer task SPA fallback", () => {
 		const { error } = (await ambiguous.json()) as { error: string };
 		expect(error).toContain("back-9007199254740992 - Huge target.md");
 		expect(error).toContain("back-09007199254740992 - Huge padded duplicate.md");
-		expect(error).toContain("backlog doctor");
+		expect(error).toContain("memaster doctor");
 	});
 
 	it("fails closed instead of opening an arbitrary zero-padded duplicate", async () => {
@@ -503,7 +503,7 @@ describe("BacklogServer task SPA fallback", () => {
 		const { error } = (await response.json()) as { error: string };
 		expect(error).toContain("back-001.02 - Fix-labels-and-docs.md");
 		expect(error).toContain("back-1.2 - Duplicate.md");
-		expect(error).toContain("backlog doctor");
+		expect(error).toContain("memaster doctor");
 	});
 
 	it("fails closed when a visible cross-branch task collides with a local padded ID", async () => {
@@ -521,7 +521,7 @@ describe("BacklogServer task SPA fallback", () => {
 					branch: "feature/collision",
 					source: "remote",
 				},
-				{ root: filesystem.backlogDir },
+				{ root: filesystem.memasterDir },
 			);
 
 			const response = await request("/api/task/1.2");
@@ -988,7 +988,7 @@ describe("BacklogServer task SPA fallback", () => {
 							request("/api/task/BACK-1", {}, 5000),
 						]);
 						return {
-							apiConfig: (await configResponse.json()) as BacklogConfig,
+							apiConfig: (await configResponse.json()) as MemasterConfig,
 							configStatus: configResponse.status,
 							coreConfig,
 							taskStatus: taskResponse.status,
@@ -1015,7 +1015,7 @@ describe("BacklogServer task SPA fallback", () => {
 						request("/api/config", {}, 5000),
 						request("/api/task/BACK-1", {}, 5000),
 					]);
-					const config = (await configResponse.json()) as BacklogConfig;
+					const config = (await configResponse.json()) as MemasterConfig;
 					if (publicationAttempts !== 1 || config.checkActiveBranches !== false || taskResponse.status !== 200) {
 						throw new Error("valid config has not published coherently");
 					}

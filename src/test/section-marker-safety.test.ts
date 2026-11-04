@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { parseTask } from "../markdown/parser.ts";
 import { updateTaskImplementationNotes } from "../markdown/serializer.ts";
 import { extractStructuredSection, updateStructuredSections } from "../markdown/structured-sections.ts";
@@ -16,7 +16,7 @@ const NOTES_BEGIN = "<!-- SECTION:NOTES:BEGIN -->";
 const NOTES_END = "<!-- SECTION:NOTES:END -->";
 
 async function findTaskFile(dir: string, id: string): Promise<string> {
-	const tasksDir = join(dir, "backlog", "tasks");
+	const tasksDir = join(dir, "memaster", "tasks");
 	const entries = await readdir(tasksDir);
 	const name = entries.find((entry) => entry.startsWith(`${id} `) || entry.startsWith(`${id}-`));
 	if (!name) throw new Error(`No file for ${id} in ${tasksDir}`);

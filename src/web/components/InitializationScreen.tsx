@@ -5,7 +5,7 @@ import { apiClient } from "../lib/api";
 type IntegrationMode = "mcp" | "cli" | "none";
 type McpClient = "claude" | "codex" | "gemini" | "guide";
 type AgentFile = "CLAUDE.md" | "AGENTS.md" | "GEMINI.md" | ".github/copilot-instructions.md";
-type BacklogDirectoryChoice = "backlog" | ".backlog" | "custom";
+type MemasterDirectoryChoice = "memaster" | ".memaster" | "custom";
 type ConfigLocationChoice = "folder" | "root";
 
 interface AdvancedConfig {
@@ -38,8 +38,8 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 	const [selectedAgentFiles, setSelectedAgentFiles] = useState<AgentFile[]>([]);
 	const [installClaudeAgent, setInstallClaudeAgent] = useState(false);
 	const [showAdvancedConfig, setShowAdvancedConfig] = useState(false);
-	const [backlogDirectorySource, setBacklogDirectorySource] = useState<BacklogDirectoryChoice>("backlog");
-	const [backlogDirectory, setBacklogDirectory] = useState("backlog");
+	const [memasterDirectorySource, setMemasterDirectorySource] = useState<MemasterDirectoryChoice>("memaster");
+	const [memasterDirectory, setMemasterDirectory] = useState("memaster");
 	const [configLocation, setConfigLocation] = useState<ConfigLocationChoice>("folder");
 	const [rootConfigPath, setRootConfigPath] = useState<string | null>(null);
 	const [advancedConfig, setAdvancedConfig] = useState<AdvancedConfig>({
@@ -60,7 +60,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 	const [error, setError] = useState<string | null>(null);
 	const [mcpSetupResults, setMcpSetupResults] = useState<Record<string, string>>({});
 
-	const normalizeRelativeBacklogDirectory = (value: string): string | null => {
+	const normalizeRelativeMemasterDirectory = (value: string): string | null => {
 		const trimmed = value.trim();
 		if (!trimmed) return null;
 		if (/^(?:[a-zA-Z]:)?[\\/]/.test(trimmed)) return null;
@@ -72,23 +72,23 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 	};
 
 	useEffect(() => {
-		const loadBacklogDirectoryDefaults = async () => {
+		const loadMemasterDirectoryDefaults = async () => {
 			try {
 				const status = await apiClient.checkStatus();
 				if (status.initialized) {
 					return;
 				}
-				const suggestedSource = status.backlogDirectorySource ?? "backlog";
-				const suggestedDirectory = status.backlogDirectory ?? "backlog";
+				const suggestedSource = status.memasterDirectorySource ?? "memaster";
+				const suggestedDirectory = status.memasterDirectory ?? "memaster";
 				setRootConfigPath(status.rootConfigPath ?? null);
-				setBacklogDirectorySource(suggestedSource);
-				setBacklogDirectory(suggestedDirectory);
+				setMemasterDirectorySource(suggestedSource);
+				setMemasterDirectory(suggestedDirectory);
 				setConfigLocation(status.configLocation ?? (suggestedSource === "custom" ? "root" : "folder"));
 			} catch {
 				// Keep built-in defaults when status lookup fails.
 			}
 		};
-		void loadBacklogDirectoryDefaults();
+		void loadMemasterDirectoryDefaults();
 	}, []);
 
 	const handleNext = () => {
@@ -159,14 +159,14 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 		setMcpSetupResults({});
 
 		try {
-			const normalizedBacklogDirectory =
-				backlogDirectorySource === "custom"
-					? normalizeRelativeBacklogDirectory(backlogDirectory) ?? backlogDirectory
-					: backlogDirectory;
+			const normalizedMemasterDirectory =
+				memasterDirectorySource === "custom"
+					? normalizeRelativeMemasterDirectory(memasterDirectory) ?? memasterDirectory
+					: memasterDirectory;
 			await apiClient.initializeProject({
 				projectName: projectName.trim(),
-				backlogDirectory: normalizedBacklogDirectory,
-				backlogDirectorySource,
+				memasterDirectory: normalizedMemasterDirectory,
+				memasterDirectorySource,
 				configLocation,
 				integrationMode: integrationMode || "none",
 				mcpClients: integrationMode === "mcp" ? selectedMcpClients : undefined,
@@ -261,7 +261,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 		<div>
 			<h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">AI Integration Mode</h2>
 			<p className="text-gray-600 dark:text-gray-400 mb-6">
-				How would you like your AI tools to connect to Backlog.md?
+				How would you like your AI tools to connect to Memaster?
 			</p>
 			<div className="space-y-3">
 				<label
@@ -284,7 +284,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 							MCP Connector (Recommended)
 						</div>
 						<div className="text-sm text-gray-500 dark:text-gray-400">
-							For Claude Code, Codex, Gemini CLI, Kiro, Cursor, etc. Agents learn the Backlog.md workflow through
+							For Claude Code, Codex, Gemini CLI, Kiro, Cursor, etc. Agents learn the Memaster workflow through
 							MCP tools, resources, and prompts.
 						</div>
 					</div>
@@ -310,7 +310,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 							CLI Commands (Broader Compatibility)
 						</div>
 						<div className="text-sm text-gray-500 dark:text-gray-400">
-							Agents will use Backlog.md by invoking CLI commands directly. Creates instruction files for
+							Agents will use Memaster by invoking CLI commands directly. Creates instruction files for
 							various AI tools.
 						</div>
 					</div>
@@ -441,7 +441,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 					/>
 					<div>
 						<div className="font-medium text-gray-900 dark:text-gray-100">
-							Install Claude Code Backlog.md Agent
+							Install Claude Code Memaster Agent
 						</div>
 						<div className="text-sm text-gray-500 dark:text-gray-400">
 							Adds configuration under .claude/agents/ for enhanced Claude Code integration
@@ -457,42 +457,42 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 			<h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Advanced Settings</h2>
 
 			<div className="mb-6">
-				<h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Backlog Folder</h3>
+				<h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Memaster Folder</h3>
 				<div className="space-y-3">
 					{([
 						{
-							id: "backlog" as BacklogDirectoryChoice,
-							label: "backlog/",
-							description: "Store tasks and config in backlog/",
+							id: "memaster" as MemasterDirectoryChoice,
+							label: "memaster/",
+							description: "Store tasks and config in memaster/",
 						},
 						{
-							id: ".backlog" as BacklogDirectoryChoice,
-							label: ".backlog/",
-							description: "Store tasks and config in .backlog/",
+							id: ".memaster" as MemasterDirectoryChoice,
+							label: ".memaster/",
+							description: "Store tasks and config in .memaster/",
 						},
 						{
-							id: "custom" as BacklogDirectoryChoice,
+							id: "custom" as MemasterDirectoryChoice,
 							label: "Custom project-relative path",
-							description: `Use ${rootConfigPath ?? "backlog.config.yml"} as the project-root pointer file`,
+							description: `Use ${rootConfigPath ?? "memaster.config.yml"} as the project-root pointer file`,
 						},
 					]).map((option) => (
 						<label
 							key={option.id}
 							className={`flex items-start p-4 border rounded-lg cursor-pointer transition-colors ${
-								backlogDirectorySource === option.id
+								memasterDirectorySource === option.id
 									? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
 									: "border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50"
 							}`}
 						>
 							<input
 								type="radio"
-								name="backlogDirectorySource"
+								name="memasterDirectorySource"
 								value={option.id}
-								checked={backlogDirectorySource === option.id}
+								checked={memasterDirectorySource === option.id}
 								onChange={() => {
-									setBacklogDirectorySource(option.id);
+									setMemasterDirectorySource(option.id);
 									if (option.id !== "custom") {
-										setBacklogDirectory(option.id);
+										setMemasterDirectory(option.id);
 									}
 									if (option.id === "custom") {
 										setConfigLocation("root");
@@ -507,37 +507,37 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 						</label>
 					))}
 				</div>
-				{backlogDirectorySource === "custom" && (
+				{memasterDirectorySource === "custom" && (
 					<div className="mt-4">
 						<label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
-							Project-relative backlog directory
+							Project-relative memaster directory
 						</label>
 						<input
 							type="text"
-							value={backlogDirectory}
-							onChange={(e) => setBacklogDirectory(e.target.value)}
-							placeholder="e.g. planning/backlog"
+							value={memasterDirectory}
+							onChange={(e) => setMemasterDirectory(e.target.value)}
+							placeholder="e.g. planning/memaster"
 							className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700"
 						/>
 						<p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-							This path is stored in {rootConfigPath ?? "backlog.config.yml"} and resolved from the project root.
+							This path is stored in {rootConfigPath ?? "memaster.config.yml"} and resolved from the project root.
 						</p>
 					</div>
 				)}
-				{backlogDirectorySource !== "custom" && (
+				{memasterDirectorySource !== "custom" && (
 					<div className="mt-4">
 						<label className="block text-sm text-gray-700 dark:text-gray-300 mb-3">Config Location</label>
 						<div className="space-y-3">
 							{([
 								{
 									id: "folder" as ConfigLocationChoice,
-									label: `${backlogDirectory}/config.yml`,
-									description: "Store config inside the backlog folder",
+									label: `${memasterDirectory}/config.yml`,
+									description: "Store config inside the memaster folder",
 								},
 								{
 									id: "root" as ConfigLocationChoice,
-									label: "backlog.config.yml",
-									description: "Store config in the project root and point to the backlog folder there",
+									label: "memaster.config.yml",
+									description: "Store config in the project root and point to the memaster folder there",
 								},
 							]).map((option) => (
 								<label
@@ -832,13 +832,13 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 					</span>
 				</div>
 				<div className="flex justify-between">
-					<span className="text-gray-600 dark:text-gray-400">Backlog Directory:</span>
-					<span className="font-medium text-gray-900 dark:text-gray-100">{backlogDirectory}</span>
+					<span className="text-gray-600 dark:text-gray-400">Memaster Directory:</span>
+					<span className="font-medium text-gray-900 dark:text-gray-100">{memasterDirectory}</span>
 				</div>
 				<div className="flex justify-between">
 					<span className="text-gray-600 dark:text-gray-400">Config Location:</span>
 					<span className="font-medium text-gray-900 dark:text-gray-100">
-						{configLocation === "root" ? "backlog.config.yml" : `${backlogDirectory}/config.yml`}
+						{configLocation === "root" ? "memaster.config.yml" : `${memasterDirectory}/config.yml`}
 					</span>
 				</div>
 				{integrationMode === "mcp" && selectedMcpClients.length > 0 && (
@@ -920,7 +920,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 			case "agentFiles":
 				return true; // Can proceed with no selection
 			case "advancedConfig":
-				return backlogDirectorySource !== "custom" || normalizeRelativeBacklogDirectory(backlogDirectory) !== null;
+				return memasterDirectorySource !== "custom" || normalizeRelativeMemasterDirectory(memasterDirectory) !== null;
 			case "summary":
 				return true;
 		}
@@ -946,7 +946,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 							/>
 						</svg>
 					</div>
-					<h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Initialize Backlog.md</h1>
+					<h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Initialize Memaster</h1>
 				</div>
 
 				{/* Step Indicator */}

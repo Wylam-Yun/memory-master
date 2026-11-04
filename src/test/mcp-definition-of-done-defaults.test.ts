@@ -24,7 +24,7 @@ describe("MCP Definition of Done default tools", () => {
 	beforeEach(async () => {
 		testDir = createUniqueTestDir("mcp-dod-defaults");
 		server = new McpServer(testDir, "Test instructions");
-		await server.filesystem.ensureBacklogStructure();
+		await server.filesystem.ensureMemasterStructure();
 
 		await initializeFilesystemTestProject(server, "Test Project");
 

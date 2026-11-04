@@ -2,43 +2,43 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { createUniqueTestDir, isWindows, safeCleanup } from "./test-utils.ts";
 
-describe("Symlinked backlog root", () => {
+describe("Symlinked memaster root", () => {
 	const itIfSymlinks = isWindows() ? it.skip : it;
 	let repoDir: string;
-	let backlogDir: string;
+	let memasterDir: string;
 
 	beforeEach(async () => {
 		repoDir = createUniqueTestDir("test-symlink-root-repo");
-		backlogDir = createUniqueTestDir("test-symlink-root-backlog");
+		memasterDir = createUniqueTestDir("test-symlink-root-memaster");
 		await mkdir(repoDir, { recursive: true });
-		await mkdir(backlogDir, { recursive: true });
+		await mkdir(memasterDir, { recursive: true });
 	});
 
 	afterEach(async () => {
 		await safeCleanup(repoDir);
-		await safeCleanup(backlogDir);
+		await safeCleanup(memasterDir);
 	});
 
-	itIfSymlinks("creates tasks when backlog root is a symlink and autoCommit is false", async () => {
-		await mkdir(join(backlogDir, "tasks"), { recursive: true });
-		await mkdir(join(backlogDir, "drafts"), { recursive: true });
+	itIfSymlinks("creates tasks when memaster root is a symlink and autoCommit is false", async () => {
+		await mkdir(join(memasterDir, "tasks"), { recursive: true });
+		await mkdir(join(memasterDir, "drafts"), { recursive: true });
 		await writeFile(
-			join(backlogDir, "config.yml"),
+			join(memasterDir, "config.yml"),
 			`project_name: "Symlink Root"
 statuses: ["To Do", "In Progress", "Done"]
 auto_commit: false
 `,
 		);
 
-		await symlink(backlogDir, join(repoDir, "backlog"));
+		await symlink(memasterDir, join(repoDir, "memaster"));
 
 		const core = new Core(repoDir);
 		const { task } = await core.createTaskFromInput({ title: "Symlink root task" });
 
-		const files = await Array.fromAsync(new Bun.Glob("task-*.md").scan({ cwd: join(backlogDir, "tasks") }));
+		const files = await Array.fromAsync(new Bun.Glob("task-*.md").scan({ cwd: join(memasterDir, "tasks") }));
 		expect(files.length).toBe(1);
 		expect(task.id).toBe("TASK-1");
 
@@ -47,45 +47,45 @@ auto_commit: false
 		expect(tasks[0]?.id).toBe("TASK-1");
 	});
 
-	itIfSymlinks("auto-commit writes to the symlinked backlog repo when enabled", async () => {
-		await $`git init`.cwd(backlogDir).quiet();
-		await writeFile(join(backlogDir, "README.md"), "# Backlog Repo");
-		await $`git add README.md`.cwd(backlogDir).quiet();
-		await $`git commit -m "Initial commit"`.cwd(backlogDir).quiet();
+	itIfSymlinks("auto-commit writes to the symlinked memaster repo when enabled", async () => {
+		await $`git init`.cwd(memasterDir).quiet();
+		await writeFile(join(memasterDir, "README.md"), "# Memaster Repo");
+		await $`git add README.md`.cwd(memasterDir).quiet();
+		await $`git commit -m "Initial commit"`.cwd(memasterDir).quiet();
 
-		await mkdir(join(backlogDir, "tasks"), { recursive: true });
-		await mkdir(join(backlogDir, "drafts"), { recursive: true });
+		await mkdir(join(memasterDir, "tasks"), { recursive: true });
+		await mkdir(join(memasterDir, "drafts"), { recursive: true });
 		await writeFile(
-			join(backlogDir, "config.yml"),
+			join(memasterDir, "config.yml"),
 			`project_name: "Symlink Root"
 statuses: ["To Do", "In Progress", "Done"]
 auto_commit: true
 `,
 		);
 
-		await symlink(backlogDir, join(repoDir, "backlog"));
+		await symlink(memasterDir, join(repoDir, "memaster"));
 
 		const core = new Core(repoDir);
 		await core.createTaskFromInput({ title: "Symlink root auto-commit" });
 
-		const { stdout } = await $`git log -1 --pretty=format:%s`.cwd(backlogDir).quiet();
+		const { stdout } = await $`git log -1 --pretty=format:%s`.cwd(memasterDir).quiet();
 		expect(stdout.toString()).toContain("Create task");
 	});
 
-	itIfSymlinks("bulk auto-commit stages through an in-repository backlog symlink", async () => {
+	itIfSymlinks("bulk auto-commit stages through an in-repository memaster symlink", async () => {
 		const appDir = join(repoDir, "app");
-		const sharedBacklogDir = join(repoDir, "shared", "backlog");
+		const sharedMemasterDir = join(repoDir, "shared", "memaster");
 		await mkdir(join(appDir), { recursive: true });
-		await mkdir(join(sharedBacklogDir, "tasks"), { recursive: true });
-		await mkdir(join(sharedBacklogDir, "drafts"), { recursive: true });
+		await mkdir(join(sharedMemasterDir, "tasks"), { recursive: true });
+		await mkdir(join(sharedMemasterDir, "drafts"), { recursive: true });
 		await writeFile(
-			join(sharedBacklogDir, "config.yml"),
+			join(sharedMemasterDir, "config.yml"),
 			`project_name: "In-repository Symlink"
 statuses: ["To Do", "In Progress", "Done"]
 auto_commit: false
 `,
 		);
-		await symlink(join("..", "shared", "backlog"), join(appDir, "backlog"));
+		await symlink(join("..", "shared", "memaster"), join(appDir, "memaster"));
 
 		await $`git init -b main`.cwd(repoDir).quiet();
 

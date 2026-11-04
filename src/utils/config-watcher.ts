@@ -1,11 +1,11 @@
 import { type FSWatcher, unwatchFile, watch, watchFile } from "node:fs";
 import { basename, dirname } from "node:path";
-import type { Core } from "../core/backlog.ts";
+import type { Core } from "../core/memaster.ts";
 import type { FileSystem } from "../file-system/operations.ts";
-import type { BacklogConfig } from "../types/index.ts";
+import type { MemasterConfig } from "../types/index.ts";
 
 export interface ConfigWatcherCallbacks {
-	onConfigChanged?: (config: BacklogConfig | null) => void | Promise<void>;
+	onConfigChanged?: (config: MemasterConfig | null) => void | Promise<void>;
 }
 
 interface ConfigWatcherHandle {
@@ -42,11 +42,11 @@ const RECOGNIZED_CONFIG_KEYS = new Set([
 	"onStatusChange",
 	"on_status_change",
 	"task_prefix",
-	"backlog_directory",
-	"backlogDirectory",
+	"memaster_directory",
+	"memasterDirectory",
 ]);
 
-function hasValidExplicitValues(content: string, config: BacklogConfig): boolean {
+function hasValidExplicitValues(content: string, config: MemasterConfig): boolean {
 	for (const rawLine of content.split(/\r?\n/)) {
 		const line = rawLine.trim();
 		if (!line || line.startsWith("#")) continue;
@@ -78,7 +78,7 @@ function hasValidExplicitValues(content: string, config: BacklogConfig): boolean
 	return true;
 }
 
-function isUsableConfig(config: BacklogConfig | null, content: string): config is BacklogConfig {
+function isUsableConfig(config: MemasterConfig | null, content: string): config is MemasterConfig {
 	return Boolean(
 		config?.projectName.trim() &&
 			Array.isArray(config.statuses) &&

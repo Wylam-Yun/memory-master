@@ -1,7 +1,7 @@
 import agentGuidelinesContent from "./agent-guidelines.md" with { type: "text" };
 import cliAgentNudgeContent from "./cli-agent-nudge.md" with { type: "text" };
 import mcpAgentNudgeContent from "./mcp/agent-nudge.md" with { type: "text" };
-import claudeAgentContent from "./project-manager-backlog.md" with { type: "text" };
+import claudeAgentContent from "./project-manager-memaster.md" with { type: "text" };
 
 export const AGENT_GUIDELINES = agentGuidelinesContent;
 export const CLAUDE_GUIDELINES = agentGuidelinesContent;

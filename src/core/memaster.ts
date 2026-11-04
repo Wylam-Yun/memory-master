@@ -25,7 +25,6 @@ import {
 } from "../markdown/structured-sections.ts";
 import {
 	type AcceptanceCriterion,
-	type BacklogConfig,
 	type ContentRecord,
 	type ContentRecordKind,
 	type Decision,
@@ -39,6 +38,7 @@ import {
 	EntityType,
 	isReadOnlyTask,
 	isWorkingCopyTask,
+	type MemasterConfig,
 	type Milestone,
 	type SearchFilters,
 	type Task,
@@ -59,7 +59,7 @@ import {
 } from "../utils/duplicate-detection.ts";
 import { openInEditor } from "../utils/editor.ts";
 import { isAmbiguousIdError } from "../utils/entity-id.ts";
-import { findBacklogRoot } from "../utils/find-backlog-root.ts";
+import { findMemasterRoot } from "../utils/find-memaster-root.ts";
 import { generateNextDecisionId, generateNextDocId } from "../utils/id-generators.ts";
 import { createMilestoneFilterValueResolver } from "../utils/milestone-filter.ts";
 import {
@@ -285,7 +285,7 @@ export interface CleanupResult {
 	failures: Array<{ taskId: string; reason: string }>;
 }
 
-/** The lines both `backlog cleanup` and the browser's cleanup show for a cleanup result. */
+/** The lines both `memaster cleanup` and the browser's cleanup show for a cleanup result. */
 export function formatCleanupResult(
 	result: CleanupResult,
 	selectedCount: number,
@@ -469,7 +469,7 @@ function refuseBrokenFrontmatterReference(error: unknown): never {
 export class TaskArchivedError extends RecordRefusedError {
 	constructor(taskId: string) {
 		super(
-			`Task ${taskId} is archived. Archived tasks are read-only. Restore it to the board first: backlog task restore ${taskId}`,
+			`Task ${taskId} is archived. Archived tasks are read-only. Restore it to the board first: memaster task restore ${taskId}`,
 		);
 		this.name = "TaskArchivedError";
 	}
@@ -523,7 +523,7 @@ export const CONTENT_RECORD_WORDS = {
 		singular: "document",
 		plural: "documents",
 		sentenceStart: "Document",
-		cliCommand: "backlog doc",
+		cliCommand: "memaster doc",
 		folderName: "docs folder",
 		notFound: documentNotFoundMessage,
 	},
@@ -531,7 +531,7 @@ export const CONTENT_RECORD_WORDS = {
 		singular: "decision",
 		plural: "decisions",
 		sentenceStart: "Decision",
-		cliCommand: "backlog decision",
+		cliCommand: "memaster decision",
 		folderName: "decisions folder",
 		notFound: decisionNotFoundMessage,
 	},
@@ -660,9 +660,9 @@ export class ChangeNotCommittedError extends Error {
 	}
 }
 
-/** The subject of the commit an operation makes, for example `backlog: Archive decision decision-2`. */
+/** The subject of the commit an operation makes, for example `memaster: Archive decision decision-2`. */
 function contentRecordCommitSubject(kind: ContentRecordKind, operation: ContentRecordOperation, id: string): string {
-	return `backlog: ${CONTENT_RECORD_OPERATION_WORDS[operation].commitVerb} ${CONTENT_RECORD_WORDS[kind].singular} ${id}`;
+	return `memaster: ${CONTENT_RECORD_OPERATION_WORDS[operation].commitVerb} ${CONTENT_RECORD_WORDS[kind].singular} ${id}`;
 }
 
 /** The error for an operation whose change is on disk while its commit failed: "Decision decision-2 was archived, but ...". */
@@ -762,7 +762,7 @@ export class Core {
 			{
 				repositoryRoot: repositoryRoot === undefined ? await git.getRepositoryRoot() : repositoryRoot,
 				projectRoot: filesystem.rootDir,
-				backlogDirectory: filesystem.backlogDirName,
+				memasterDirectory: filesystem.memasterDirName,
 			},
 			statuses,
 			resolutionStrategy,
@@ -816,7 +816,7 @@ export class Core {
 		// An empty collected path denotes the content directory itself, which the filesystem reports
 		// when it could not be scanned at all.
 		const locate = (directory: string, path: string) =>
-			path ? `${this.fs.backlogDirName}/${directory}/${path}` : `${this.fs.backlogDirName}/${directory}`;
+			path ? `${this.fs.memasterDirName}/${directory}/${path}` : `${this.fs.memasterDirName}/${directory}`;
 		const describe = (directory: string, item: { path?: string; title: string }) =>
 			item.path ? locate(directory, item.path) : item.title;
 		return {
@@ -878,7 +878,7 @@ export class Core {
 		while (true) {
 			const generation = this.projectGeneration;
 			const filesystem = this.fs;
-			const backlogRoot = filesystem.backlogDir;
+			const memasterRoot = filesystem.memasterDir;
 			let store = this.contentStore;
 			if (!store) {
 				// Use loadTasks as the task loader to include cross-branch tasks
@@ -896,7 +896,7 @@ export class Core {
 				if (
 					generation !== this.projectGeneration ||
 					filesystem !== this.fs ||
-					backlogRoot !== filesystem.backlogDir ||
+					memasterRoot !== filesystem.memasterDir ||
 					store !== this.contentStore
 				) {
 					continue;
@@ -906,7 +906,7 @@ export class Core {
 			if (
 				generation === this.projectGeneration &&
 				filesystem === this.fs &&
-				backlogRoot === filesystem.backlogDir &&
+				memasterRoot === filesystem.memasterDir &&
 				store === this.contentStore
 			) {
 				return store;
@@ -918,12 +918,12 @@ export class Core {
 		while (true) {
 			const generation = this.projectGeneration;
 			const filesystem = this.fs;
-			const backlogRoot = filesystem.backlogDir;
+			const memasterRoot = filesystem.memasterDir;
 			const store = await this.getContentStore();
 			if (
 				generation !== this.projectGeneration ||
 				filesystem !== this.fs ||
-				backlogRoot !== filesystem.backlogDir ||
+				memasterRoot !== filesystem.memasterDir ||
 				store !== this.contentStore
 			) {
 				continue;
@@ -939,7 +939,7 @@ export class Core {
 				if (
 					generation !== this.projectGeneration ||
 					filesystem !== this.fs ||
-					backlogRoot !== filesystem.backlogDir ||
+					memasterRoot !== filesystem.memasterDir ||
 					store !== this.contentStore ||
 					searchService !== this.searchService
 				) {
@@ -950,7 +950,7 @@ export class Core {
 			if (
 				generation === this.projectGeneration &&
 				filesystem === this.fs &&
-				backlogRoot === filesystem.backlogDir &&
+				memasterRoot === filesystem.memasterDir &&
 				store === this.contentStore &&
 				searchService === this.searchService
 			) {
@@ -971,7 +971,7 @@ export class Core {
 		await this.refreshTasksForTaskRead();
 	}
 
-	private getActiveBranchSettings(config: BacklogConfig | null, filesystem = this.fs) {
+	private getActiveBranchSettings(config: MemasterConfig | null, filesystem = this.fs) {
 		const activeBranchDays = config?.activeBranchDays ?? 30;
 		const checkActiveBranches = config?.checkActiveBranches !== false;
 		const filesystemOnly = config?.filesystemOnly === true;
@@ -985,12 +985,12 @@ export class Core {
 			taskPrefix: config?.prefixes?.task ?? "task",
 			taskResolutionStrategy: config?.taskResolutionStrategy ?? "most_progressed",
 			statuses: config?.statuses ?? DEFAULT_STATUSES,
-			backlogDir: filesystem.backlogDirName,
+			memasterDir: filesystem.memasterDirName,
 		};
 	}
 
 	private async computeActiveBranchSnapshot(
-		config: BacklogConfig | null,
+		config: MemasterConfig | null,
 		filesystem = this.fs,
 		git = this.git,
 	): Promise<ActiveBranchSnapshot> {
@@ -1033,7 +1033,7 @@ export class Core {
 	}
 
 	private async getActiveBranchSnapshot(
-		config?: BacklogConfig | null,
+		config?: MemasterConfig | null,
 		generation = this.projectGeneration,
 		filesystem = this.fs,
 		git = this.git,
@@ -1056,7 +1056,7 @@ export class Core {
 	}
 
 	private async refreshRemoteRefsForTaskRead(
-		config: BacklogConfig | null,
+		config: MemasterConfig | null,
 		git = this.git,
 		options?: { force?: boolean },
 	): Promise<void> {
@@ -1118,12 +1118,12 @@ export class Core {
 			const generation = this.projectGeneration;
 			const filesystem = this.fs;
 			const git = this.git;
-			const backlogRoot = filesystem.backlogDir;
+			const memasterRoot = filesystem.memasterDir;
 			const projectChanged = () =>
 				generation !== this.projectGeneration ||
 				filesystem !== this.fs ||
 				git !== this.git ||
-				backlogRoot !== filesystem.backlogDir;
+				memasterRoot !== filesystem.memasterDir;
 			const config = await filesystem.loadConfig();
 			if (projectChanged()) continue;
 			await this.refreshRemoteRefsForTaskRead(config, git);
@@ -1371,9 +1371,9 @@ export class Core {
 		while (true) {
 			const generation = this.projectGeneration;
 			const filesystem = this.fs;
-			const backlogRoot = filesystem.backlogDir;
+			const memasterRoot = filesystem.memasterDir;
 			const projectChanged = () =>
-				generation !== this.projectGeneration || filesystem !== this.fs || backlogRoot !== filesystem.backlogDir;
+				generation !== this.projectGeneration || filesystem !== this.fs || memasterRoot !== filesystem.memasterDir;
 			const { filters, query, limit } = options;
 			const trimmedQuery = query?.trim();
 			const includeCrossBranch = options.includeCrossBranch ?? true;
@@ -1473,9 +1473,9 @@ export class Core {
 		while (true) {
 			const generation = this.projectGeneration;
 			const filesystem = this.fs;
-			const backlogRoot = filesystem.backlogDir;
+			const memasterRoot = filesystem.memasterDir;
 			const projectChanged = () =>
-				generation !== this.projectGeneration || filesystem !== this.fs || backlogRoot !== filesystem.backlogDir;
+				generation !== this.projectGeneration || filesystem !== this.fs || memasterRoot !== filesystem.memasterDir;
 			const storeAlreadyReady = this.contentStore?.isInitialized() ?? false;
 			const store = await this.getContentStore();
 			if (projectChanged() || store !== this.contentStore) continue;
@@ -1504,17 +1504,17 @@ export class Core {
 		while (true) {
 			const generation = this.projectGeneration;
 			const filesystem = this.fs;
-			const backlogRoot = filesystem.backlogDir;
+			const memasterRoot = filesystem.memasterDir;
 			const task =
 				options.includeCrossBranch === false
 					? await this.loadWorkingCopyTask(taskId, false, localTasks)
 					: await this.getTask(taskId, options);
-			if (generation !== this.projectGeneration || filesystem !== this.fs || backlogRoot !== filesystem.backlogDir)
+			if (generation !== this.projectGeneration || filesystem !== this.fs || memasterRoot !== filesystem.memasterDir)
 				continue;
 			if (!task) return null;
 
 			const tasks = localTasks ?? (await filesystem.listTasks());
-			if (generation !== this.projectGeneration || filesystem !== this.fs || backlogRoot !== filesystem.backlogDir)
+			if (generation !== this.projectGeneration || filesystem !== this.fs || memasterRoot !== filesystem.memasterDir)
 				continue;
 			return attachSubtaskSummaries(task, tasks);
 		}
@@ -1530,13 +1530,13 @@ export class Core {
 		let suppliedActiveTasks = activeTasks;
 		while (true) {
 			const filesystem = this.fs;
-			const backlogRoot = filesystem.backlogDir;
+			const memasterRoot = filesystem.memasterDir;
 			const [localTasks, archivedTasks, config] = await Promise.all([
 				suppliedActiveTasks ? Promise.resolve(suppliedActiveTasks) : filesystem.listTasks(),
 				filesystem.listArchivedTasks(),
 				filesystem.loadConfig(),
 			]);
-			if (this.fs !== filesystem || backlogRoot !== filesystem.backlogDir) {
+			if (this.fs !== filesystem || memasterRoot !== filesystem.memasterDir) {
 				suppliedActiveTasks = undefined;
 				continue;
 			}
@@ -1549,7 +1549,7 @@ export class Core {
 				null,
 				filesystem,
 			);
-			if (this.fs === filesystem && backlogRoot === filesystem.backlogDir) return index;
+			if (this.fs === filesystem && memasterRoot === filesystem.memasterDir) return index;
 			suppliedActiveTasks = undefined;
 		}
 	}
@@ -1663,7 +1663,7 @@ export class Core {
 	}
 
 	/**
-	 * What `backlog doc view` prints and the interactive viewer shows for a document: its file as it
+	 * What `memaster doc view` prints and the interactive viewer shows for a document: its file as it
 	 * is stored and, for an archived document, {@link ARCHIVED_DOCUMENT_NOTICE} on a line above it.
 	 * Null when no document claims the ID or its file cannot be read.
 	 */
@@ -1726,7 +1726,7 @@ export class Core {
 			const config = await this.fs.loadConfig();
 			this.git.setConfig(config);
 		} catch (error) {
-			// A config value Backlog refuses to read is the user's to fix and must reach the command;
+			// A config value Memaster refuses to read is the user's to fix and must reach the command;
 			// only the recoverable git-configuration failures this guard exists for are suppressed.
 			if (isConfigValueError(error)) {
 				throw error;
@@ -1738,8 +1738,8 @@ export class Core {
 		}
 	}
 
-	private async getBacklogDirectoryName(): Promise<string> {
-		return this.fs.backlogDirName;
+	private async getMemasterDirectoryName(): Promise<string> {
+		return this.fs.memasterDirName;
 	}
 
 	async shouldAutoCommit(overrideValue?: boolean): Promise<boolean> {
@@ -1998,10 +1998,10 @@ export class Core {
 	 * files are committed.
 	 */
 	private async loadTaskFileNameEntries(taskPrefix: string): Promise<BranchTaskStateEntry[]> {
-		const backlogDir = await this.getBacklogDirectoryName();
+		const memasterDir = await this.getMemasterDirectoryName();
 		const projectRoot = this.fs.rootDir;
 		// This project is always read: outside a Git repository there is no worktree list to find it in.
-		const entries = await this.loadTaskFileNameEntriesFromProject(projectRoot, backlogDir, taskPrefix, projectRoot);
+		const entries = await this.loadTaskFileNameEntriesFromProject(projectRoot, memasterDir, taskPrefix, projectRoot);
 
 		const [repoRoot, worktreeRoots] = await Promise.all([this.git.getRepositoryRoot(), this.git.listWorktreePaths()]);
 		if (!repoRoot) {
@@ -2016,7 +2016,7 @@ export class Core {
 			const worktreeProjectRoot = projectRelativePath ? join(worktreeRoot, projectRelativePath) : worktreeRoot;
 			if (worktreeProjectRoot === projectRoot) continue;
 			entries.push(
-				...(await this.loadTaskFileNameEntriesFromProject(worktreeProjectRoot, backlogDir, taskPrefix, worktreeRoot)),
+				...(await this.loadTaskFileNameEntriesFromProject(worktreeProjectRoot, memasterDir, taskPrefix, worktreeRoot)),
 			);
 		}
 
@@ -2029,15 +2029,15 @@ export class Core {
 	 */
 	private async loadTaskFileNameEntriesFromProject(
 		projectRoot: string,
-		backlogDir: string,
+		memasterDir: string,
 		taskPrefix: string,
 		worktreeRoot: string,
 	): Promise<BranchTaskStateEntry[]> {
 		const globPattern = buildGlobPattern(taskPrefix.toLowerCase());
 		const directories: Array<{ path: string; type: "task" | "archived" }> = [
-			{ path: join(projectRoot, backlogDir, DEFAULT_DIRECTORIES.TASKS), type: "task" },
+			{ path: join(projectRoot, memasterDir, DEFAULT_DIRECTORIES.TASKS), type: "task" },
 			...ARCHIVED_TASK_DIRECTORIES.map((directory) => ({
-				path: join(projectRoot, backlogDir, directory),
+				path: join(projectRoot, memasterDir, directory),
 				type: "archived" as const,
 			})),
 		];
@@ -2347,7 +2347,7 @@ export class Core {
 			if (!rollback.workingPathRestored || !rollback.indexRestored) {
 				if (!rollback.indexRestored) {
 					throw new Error(
-						`Task creation failed, and Backlog no longer owned the staged entry for ${write.filePath}. The task file and staged Git state were preserved, ${task.id} remains in use, and manual Git review is required before retrying.`,
+						`Task creation failed, and Memaster no longer owned the staged entry for ${write.filePath}. The task file and staged Git state were preserved, ${task.id} remains in use, and manual Git review is required before retrying.`,
 						{ cause: error },
 					);
 				}
@@ -2773,7 +2773,7 @@ export class Core {
 				.trim();
 			if (body.length === 0) return undefined;
 			if (containsCommentMarker(body)) {
-				throw new Error("Comment body cannot contain Backlog comment markers.");
+				throw new Error("Comment body cannot contain Memaster comment markers.");
 			}
 			if (containsCommentDelimiter(body)) {
 				throw new Error("Comment body cannot contain standalone '---' delimiter lines.");
@@ -2786,13 +2786,13 @@ export class Core {
 							.trim();
 			const createdDate = typeof value === "string" ? undefined : String(value.createdDate ?? "").trim();
 			if (author && containsCommentMarker(author)) {
-				throw new Error("Comment author cannot contain Backlog comment markers.");
+				throw new Error("Comment author cannot contain Memaster comment markers.");
 			}
 			if (author && containsCommentDelimiter(author)) {
 				throw new Error("Comment author cannot contain standalone '---' delimiter lines.");
 			}
 			if (createdDate && containsCommentMarker(createdDate)) {
-				throw new Error("Comment created date cannot contain Backlog comment markers.");
+				throw new Error("Comment created date cannot contain Memaster comment markers.");
 			}
 			if (createdDate && containsCommentDelimiter(createdDate)) {
 				throw new Error("Comment created date cannot contain standalone '---' delimiter lines.");
@@ -3238,7 +3238,7 @@ export class Core {
 
 			if (await this.shouldAutoCommit(autoCommit)) {
 				await this.commitWrittenFile(
-					`backlog: Promote draft ${normalizeId(reference.canonicalId, "draft")}`,
+					`memaster: Promote draft ${normalizeId(reference.canonicalId, "draft")}`,
 					[reference.filePath],
 					savedPath,
 				);
@@ -3319,7 +3319,7 @@ export class Core {
 				if (await this.shouldAutoCommit(autoCommit)) {
 					const previousPaths = current.filePath ? [current.filePath] : [];
 					await this.commitWrittenFile(
-						`backlog: Demote task ${normalizeTaskId(current.id)}`,
+						`memaster: Demote task ${normalizeTaskId(current.id)}`,
 						previousPaths,
 						savedPath,
 						cleanedPaths,
@@ -3366,7 +3366,7 @@ export class Core {
 					console.error(`Callback output: ${result.output}`);
 				}
 			} else if (process.env.DEBUG && result.output) {
-				console.log(`Status change callback output for ${task.id}: ${result.output}`);
+				console.warn(`Status change callback output for ${task.id}: ${result.output}`);
 			}
 		} catch (error) {
 			console.error(`Failed to execute status change callback for ${task.id}:`, error);
@@ -3819,7 +3819,7 @@ export class Core {
 		try {
 			if (await this.shouldAutoCommit(autoCommit)) {
 				const repoRoot = await this.git.stageFileMove(fromPath, toPath);
-				await this.git.commitFiles(`backlog: Archive task ${task.id}`, [fromPath, toPath], repoRoot);
+				await this.git.commitFiles(`memaster: Archive task ${task.id}`, [fromPath, toPath], repoRoot);
 			}
 		} catch (error) {
 			throw markRecordAlreadyMoved(new ChangeNotCommittedError(`Task ${task.id} was archived`, error), "archiveState");
@@ -3906,7 +3906,7 @@ export class Core {
 					const boardPath = join(this.fs.tasksDir, basename(current.filePath));
 					const changedPaths = [current.filePath, boardPath, ...written.filePaths];
 					for (const path of changedPaths) await this.stageChangedPath(path);
-					await this.git.commitFiles(`backlog: Delete task ${current.id}`, changedPaths);
+					await this.git.commitFiles(`memaster: Delete task ${current.id}`, changedPaths);
 				}
 				failureStep = "releasing deletion locks";
 				return { success: true, cleanedTaskIds: written.cleanedTaskIds };
@@ -3950,7 +3950,7 @@ export class Core {
 				try {
 					if (await this.shouldAutoCommit(autoCommit)) {
 						const repoRoot = await this.git.stageFileMove(fromPath, toPath);
-						await this.git.commitFiles(`backlog: Restore task ${current.id}`, [fromPath, toPath], repoRoot);
+						await this.git.commitFiles(`memaster: Restore task ${current.id}`, [fromPath, toPath], repoRoot);
 					}
 				} catch (error) {
 					throw new ChangeNotCommittedError(`Task ${current.id} was restored`, error);
@@ -3964,7 +3964,7 @@ export class Core {
 		identifier: string,
 		autoCommit?: boolean,
 	): Promise<{ success: boolean; sourcePath?: string; targetPath?: string; milestone?: Milestone }> {
-		// Read the config before the move, so a config Backlog refuses to read aborts the command
+		// Read the config before the move, so a config Memaster refuses to read aborts the command
 		// while the milestone is still active rather than after it has been archived.
 		const autoCommitEnabled = await this.shouldAutoCommit(autoCommit);
 		const result = await this.fs.archiveMilestone(identifier);
@@ -3974,7 +3974,7 @@ export class Core {
 			const label = result.milestone?.id ? ` ${result.milestone.id}` : "";
 			const commitPaths = [result.sourcePath, result.targetPath];
 			try {
-				await this.git.commitFiles(`backlog: Archive milestone${label}`, commitPaths, repoRoot);
+				await this.git.commitFiles(`memaster: Archive milestone${label}`, commitPaths, repoRoot);
 			} catch (error) {
 				await this.git.resetPaths(commitPaths, repoRoot);
 				try {
@@ -4017,7 +4017,7 @@ export class Core {
 			const label = result.milestone?.id ? ` ${result.milestone.id}` : "";
 			const commitPaths = [result.sourcePath, result.targetPath];
 			try {
-				await this.git.commitFiles(`backlog: Rename milestone${label}`, commitPaths, repoRoot);
+				await this.git.commitFiles(`memaster: Rename milestone${label}`, commitPaths, repoRoot);
 			} catch (error) {
 				await this.git.resetPaths(commitPaths, repoRoot);
 				const rollbackTitle = result.previousTitle ?? title;
@@ -4061,7 +4061,7 @@ export class Core {
 	}
 
 	/**
-	 * Cleanup, as `backlog cleanup` and the browser's cleanup both run it: archive the tasks the
+	 * Cleanup, as `memaster cleanup` and the browser's cleanup both run it: archive the tasks the
 	 * caller selected with {@link getTerminalStatusTasksByAge}. Only those IDs are archived, so a
 	 * task that became eligible after the selection was shown stays on the board.
 	 *
@@ -4175,14 +4175,14 @@ export class Core {
 	}
 
 	async archiveDraft(draftId: string, autoCommit?: boolean): Promise<boolean> {
-		// Read the config before the move: a config Backlog refuses to read must abort the command
+		// Read the config before the move: a config Memaster refuses to read must abort the command
 		// while the draft is still where the user left it, not after it has been half-archived.
 		const autoCommitEnabled = await this.shouldAutoCommit(autoCommit);
 		const moved = await this.fs.archiveDraft(draftId);
 
 		if (moved && autoCommitEnabled) {
 			await this.commitWrittenFile(
-				`backlog: Archive draft ${normalizeId(draftId, "draft")}`,
+				`memaster: Archive draft ${normalizeId(draftId, "draft")}`,
 				[moved.sourcePath],
 				moved.targetPath,
 			);
@@ -4240,7 +4240,7 @@ export class Core {
 
 			if (moved && (await this.shouldAutoCommit(autoCommit))) {
 				await this.commitWrittenFile(
-					`backlog: Promote draft ${normalizeId(draftId, "draft")}`,
+					`memaster: Promote draft ${normalizeId(draftId, "draft")}`,
 					[moved.previousPath],
 					moved.savedPath,
 				);
@@ -4301,7 +4301,7 @@ export class Core {
 			try {
 				if (await this.shouldAutoCommit(autoCommit)) {
 					await this.commitWrittenFile(
-						`backlog: Demote task ${task.id}`,
+						`memaster: Demote task ${task.id}`,
 						[moved.previousPath],
 						moved.savedPath,
 						cleanedPaths,
@@ -4470,19 +4470,19 @@ export class Core {
 				target = await realpath(target);
 			} catch (error) {
 				if (decision.path || (error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-				target = join(await realpath(this.fs.backlogDir), "decisions");
+				target = join(await realpath(this.fs.memasterDir), "decisions");
 			}
 			const pathFromRoot = root ? relative(await realpath(root), target) : "..";
 			if (isAbsolute(pathFromRoot) || pathFromRoot === ".." || pathFromRoot.startsWith(`..${sep}`)) {
 				throw new RecordRefusedError(
-					`Cannot auto-commit decision ${decision.id}: its content is outside the Git repository. Disable auto-commit before editing this file: backlog config set autoCommit false`,
+					`Cannot auto-commit decision ${decision.id}: its content is outside the Git repository. Disable auto-commit before editing this file: memaster config set autoCommit false`,
 				);
 			}
 		}
 		const { filepath, movedFrom } = await this.fs.saveDecision(decision).catch(refuseBrokenFrontmatterReference);
 		if (commit) {
 			await this.commitWrittenFile(
-				`backlog: ${decision.path ? "Update" : "Add"} decision ${decision.id}`,
+				`memaster: ${decision.path ? "Update" : "Add"} decision ${decision.id}`,
 				movedFrom ? [movedFrom] : [],
 				filepath,
 			);
@@ -4559,7 +4559,7 @@ export class Core {
 		if (await this.shouldAutoCommit(autoCommit)) {
 			const docsDir = this.fs.docsDir;
 			const absolutePath = join(docsDir, ...relativePath.split("/"));
-			await this.commitWrittenFile(`backlog: Add document ${doc.id}`, movedFrom ? [movedFrom] : [], absolutePath);
+			await this.commitWrittenFile(`memaster: Add document ${doc.id}`, movedFrom ? [movedFrom] : [], absolutePath);
 		}
 	}
 
@@ -5250,14 +5250,14 @@ export class Core {
 		const git = this.git;
 		const branchTaskLoader = this.branchTaskLoader;
 		const projectRoot = filesystem.rootDir;
-		const backlogRoot = filesystem.backlogDir;
+		const memasterRoot = filesystem.memasterDir;
 		const projectChanged = () =>
 			generation !== this.projectGeneration ||
 			filesystem !== this.fs ||
 			git !== this.git ||
 			branchTaskLoader !== this.branchTaskLoader ||
 			projectRoot !== this.fs.rootDir ||
-			backlogRoot !== filesystem.backlogDir;
+			memasterRoot !== filesystem.memasterDir;
 		const retryForCurrentProject = async (nextSnapshot?: ActiveBranchSnapshot) => {
 			if (snapshotAttempt >= 2) {
 				throw new Error("Project root or active branch refs kept changing while tasks were loading");
@@ -5307,16 +5307,16 @@ export class Core {
 		const branchStateEntries: BranchTaskStateEntry[] = [];
 		let branchLoadComplete = true;
 
-		let backlogDir: string | null = null;
+		let memasterDir: string | null = null;
 		if (shouldLoadBranches) {
 			progressCallback?.(getTaskLoadingMessage(config));
-			backlogDir = filesystem.backlogDirName;
+			memasterDir = filesystem.memasterDirName;
 			const branchLoad = await branchTaskLoader.load(
 				snapshotBefore.branchTips,
 				config,
 				localTasks,
 				includeArchived,
-				backlogDir,
+				memasterDir,
 				progressCallback,
 				snapshotBefore.currentBranch,
 			);
@@ -5368,9 +5368,9 @@ export class Core {
 		if (options.publishSharedState) {
 			this.activeBranchFingerprint = branchLoadComplete ? snapshotAfter.fingerprint : null;
 		}
-		if (shouldLoadBranches && backlogDir) {
+		if (shouldLoadBranches && memasterDir) {
 			branchTaskLoader.retainSnapshot(snapshotAfter.branchTips, {
-				backlogDir,
+				memasterDir,
 				prefix: config?.prefixes?.task ?? "task",
 				activeBranchDays: config?.activeBranchDays ?? 30,
 			});
@@ -5390,12 +5390,12 @@ export class Core {
 
 /**
  * Builds a Core bound to the project every interface resolves the same way: the runtime working
- * directory (`--cwd`/`BACKLOG_CWD`, else `process.cwd()`), then walked up to the project root just
+ * directory (`--cwd`/`MEMASTER_CWD`, else `process.cwd()`), then walked up to the project root just
  * like the CLI commands do. When no project is found the resolved directory is used as-is, so
  * callers keep degrading to their own fallbacks instead of failing.
  * Prefer passing an existing Core; use this only where no instance is available.
  */
 export async function createRuntimeCore(options?: { enableWatchers?: boolean }): Promise<Core> {
 	const { cwd } = await resolveRuntimeCwd();
-	return new Core((await findBacklogRoot(cwd)) ?? cwd, options);
+	return new Core((await findMemasterRoot(cwd)) ?? cwd, options);
 }

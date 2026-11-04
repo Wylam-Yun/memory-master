@@ -1,19 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { Core } from "../core/backlog.ts";
-import { BacklogServer } from "../server/index.ts";
+import { Core } from "../core/memaster.ts";
+import { MemasterServer } from "../server/index.ts";
 import type { Task } from "../types/index.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } from "./test-utils.ts";
 
 describe("browser acceptance criteria replacement", () => {
 	let testDir: string;
 	let core: Core;
-	let server: BacklogServer;
+	let server: MemasterServer;
 
 	beforeEach(async () => {
 		testDir = createUniqueTestDir("server-acceptance-criteria");
 		core = new Core(testDir);
 		await initializeFilesystemTestProject(core, "Browser Acceptance Criteria");
-		server = new BacklogServer(testDir);
+		server = new MemasterServer(testDir);
 		await server.start(0, false);
 	});
 

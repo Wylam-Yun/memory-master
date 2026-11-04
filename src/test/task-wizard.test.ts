@@ -285,7 +285,7 @@ describe("task wizard", () => {
 		};
 
 		const input = await runTaskCreateWizard({
-			statuses: ["Backlog", "To Do", "In Progress", "Done"],
+			statuses: ["Memaster", "To Do", "In Progress", "Done"],
 			types: ["Bug", "Epic"],
 			promptImpl: prompt,
 		});
@@ -295,7 +295,7 @@ describe("task wizard", () => {
 		expect(input?.priority).toBeUndefined();
 		expect(questions.status?.type).toBe("select");
 		expect(questions.status?.initial).toBe("To Do");
-		expect(questions.status?.optionValues).toEqual(["Draft", "Backlog", "To Do", "In Progress", "Done"]);
+		expect(questions.status?.optionValues).toEqual(["Draft", "Memaster", "To Do", "In Progress", "Done"]);
 		expect((questions.status?.optionsCount ?? 0) > 0).toBe(true);
 		expect(questions.priority?.type).toBe("select");
 		expect(questions.priority?.initial).toBe("");

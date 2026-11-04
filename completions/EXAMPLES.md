@@ -1,6 +1,6 @@
 # Zsh Completion Examples
 
-This document demonstrates how the zsh completion script works for the backlog CLI.
+This document demonstrates how the zsh completion script works for the memaster CLI.
 
 ## How It Works
 
@@ -8,8 +8,8 @@ When you press TAB in zsh, the completion system:
 
 1. Captures the current command line buffer (`$BUFFER`)
 2. Captures the cursor position (`$CURSOR`)
-3. Calls the `_backlog` completion function
-4. The function runs: `backlog completion __complete "$BUFFER" "$CURSOR"`
+3. Calls the `_memaster` completion function
+4. The function runs: `memaster completion __complete "$BUFFER" "$CURSOR"`
 5. Parses the newline-separated completions
 6. Presents them using `_describe`
 
@@ -19,11 +19,11 @@ When you press TAB in zsh, the completion system:
 
 **Input:**
 ```bash
-backlog <TAB>
+memaster <TAB>
 ```
 
 **What happens internally:**
-- Buffer: `"backlog "`
+- Buffer: `"memaster "`
 - Cursor: `8` (position after the space)
 - CLI returns: `task\ndoc\nboard\nconfig\ncompletion`
 - Zsh shows: `task  doc  board  config  completion`
@@ -32,11 +32,11 @@ backlog <TAB>
 
 **Input:**
 ```bash
-backlog task <TAB>
+memaster task <TAB>
 ```
 
 **What happens internally:**
-- Buffer: `"backlog task "`
+- Buffer: `"memaster task "`
 - Cursor: `13`
 - CLI returns: `create\nedit\nview\nlist\nsearch\narchive`
 - Zsh shows: `create  edit  view  list  search  archive`
@@ -45,11 +45,11 @@ backlog task <TAB>
 
 **Input:**
 ```bash
-backlog task create --<TAB>
+memaster task create --<TAB>
 ```
 
 **What happens internally:**
-- Buffer: `"backlog task create --"`
+- Buffer: `"memaster task create --"`
 - Cursor: `22`
 - CLI returns: `--title\n--description\n--priority\n--status\n--assignee\n--labels`
 - Zsh shows: `--title  --description  --priority  --status  --assignee  --labels`
@@ -58,13 +58,13 @@ backlog task create --<TAB>
 
 **Input:**
 ```bash
-backlog task edit <TAB>
+memaster task edit <TAB>
 ```
 
 **What happens internally:**
-- Buffer: `"backlog task edit "`
+- Buffer: `"memaster task edit "`
 - Cursor: `18`
-- CLI scans backlog directory for tasks
+- CLI scans memaster directory for tasks
 - CLI returns: `task-1\ntask-2\ntask-308\ntask-308.01\n...`
 - Zsh shows: `task-1  task-2  task-308  task-308.01  ...`
 
@@ -72,11 +72,11 @@ backlog task edit <TAB>
 
 **Input:**
 ```bash
-backlog task edit task-308 --status <TAB>
+memaster task edit task-308 --status <TAB>
 ```
 
 **What happens internally:**
-- Buffer: `"backlog task edit task-308 --status "`
+- Buffer: `"memaster task edit task-308 --status "`
 - Cursor: `37`
 - CLI recognizes `--status` flag
 - CLI returns: `To Do\nIn Progress\nDone`
@@ -86,16 +86,16 @@ backlog task edit task-308 --status <TAB>
 
 **Input:**
 ```bash
-backlog task cr<TAB>
+memaster task cr<TAB>
 ```
 
 **What happens internally:**
-- Buffer: `"backlog task cr"`
+- Buffer: `"memaster task cr"`
 - Cursor: `15`
 - Partial word: `"cr"`
 - CLI filters subcommands starting with "cr"
 - CLI returns: `create`
-- Zsh completes to: `backlog task create`
+- Zsh completes to: `memaster task create`
 
 ## Testing the Completion
 
@@ -103,14 +103,14 @@ backlog task cr<TAB>
 
 1. Load the completion:
    ```bash
-   source completions/_backlog
+   source completions/_memaster
    ```
 
 2. Try various completions:
    ```bash
-   backlog <TAB>
-   backlog task <TAB>
-   backlog task create --<TAB>
+   memaster <TAB>
+   memaster task <TAB>
+   memaster task create --<TAB>
    ```
 
 ### Testing Without Zsh
@@ -119,16 +119,16 @@ You can test the backend directly:
 
 ```bash
 # Test top-level commands
-backlog completion __complete "backlog " 8
+memaster completion __complete "memaster " 8
 
 # Test subcommands
-backlog completion __complete "backlog task " 13
+memaster completion __complete "memaster task " 13
 
 # Test with partial input
-backlog completion __complete "backlog ta" 10
+memaster completion __complete "memaster ta" 10
 
 # Test flag completion
-backlog completion __complete "backlog task create --" 22
+memaster completion __complete "memaster task create --" 22
 ```
 
 ## Advanced Features
@@ -139,15 +139,15 @@ The completion system understands context:
 
 ```bash
 # After --status flag, only show valid statuses
-backlog task create --status <TAB>
+memaster task create --status <TAB>
 # Shows: To Do, In Progress, Done
 
 # After --priority flag, only show valid priorities
-backlog task create --priority <TAB>
+memaster task create --priority <TAB>
 # Shows: high, medium, low
 
 # For task ID arguments, show actual task IDs
-backlog task edit <TAB>
+memaster task edit <TAB>
 # Shows: task-1, task-2, task-308, ...
 ```
 
@@ -156,7 +156,7 @@ backlog task edit <TAB>
 Zsh handles multi-word arguments automatically:
 
 ```bash
-backlog task create --title "My Task" --status <TAB>
+memaster task create --title "My Task" --status <TAB>
 # Correctly identifies we're completing after --status
 ```
 
@@ -165,7 +165,7 @@ backlog task create --title "My Task" --status <TAB>
 If the CLI fails or returns no completions:
 
 ```bash
-backlog nonexistent <TAB>
+memaster nonexistent <TAB>
 # No completions shown, no error message
 # The shell stays responsive
 ```
@@ -184,7 +184,7 @@ The completion system is designed to be fast:
 - CLI execution is optimized for quick response
 - Typical completion time: < 100ms
 
-For large backlogs with many tasks, you may notice a slight delay when completing task IDs, but the system remains responsive.
+For large memasters with many tasks, you may notice a slight delay when completing task IDs, but the system remains responsive.
 
 ## Debugging
 
@@ -192,13 +192,13 @@ If completions aren't working:
 
 1. Check the function is loaded:
    ```bash
-   which _backlog
+   which _memaster
    # Should output the function definition
    ```
 
 2. Test the backend directly:
    ```bash
-   backlog completion __complete "backlog " 8
+   memaster completion __complete "memaster " 8
    # Should output: task, doc, board, config, completion
    ```
 
@@ -211,8 +211,8 @@ If completions aren't working:
 4. Check for errors:
    ```bash
    # Remove 2>/dev/null temporarily to see errors
-   _backlog() {
-       local completions=(${(f)"$(backlog completion __complete "$BUFFER" "$CURSOR")"})
-       _describe 'backlog commands' completions
+   _memaster() {
+       local completions=(${(f)"$(memaster completion __complete "$BUFFER" "$CURSOR")"})
+       _describe 'memaster commands' completions
    }
    ```

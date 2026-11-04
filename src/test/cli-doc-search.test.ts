@@ -67,7 +67,7 @@ describe("CLI doc search command", () => {
 		expect(stdout).toContain(
 			"doc-1 - Architecture Overview (path: guides/doc-1 - Architecture-Overview.md, type: guide, tags: architecture, search)",
 		);
-		expect(stdout).toContain("View: backlog doc view doc-1");
+		expect(stdout).toContain("View: memaster doc view doc-1");
 		expect(stdout).toMatch(/\[score [0-1]\.\d{3}]/);
 		expect(stdout).not.toContain("Support Playbook");
 	});
@@ -86,7 +86,7 @@ describe("CLI doc search command", () => {
 		const stdout = result.stdout.toString();
 		const documentLines = stdout.match(/^ {2}doc-/gm) ?? [];
 		expect(documentLines).toHaveLength(1);
-		expect(stdout).toContain("View: backlog doc view");
+		expect(stdout).toContain("View: memaster doc view");
 	});
 
 	it("rejects missing or invalid query and limit inputs", async () => {
@@ -132,7 +132,7 @@ describe("CLI doc search command", () => {
 		expect(help).toContain("None; this is a read-only command");
 		expect(help).toContain("Output:");
 		expect(help).toContain("Plain text Documents list");
-		expect(help).toContain('backlog doc search "architecture"');
-		expect(help).toContain('backlog doc search "runbook" --limit 5');
+		expect(help).toContain('memaster doc search "architecture"');
+		expect(help).toContain('memaster doc search "runbook" --limit 5');
 	});
 });

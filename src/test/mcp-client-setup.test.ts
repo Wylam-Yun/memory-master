@@ -7,14 +7,14 @@ import {
 
 describe("MCP client setup commands", () => {
 	it("uses Codex's stdio command separator", () => {
-		const setup = getMcpClientSetupCommand("codex", "backlog");
+		const setup = getMcpClientSetupCommand("codex", "memaster");
 
 		expect(setup).toEqual({
 			label: "OpenAI Codex",
 			command: "codex",
-			args: ["mcp", "add", "backlog", "--", "backlog", "mcp", "start"],
+			args: ["mcp", "add", "memaster", "--", "memaster", "mcp", "start"],
 		});
-		expect(formatMcpClientSetupCommand(setup.command, setup.args)).toBe("codex mcp add backlog -- backlog mcp start");
+		expect(formatMcpClientSetupCommand(setup.command, setup.args)).toBe("codex mcp add memaster -- memaster mcp start");
 	});
 
 	it("fails when a setup command exits non-zero", async () => {

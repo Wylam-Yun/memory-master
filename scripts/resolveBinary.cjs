@@ -1,7 +1,7 @@
 const { execFileSync } = require("node:child_process");
 
 function getPackageName(platform = process.platform, arch = process.arch) {
-	return `backlog.md-${platform === "win32" ? "windows" : platform}-${arch}`;
+	return `memory-master-${platform === "win32" ? "windows" : platform}-${arch}`;
 }
 
 /**
@@ -42,7 +42,7 @@ function isRosettaTranslated(platform = process.platform, exec = execFileSync) {
 }
 
 function resolveBinaryPath(platform = process.platform, arch = process.arch, resolver = require.resolve) {
-	const binary = `backlog${platform === "win32" ? ".exe" : ""}`;
+	const binary = `memaster${platform === "win32" ? ".exe" : ""}`;
 	let firstError;
 	for (const packageName of getCandidatePackageNames(platform, arch)) {
 		try {

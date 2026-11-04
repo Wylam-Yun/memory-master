@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } from "./test-utils.ts";
 
@@ -104,16 +104,16 @@ describe("CLI task projects", () => {
 			const result = await $`bun ${CLI_PATH} config set projects "Web,API"`.cwd(TEST_DIR).quiet().nothrow();
 			expect(result.exitCode).toBe(1);
 			expect(result.stderr.toString()).toContain(
-				"projects cannot be set directly. View current values with 'backlog config get projects'.",
+				"projects cannot be set directly. View current values with 'memaster config get projects'.",
 			);
 		});
 
 		it("completes configured project values for create, edit, list, and search", async () => {
 			for (const line of [
-				"backlog task create --project ",
-				"backlog task edit TASK-1 --project ",
-				"backlog task list --project ",
-				"backlog search --project ",
+				"memaster task create --project ",
+				"memaster task edit TASK-1 --project ",
+				"memaster task list --project ",
+				"memaster search --project ",
 			]) {
 				const result = await $`bun ${CLI_PATH} completion __complete ${line} ${String(line.length)}`
 					.cwd(TEST_DIR)

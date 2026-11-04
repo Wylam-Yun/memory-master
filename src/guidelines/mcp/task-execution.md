@@ -2,7 +2,7 @@
 
 ### Planning Workflow
 
-> **Non-negotiable:** Capture an implementation plan in the Backlog task _after_ taking the task into progress and
+> **Non-negotiable:** Capture an implementation plan in the Memaster task _after_ taking the task into progress and
 > researching the current system, but before implementation. The plan must live in the task record prior to implementation
 > and remain up to date when you close the task. CLI instructions are canonical; this legacy MCP guide preserves parity.
 
@@ -21,14 +21,14 @@
 
 ### Planning Guidelines
 
-- Keep the Backlog task as the single plan of record: capture the current approach with `task_edit` (planSet field) before writing code
+- Keep the Memaster task as the single plan of record: capture the current approach with `task_edit` (planSet field) before writing code
 - Use `task_edit` (planAppend field) to refine the plan when you learn more during implementation
 - Verify prerequisites before committing to a plan: confirm required tools, access, data, and environment support are in place
 - Keep plans structured and actionable: list concrete steps, highlight key files, call out risks, and note any checkpoints or validations
 - Ensure the plan reflects the agreed user outcome and acceptance criteria; if expectations are unclear, clarify them before proceeding
 - When additional context is required, review relevant code, documentation, or external references so the plan incorporates the latest knowledge
 - Treat the plan and acceptance criteria as living guides - update both when the approach or expectations change so future readers understand the rationale
-- If you need to add or remove tasks or shift scope later, pause and run the "present → approval" loop again before editing the backlog; never change the breakdown silently
+- If you need to add or remove tasks or shift scope later, pause and run the "present → approval" loop again before editing the memaster; never change the breakdown silently
 
 ### Working with Subtasks (Planning)
 
@@ -81,4 +81,4 @@ entries are removed. `acceptanceCriteriaCheck` and `acceptanceCriteriaUncheck` r
 
 ### Finalizing the Task
 
-When implementation is finished, follow the **Task Finalization Guide** (`backlog://workflow/task-finalization`) to finalize your work. This ensures acceptance criteria are verified with behavior-level evidence, implementation is documented, and the task is properly closed.
+When implementation is finished, follow the **Task Finalization Guide** (`memaster://workflow/task-finalization`) to finalize your work. This ensures acceptance criteria are verified with behavior-level evidence, implementation is documented, and the task is properly closed.

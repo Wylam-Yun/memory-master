@@ -1,4 +1,4 @@
-import { ChangeNotCommittedError, RecordRefusedError, TaskDeletionAppliedError } from "../../core/backlog.ts";
+import { ChangeNotCommittedError, RecordRefusedError, TaskDeletionAppliedError } from "../../core/memaster.ts";
 import { isAmbiguousIdError } from "../../utils/entity-id.ts";
 import { isAmbiguousTaskIdError } from "../../utils/task-path.ts";
 import type { CallToolResult } from "../types.ts";
@@ -6,14 +6,14 @@ import type { CallToolResult } from "../types.ts";
 /**
  * Base MCP error class for all MCP-related errors
  */
-export class BacklogToolError extends Error {
+export class MemasterToolError extends Error {
 	constructor(
 		message: string,
 		public code: string,
 		public details?: unknown,
 	) {
 		super(message);
-		this.name = "BacklogToolError";
+		this.name = "MemasterToolError";
 	}
 }
 
@@ -30,10 +30,10 @@ export async function runCoreOperation<T>(operation: () => Promise<T>): Promise<
 		return await operation();
 	} catch (error) {
 		if (error instanceof RecordRefusedError) {
-			throw new BacklogToolError(error.message, "VALIDATION_ERROR");
+			throw new MemasterToolError(error.message, "VALIDATION_ERROR");
 		}
 		if (error instanceof ChangeNotCommittedError || error instanceof TaskDeletionAppliedError) {
-			throw new BacklogToolError(error.message, "OPERATION_FAILED");
+			throw new MemasterToolError(error.message, "OPERATION_FAILED");
 		}
 		throw error;
 	}
@@ -42,7 +42,7 @@ export async function runCoreOperation<T>(operation: () => Promise<T>): Promise<
 /**
  * Validation error for input validation failures
  */
-export class McpValidationError extends BacklogToolError {
+export class McpValidationError extends MemasterToolError {
 	constructor(message: string, validationError?: unknown) {
 		super(message, "VALIDATION_ERROR", validationError);
 	}
@@ -51,7 +51,7 @@ export class McpValidationError extends BacklogToolError {
 /**
  * Authentication error for auth failures
  */
-export class McpAuthenticationError extends BacklogToolError {
+export class McpAuthenticationError extends MemasterToolError {
 	constructor(message = "Authentication required") {
 		super(message, "AUTH_ERROR");
 	}
@@ -60,7 +60,7 @@ export class McpAuthenticationError extends BacklogToolError {
 /**
  * Connection error for transport-level failures
  */
-export class McpConnectionError extends BacklogToolError {
+export class McpConnectionError extends MemasterToolError {
 	constructor(message: string, details?: unknown) {
 		super(message, "CONNECTION_ERROR", details);
 	}
@@ -69,7 +69,7 @@ export class McpConnectionError extends BacklogToolError {
 /**
  * Internal error for unexpected failures
  */
-export class McpInternalError extends BacklogToolError {
+export class McpInternalError extends MemasterToolError {
 	constructor(message = "An unexpected error occurred", details?: unknown) {
 		super(message, "INTERNAL_ERROR", details);
 	}
@@ -93,8 +93,8 @@ function buildErrorResult(code: string, message: string, details?: unknown): Cal
 	};
 }
 
-export function handleBacklogToolError(error: unknown): CallToolResult {
-	if (error instanceof BacklogToolError) {
+export function handleMemasterToolError(error: unknown): CallToolResult {
+	if (error instanceof MemasterToolError) {
 		return buildErrorResult(error.code, error.message, error.details);
 	}
 	if (isAmbiguousTaskIdError(error)) {

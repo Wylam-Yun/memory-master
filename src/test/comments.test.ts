@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { CommentsManager } from "../markdown/structured-sections.ts";
 import type { Task } from "../types/index.ts";
 import { createTaskSearchIndex } from "../utils/task-search.ts";
@@ -351,7 +351,7 @@ describe("Task comments", () => {
 				{ appendComments: [{ body: "Valid body", author: "<!-- COMMENT:END -->" }] },
 				false,
 			),
-		).rejects.toThrow("Comment author cannot contain Backlog comment markers.");
+		).rejects.toThrow("Comment author cannot contain Memaster comment markers.");
 
 		const loaded = await core.filesystem.loadTask("task-1");
 		expect(loaded?.comments ?? []).toEqual([]);
@@ -418,7 +418,7 @@ describe("Task comments", () => {
 			.quiet()
 			.nothrow();
 		expect(edit.exitCode).not.toBe(0);
-		expect(`${edit.stderr}${edit.stdout}`).toContain("Comment body cannot contain Backlog comment markers.");
+		expect(`${edit.stderr}${edit.stdout}`).toContain("Comment body cannot contain Memaster comment markers.");
 
 		const core = new Core(TEST_DIR);
 		const loaded = await core.filesystem.loadTask("task-1");

@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { type TaskCorpus, type TaskDetail, toTaskDetail, withReadiness } from "../core/task-detail.ts";
 import { searchJson } from "../formatters/json-output.ts";
 import { McpServer } from "../mcp/server.ts";
 import { registerTaskTools } from "../mcp/tools/tasks/index.ts";
-import { BacklogServer } from "../server/index.ts";
+import { MemasterServer } from "../server/index.ts";
 import { generateDetailContent } from "../ui/task-viewer-with-search.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup, withTimeout } from "./test-utils.ts";
@@ -24,12 +24,12 @@ describe("readiness agreement across surfaces", () => {
 	let testDir: string;
 	let core: Core;
 	let mcpServer: McpServer;
-	let server: BacklogServer | null;
+	let server: MemasterServer | null;
 	let handlers: { handleGetTask(taskId: string): Promise<Response> };
 
 	/** The verdict every surface has to reach for this project, by task ID. */
 	const expectedReadiness: Record<string, boolean> = {
-		// Its only dependency was completed and moved into backlog/completed.
+		// Its only dependency was completed and moved into memaster/completed.
 		"TASK-2": true,
 		// Unfinished with no dependencies at all.
 		"TASK-3": true,
@@ -70,7 +70,7 @@ describe("readiness agreement across surfaces", () => {
 		await addTask("task-5", "Waits on nothing known", "To Do", ["task-404"]);
 		await addTask("task-6", "Already finished", "Done");
 
-		// The dependency leaves the active corpus: only its location in backlog/completed still says
+		// The dependency leaves the active corpus: only its location in memaster/completed still says
 		// the work is finished.
 		expect(await core.archiveTask("task-1", false)).toBe(true);
 
@@ -79,7 +79,7 @@ describe("readiness agreement across surfaces", () => {
 		if (!mcpConfig) throw new Error("Expected MCP test config");
 		registerTaskTools(mcpServer, mcpConfig);
 
-		server = new BacklogServer(testDir);
+		server = new MemasterServer(testDir);
 		handlers = server as unknown as typeof handlers;
 	});
 
@@ -217,8 +217,8 @@ describe("readiness agreement across surfaces", () => {
 		);
 		// A second file claiming TASK-7. Its copy is finished, so a read that picked a winner would
 		// call the dependent ready.
-		const contested = join(testDir, "backlog", "tasks", "task-7 - Contested-identity.md");
-		await writeFile(join(testDir, "backlog", "tasks", "task-07 - Contested-copy.md"), await readFile(contested));
+		const contested = join(testDir, "memaster", "tasks", "task-7 - Contested-identity.md");
+		await writeFile(join(testDir, "memaster", "tasks", "task-07 - Contested-copy.md"), await readFile(contested));
 
 		const unresolved = {
 			isReady: false,

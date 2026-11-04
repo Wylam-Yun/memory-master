@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
-import type { BacklogConfig, Task } from "../types/index.ts";
+import { Core } from "../core/memaster.ts";
+import type { MemasterConfig, Task } from "../types/index.ts";
 import { createUniqueTestDir, initializeTestProject, safeCleanup } from "./test-utils.ts";
 
 let TEST_DIR: string;
@@ -12,7 +12,7 @@ describe("Board Loading with checkActiveBranches", () => {
 	beforeEach(async () => {
 		TEST_DIR = createUniqueTestDir("test-board-loading");
 		core = new Core(TEST_DIR);
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 
 		// Initialize git repository for testing
 		await $`git init -b main`.cwd(TEST_DIR).quiet();
@@ -61,7 +61,7 @@ describe("Board Loading with checkActiveBranches", () => {
 			// Update config to disable cross-branch checking
 			const config = await core.filesystem.loadConfig();
 			if (!config) throw new Error("Config not loaded");
-			const updatedConfig: BacklogConfig = {
+			const updatedConfig: MemasterConfig = {
 				...config,
 				checkActiveBranches: false,
 			};
@@ -87,7 +87,7 @@ describe("Board Loading with checkActiveBranches", () => {
 			// Update config to enable cross-branch checking (default)
 			const config = await core.filesystem.loadConfig();
 			if (!config) throw new Error("Config not loaded");
-			const updatedConfig: BacklogConfig = {
+			const updatedConfig: MemasterConfig = {
 				...config,
 				checkActiveBranches: true,
 				activeBranchDays: 7,
@@ -129,7 +129,7 @@ describe("Board Loading with checkActiveBranches", () => {
 			// Set activeBranchDays to 30 (should exclude the old branch)
 			const config = await core.filesystem.loadConfig();
 			if (!config) throw new Error("Config not loaded");
-			const updatedConfig: BacklogConfig = {
+			const updatedConfig: MemasterConfig = {
 				...config,
 				checkActiveBranches: true,
 				activeBranchDays: 30,
@@ -164,7 +164,7 @@ describe("Board Loading with checkActiveBranches", () => {
 
 		it("should handle empty task list gracefully", async () => {
 			// Remove all tasks
-			await $`rm -rf backlog/tasks/*`.cwd(TEST_DIR).quiet();
+			await $`rm -rf memaster/tasks/*`.cwd(TEST_DIR).quiet();
 
 			const tasks = await core.loadTasks();
 			expect(tasks).toEqual([]);
@@ -193,7 +193,7 @@ describe("Board Loading with checkActiveBranches", () => {
 	describe("Config integration", () => {
 		it("should use default values when config properties are undefined", async () => {
 			// Save a minimal config without the branch-related settings
-			const minimalConfig: BacklogConfig = {
+			const minimalConfig: MemasterConfig = {
 				projectName: "Test Project",
 				statuses: ["To Do", "In Progress", "Done"],
 				defaultStatus: "To Do",

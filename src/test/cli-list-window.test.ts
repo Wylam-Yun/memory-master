@@ -40,7 +40,7 @@ function projectCli(projectDir: string) {
 		let stdout = (await runCli(args)).stdout;
 		while (true) {
 			outputs.push(stdout);
-			const next = stdout.match(/Next: backlog (.+)$/m)?.[1];
+			const next = stdout.match(/Next: memaster (.+)$/m)?.[1];
 			if (!next) return outputs;
 			stdout = (await $`bun ${CLI_PATH} ${{ raw: next }}`.cwd(projectDir).nothrow().quiet()).stdout.toString();
 		}
@@ -167,7 +167,7 @@ describe("CLI list windows", () => {
 		const windows = await followWindows(["task", "list", "--search", "Window task", "--max-count", "2", "--plain"]);
 
 		expect(windows).toHaveLength(3);
-		expect(windows[0]).toContain("Showing 1-2 of 5 items. Next: backlog task list --search 'Window task'");
+		expect(windows[0]).toContain("Showing 1-2 of 5 items. Next: memaster task list --search 'Window task'");
 		expect(windows[2]?.trimEnd().endsWith("Showing 5-5 of 5 items.")).toBe(true);
 		// The windows follow the sorted list, and each one groups its own tasks by status.
 		expect(windows.map(taskIdsIn)).toEqual([["TASK-1", "TASK-2"], ["TASK-3", "TASK-4"], ["TASK-5"]]);
@@ -221,7 +221,7 @@ describe("CLI list windows", () => {
 		expect(searchedWindows.flatMap(taskIdsIn).sort()).toEqual(searchedIds.sort());
 
 		const separated = await followWindows(["doc", "list", "--max-count", "1", "--"]);
-		expect(separated[0]).toContain("Next: backlog doc list --max-count 1 --skip 1 --");
+		expect(separated[0]).toContain("Next: memaster doc list --max-count 1 --skip 1 --");
 		expect(joinGroupedWindows(separated)).toEqual(printedLines((await runCli(["doc", "list", "--plain"])).stdout));
 	});
 
@@ -229,7 +229,7 @@ describe("CLI list windows", () => {
 		expect((await runCli(["task", "list", "--count"])).stdout).toBe("5\n");
 		expect((await runCli(["task", "list", "--status", "To Do", "--count"])).stdout).toBe("3\n");
 		expect((await runCli(["task", "list", "--count", "--skip", "4"])).stdout).toBe("1\n");
-		// Bun colors a logged number when color is forced, which would break `$(backlog ... --count)`.
+		// Bun colors a logged number when color is forced, which would break `$(memaster ... --count)`.
 		expect((await runCli(["task", "list", "--count"], { FORCE_COLOR: "1" })).stdout).toBe("5\n");
 
 		for (const list of [
@@ -263,7 +263,7 @@ describe("CLI list windows", () => {
 	it("pages search, document search, and decision results", async () => {
 		const search = await runCli(["search", "--type", "decision", "--max-count", "2", "--plain"]);
 		expect(idsIn(search.stdout, /decision-\d+/g)).toEqual(["decision-1", "decision-2"]);
-		expect(search.stdout).toContain("Showing 1-2 of 3 items. Next: backlog search --type decision --max-count 2");
+		expect(search.stdout).toContain("Showing 1-2 of 3 items. Next: memaster search --type decision --max-count 2");
 		expect(await runJson(["search", "--type", "decision", "--max-count", "1", "--skip", "1"])).toMatchObject({
 			results: [{ type: "decision", data: { id: "decision-2" } }],
 			total: 3,
@@ -276,11 +276,11 @@ describe("CLI list windows", () => {
 		expect(decisions.stdout).toContain("Showing 3-3 of 3 items.");
 		expect(await runJson(["decision", "list", "--max-count", "1"])).toMatchObject({ total: 3, nextSkip: 1 });
 
-		const documentViews = idsIn((await runCli(["doc", "search", "Guide"])).stdout, /View: backlog doc view doc-\d+/g);
+		const documentViews = idsIn((await runCli(["doc", "search", "Guide"])).stdout, /View: memaster doc view doc-\d+/g);
 		const firstDocument = await runCli(["doc", "search", "Guide", "--max-count", "1"]);
-		expect(idsIn(firstDocument.stdout, /View: backlog doc view doc-\d+/g)).toEqual(documentViews.slice(0, 1));
+		expect(idsIn(firstDocument.stdout, /View: memaster doc view doc-\d+/g)).toEqual(documentViews.slice(0, 1));
 		expect(firstDocument.stdout).toContain(
-			`Showing 1-1 of ${documentViews.length} items. Next: backlog doc search Guide`,
+			`Showing 1-1 of ${documentViews.length} items. Next: memaster doc search Guide`,
 		);
 		expect((await runCli(["doc", "search", "Guide", "--count"])).stdout).toBe(`${documentViews.length}\n`);
 	});
@@ -380,7 +380,7 @@ describe("CLI task list windows", () => {
 		expect(printedLines(limited.stdout).filter((line) => !line.startsWith(" "))).toEqual(["To Do:", "In Progress:"]);
 		expect(taskIdsIn(limited.stdout)).toEqual(["TASK-2", "TASK-1"]);
 		expect(window.stdout).toBe(
-			`${limited.stdout}Showing 1-2 of 4 items. Next: backlog task list --plain --sort ordinal --max-count 2 --skip 2\n`,
+			`${limited.stdout}Showing 1-2 of 4 items. Next: memaster task list --plain --sort ordinal --max-count 2 --skip 2\n`,
 		);
 	});
 

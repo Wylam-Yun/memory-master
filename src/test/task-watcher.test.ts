@@ -4,7 +4,7 @@ import * as nodeFs from "node:fs";
 import { mkdir, rename, unlink } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { Task } from "../types/index.ts";
 import { watchTasks } from "../utils/task-watcher.ts";
@@ -43,7 +43,7 @@ describe("task watcher reconciliation", () => {
 	beforeEach(async () => {
 		testDir = createUniqueTestDir("task-watcher");
 		core = new Core(testDir);
-		await core.filesystem.ensureBacklogStructure();
+		await core.filesystem.ensureMemasterStructure();
 		watchSpy = spyOn(nodeFs, "watch").mockImplementation(((
 			_path: Parameters<typeof nodeFs.watch>[0],
 			...args: unknown[]
@@ -146,7 +146,7 @@ describe("task watcher reconciliation", () => {
 	});
 
 	it("confirms archive and delete absence from one event without duplicate removals", async () => {
-		const archiveDir = join(testDir, "backlog", "archive", "tasks");
+		const archiveDir = join(testDir, "memaster", "archive", "tasks");
 		await mkdir(archiveDir, { recursive: true });
 		const tasks = [sampleTask("task-3", "Archived"), sampleTask("task-4", "Deleted")];
 		const paths = tasks.map((task) => join(core.filesystem.tasksDir, `${task.id} - ${task.title}.md`));

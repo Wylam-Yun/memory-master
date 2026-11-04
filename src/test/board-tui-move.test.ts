@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ScreenInterface } from "neo-neo-bblessed";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import type { Task } from "../types/index.ts";
 import { renderBoardTui } from "../ui/board.ts";
 import { getHelpShortcuts } from "../ui/components/help-popup.ts";

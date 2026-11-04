@@ -3,5 +3,5 @@
  * If we ever need to embed the value, mirror the approach used in version.ts.
  */
 export function getPackageName(): string {
-	return "backlog.md";
+	return "memory-master";
 }

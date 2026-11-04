@@ -1,6 +1,6 @@
-# Backlog.md MCP Implementation (MVP)
+# Memaster MCP Implementation (MVP)
 
-This directory exposes a minimal stdio MCP surface so local agents can work with backlog.md without duplicating business
+This directory exposes a minimal stdio MCP surface so local agents can work with memory-master without duplicating business
 logic.
 
 ## What’s included
@@ -18,14 +18,14 @@ Document tool `path` inputs are subdirectories under the configured docs directo
 Created and updated document responses include the persisted docs-relative file path. Absolute paths and traversal
 segments such as `..` are rejected by the shared core/filesystem path handling.
 
-`document_archive` calls `Core.archiveDocument`, the function behind `backlog doc archive`. The document's file moves
-unchanged to the same relative path under `backlog/archive/docs/`, its ID stays reserved, and the document stays
+`document_archive` calls `Core.archiveDocument`, the function behind `memaster doc archive`. The document's file moves
+unchanged to the same relative path under `memaster/archive/docs/`, its ID stays reserved, and the document stays
 viewable and becomes read-only. No task is changed: the result names the tasks and drafts whose documentation list names
 the moved file.
 
 `document_restore` and `document_delete` call `Core.restoreDocument` and `Core.deleteDocument`, the functions behind
-`backlog doc restore` and `backlog doc delete`. Restore moves an archived document's file back, unchanged, to the same
-relative path under `backlog/docs/`. Delete works only on an archived document, asks no question, removes its file and
+`memaster doc restore` and `memaster doc delete`. Restore moves an archived document's file back, unchanged, to the same
+relative path under `memaster/docs/`. Delete works only on an archived document, asks no question, removes its file and
 releases its ID; the result names the tasks and drafts whose documentation list names the removed file.
 
 ## Development workflow
@@ -35,7 +35,7 @@ releases its ID; the result names the tasks and drafts whose documentation list 
 bun run cli mcp start
 
 # Or via the globally installed CLI
-backlog mcp start
+memaster mcp start
 
 # Tests
 bun test src/test/mcp-*.test.ts

@@ -2,14 +2,14 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { chmod, lstat, mkdir, readdir, readlink, realpath, stat, symlink, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { moveArchivedTasks, moveWithoutReplacing, previewArchivedTaskMove } from "../core/archived-task-move.ts";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { serializeTask } from "../markdown/serializer.ts";
 import type { Task } from "../types/index.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } from "./test-utils.ts";
 
 /**
  * Archived tasks are read from the archive folder and from a `completed` folder that older
- * projects still have. Real projects also link files and folders inside the backlog directory, so
+ * projects still have. Real projects also link files and folders inside the memaster directory, so
  * the reader and the mover are exercised against linked files, linked folders, and link cycles.
  */
 describe("archived task folders", () => {
@@ -45,7 +45,7 @@ describe("archived task folders", () => {
 		core = new Core(testDir);
 		await initializeFilesystemTestProject(core, "Archived Task Folders");
 		archiveFolder = core.filesystem.archiveTasksDir;
-		completedFolder = join(core.filesystem.backlogDir, "completed");
+		completedFolder = join(core.filesystem.memasterDir, "completed");
 	});
 
 	afterEach(async () => {
@@ -69,7 +69,7 @@ describe("archived task folders", () => {
 		});
 
 		it("works when neither archived folder exists", async () => {
-			await safeCleanup(join(core.filesystem.backlogDir, "archive"));
+			await safeCleanup(join(core.filesystem.memasterDir, "archive"));
 
 			expect(await core.filesystem.getArchivedTaskDirs()).toEqual([]);
 			expect(await archivedIds()).toEqual([]);
@@ -128,19 +128,19 @@ describe("archived task folders", () => {
 			const preview = await previewArchivedTaskMove(core);
 
 			expect(preview).toEqual({
-				archiveDirectory: "backlog/archive/tasks",
+				archiveDirectory: "memaster/archive/tasks",
 				moves: [
 					{
-						sourcePath: "backlog/completed/task-2 - Finished.md",
-						targetPath: "backlog/archive/tasks/task-2 - Finished.md",
+						sourcePath: "memaster/completed/task-2 - Finished.md",
+						targetPath: "memaster/archive/tasks/task-2 - Finished.md",
 					},
 					{
-						sourcePath: "backlog/completed/task-3 - Also-finished.md",
-						targetPath: "backlog/archive/tasks/task-3 - Also-finished.md",
+						sourcePath: "memaster/completed/task-3 - Also-finished.md",
+						targetPath: "memaster/archive/tasks/task-3 - Also-finished.md",
 					},
 				],
 				blocked: [],
-				// An ordinary folder inside the backlog directory is not a linked source.
+				// An ordinary folder inside the memaster directory is not a linked source.
 				linkedSources: [],
 			});
 			// And an ordinary archive folder is not a linked destination.
@@ -163,11 +163,11 @@ describe("archived task folders", () => {
 			await writeTask(completedFolder, "task-42 - Free-name.md", makeTask("TASK-42", "Free name"));
 			const before = [await Bun.file(inArchive).text(), await Bun.file(inCompleted).text()];
 
-			expect((await previewArchivedTaskMove(core)).blocked).toEqual([`backlog/completed/${fileName}`]);
+			expect((await previewArchivedTaskMove(core)).blocked).toEqual([`memaster/completed/${fileName}`]);
 			const moved = await moveArchivedTasks(core);
 
-			expect(moved.moves.map((move) => move.sourcePath)).toEqual(["backlog/completed/task-42 - Free-name.md"]);
-			expect(moved.blocked).toEqual([`backlog/completed/${fileName}`]);
+			expect(moved.moves.map((move) => move.sourcePath)).toEqual(["memaster/completed/task-42 - Free-name.md"]);
+			expect(moved.blocked).toEqual([`memaster/completed/${fileName}`]);
 			expect([await Bun.file(inArchive).text(), await Bun.file(inCompleted).text()]).toEqual(before);
 		});
 
@@ -186,12 +186,12 @@ describe("archived task folders", () => {
 			await symlink(outside, completedFolder, "junction");
 
 			// The preview names the real directory the files would be taken out of.
-			const linkedSources = [{ directory: "backlog/completed", realDirectory: await realpath(outside) }];
+			const linkedSources = [{ directory: "memaster/completed", realDirectory: await realpath(outside) }];
 			expect((await previewArchivedTaskMove(core)).linkedSources).toEqual(linkedSources);
 
 			const moved = await moveArchivedTasks(core);
 
-			expect(moved.moves.map((move) => move.targetPath)).toEqual(["backlog/archive/tasks/task-6 - Behind-a-link.md"]);
+			expect(moved.moves.map((move) => move.targetPath)).toEqual(["memaster/archive/tasks/task-6 - Behind-a-link.md"]);
 			expect(moved.linkedSources).toEqual(linkedSources);
 			expect(await readdir(outside)).toEqual([]);
 			expect(await archivedIds()).toEqual(["TASK-6"]);
@@ -202,25 +202,25 @@ describe("archived task folders", () => {
 			await safeCleanup(completedFolder);
 			await symlink(archiveFolder, completedFolder, "junction");
 			expect(await previewArchivedTaskMove(core)).toEqual({
-				archiveDirectory: "backlog/archive/tasks",
+				archiveDirectory: "memaster/archive/tasks",
 				moves: [],
 				blocked: [],
 				linkedSources: [],
 			});
 		});
 
-		it("does not name a completed folder that is a link to a directory inside the backlog directory", async () => {
-			const inside = join(core.filesystem.backlogDir, "old-completed");
+		it("does not name a completed folder that is a link to a directory inside the memaster directory", async () => {
+			const inside = join(core.filesystem.memasterDir, "old-completed");
 			await writeTask(inside, "task-6 - Behind-a-link.md", makeTask("TASK-6", "Behind a link"));
 			await symlink(inside, completedFolder, "junction");
 
 			const preview = await previewArchivedTaskMove(core);
 
-			expect(preview.moves.map((move) => move.sourcePath)).toEqual(["backlog/completed/task-6 - Behind-a-link.md"]);
+			expect(preview.moves.map((move) => move.sourcePath)).toEqual(["memaster/completed/task-6 - Behind-a-link.md"]);
 			expect(preview.linkedSources).toEqual([]);
 		});
 
-		it("names the real archive folder when it is a link to a directory outside the backlog directory", async () => {
+		it("names the real archive folder when it is a link to a directory outside the memaster directory", async () => {
 			const outside = join(testDir, "shared-archive");
 			await mkdir(outside, { recursive: true });
 			await safeCleanup(archiveFolder);
@@ -230,14 +230,14 @@ describe("archived task folders", () => {
 			const preview = await previewArchivedTaskMove(core);
 
 			expect(preview.linkedDestination).toEqual({
-				directory: "backlog/archive/tasks",
+				directory: "memaster/archive/tasks",
 				realDirectory: await realpath(outside),
 			});
 			expect(preview.linkedSources).toEqual([]);
 
 			// What is moved is the same: the file goes into the archive folder, through the link.
 			const moved = await moveArchivedTasks(core);
-			expect(moved.moves.map((move) => move.targetPath)).toEqual(["backlog/archive/tasks/task-6 - Finished.md"]);
+			expect(moved.moves.map((move) => move.targetPath)).toEqual(["memaster/archive/tasks/task-6 - Finished.md"]);
 			expect(await readdir(outside)).toEqual(["task-6 - Finished.md"]);
 			expect(await archivedIds()).toEqual(["TASK-6"]);
 			// Nothing is left to move, so there is no folder to name any more.
@@ -247,7 +247,7 @@ describe("archived task folders", () => {
 		it("names the intended destination when the tasks child of a linked archive parent is missing", async () => {
 			const outside = join(testDir, "shared-archive");
 			await mkdir(outside, { recursive: true });
-			const archiveParent = join(core.filesystem.backlogDir, "archive");
+			const archiveParent = join(core.filesystem.memasterDir, "archive");
 			await safeCleanup(archiveParent);
 			await symlink(outside, archiveParent, "junction");
 			const fileName = "task-6 - Finished.md";
@@ -257,7 +257,7 @@ describe("archived task folders", () => {
 			const preview = await previewArchivedTaskMove(core);
 
 			expect(preview.linkedDestination).toEqual({
-				directory: "backlog/archive/tasks",
+				directory: "memaster/archive/tasks",
 				realDirectory: join(await realpath(outside), "tasks"),
 			});
 			expect(await readdir(outside)).toEqual([]);
@@ -275,8 +275,8 @@ describe("archived task folders", () => {
 			expect(await archivedIds()).toEqual(["TASK-6"]);
 		});
 
-		it("does not name an archive folder that is a link to a directory inside the backlog directory", async () => {
-			const inside = join(core.filesystem.backlogDir, "kept-archive");
+		it("does not name an archive folder that is a link to a directory inside the memaster directory", async () => {
+			const inside = join(core.filesystem.memasterDir, "kept-archive");
 			await mkdir(inside, { recursive: true });
 			await safeCleanup(archiveFolder);
 			await symlink(inside, archiveFolder, "junction");
@@ -319,7 +319,7 @@ describe("archived task folders", () => {
 			const plan = await core.previewDuplicateTaskIdRepair();
 
 			expect(plan.changes.map((change) => [change.sourcePath, change.location, change.newId])).toEqual([
-				["backlog/archive/tasks/task-1 - Archived-earlier.md", "archived", "TASK-2"],
+				["memaster/archive/tasks/task-1 - Archived-earlier.md", "archived", "TASK-2"],
 			]);
 			await core.repairDuplicateTaskIds(plan.fingerprint);
 			expect((await core.getTask("task-1"))?.title).toBe("On the board");
@@ -335,14 +335,14 @@ describe("archived task folders", () => {
 			const plan = await core.previewDuplicateTaskIdRepair();
 
 			expect(plan.changes.map((change) => [change.sourcePath, change.newId])).toEqual([
-				[`backlog/archive/tasks/${fileName}`, "TASK-42"],
+				[`memaster/archive/tasks/${fileName}`, "TASK-42"],
 			]);
 			await core.repairDuplicateTaskIds(plan.fingerprint);
 			const moved = await moveArchivedTasks(core);
 
 			expect(moved).toEqual({
-				archiveDirectory: "backlog/archive/tasks",
-				moves: [{ sourcePath: `backlog/completed/${fileName}`, targetPath: `backlog/archive/tasks/${fileName}` }],
+				archiveDirectory: "memaster/archive/tasks",
+				moves: [{ sourcePath: `memaster/completed/${fileName}`, targetPath: `memaster/archive/tasks/${fileName}` }],
 				blocked: [],
 				linkedSources: [],
 			});

@@ -3,7 +3,7 @@ import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { copyFile, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import {
 	closeServer,
 	createLauncherInstall,
@@ -24,7 +24,7 @@ const tempDirs: string[] = [];
 
 /** Copy the launcher scripts into a temp dir with an optional fixture platform binary. */
 async function createLauncherDir(binaryContent?: string): Promise<string> {
-	const dir = await mkdtemp(join(tmpdir(), "backlog-launcher-"));
+	const dir = await mkdtemp(join(tmpdir(), "memaster-launcher-"));
 	tempDirs.push(dir);
 	await createLauncherInstall(dir, binaryContent === undefined ? undefined : (path) => writeFile(path, binaryContent));
 	return dir;
@@ -146,7 +146,7 @@ async function startShutdownOwner(owner: "browser" | "mcp") {
 	// Load the real CLI and server class in the same process. Only stop duration is changed:
 	// the CLI still owns signal registration, its guard, exit status and actual resource cleanup.
 	const module = join(import.meta.dir, "..", owner === "browser" ? "server/index.ts" : "mcp/server.ts");
-	const className = owner === "browser" ? "BacklogServer" : "McpServer";
+	const className = owner === "browser" ? "MemasterServer" : "McpServer";
 	const fixture = join(dir, "shutdown.ts");
 	await writeFile(
 		fixture,

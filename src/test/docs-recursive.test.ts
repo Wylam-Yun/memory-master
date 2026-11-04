@@ -14,7 +14,7 @@ describe("Docs recursive listing and ID generation", () => {
 		await rm(TEST_DIR, { recursive: true, force: true });
 		await mkdir(TEST_DIR, { recursive: true });
 
-		// Init backlog project
+		// Init memaster project
 		const core = new Core(TEST_DIR);
 		await initializeTestProject(core, "Docs Test");
 

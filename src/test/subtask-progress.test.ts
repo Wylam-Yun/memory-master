@@ -53,7 +53,7 @@ describe("summarizeSubtaskProgress", () => {
 	});
 
 	it("honours a custom terminal status from project config", () => {
-		const customStatuses = ["Backlog", "Doing", "Shipped"] as const;
+		const customStatuses = ["Memaster", "Doing", "Shipped"] as const;
 		const tasks = [
 			makeTask("TASK-1", "Doing"),
 			makeTask("TASK-1.1", "Shipped", "TASK-1"),

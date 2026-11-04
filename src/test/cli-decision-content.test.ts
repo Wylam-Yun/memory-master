@@ -3,8 +3,8 @@ import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
-import { BacklogServer } from "../server/index.ts";
+import { Core } from "../core/memaster.ts";
+import { MemasterServer } from "../server/index.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { initializeTestProject } from "./test-utils.ts";
 
@@ -20,7 +20,7 @@ const sectionArgs = Object.entries(sections).flatMap(([key, value]) => [`--${key
 describe("decision CLI content and view", () => {
 	let root: string;
 	let core: Core;
-	let server: BacklogServer | undefined;
+	let server: MemasterServer | undefined;
 
 	beforeEach(async () => {
 		root = await mkdtemp(join(tmpdir(), "decision-cli-content-"));
@@ -137,7 +137,7 @@ describe("decision CLI content and view", () => {
 		expect(JSON.parse((await cli("view", "1", "--json")).stdout.toString()).decision.archived).toBe(true);
 		const refused = await cli("edit", "1", "--context", "Changed");
 		expect(refused.exitCode).toBe(1);
-		expect(refused.stderr.toString()).toContain("backlog decision restore decision-1");
+		expect(refused.stderr.toString()).toContain("memaster decision restore decision-1");
 		expect(await readFile(file, "utf8")).toBe(before);
 	});
 
@@ -161,7 +161,7 @@ describe("decision CLI content and view", () => {
 			expect(result.stderr.toString()).toContain(
 				kind === "missing" ? "not found" : "Decision ID decision-1 is ambiguous",
 			);
-			if (kind === "ambiguous") expect(result.stderr.toString()).toContain("Run 'backlog doctor'");
+			if (kind === "ambiguous") expect(result.stderr.toString()).toContain("Run 'memaster doctor'");
 		}
 		expect(await snapshot()).toEqual(before);
 	});
@@ -182,7 +182,7 @@ describe("decision CLI content and view", () => {
 		expect(
 			(await cli("edit", "1", ...Object.entries(input).flatMap(([key, value]) => [`--${key}`, value]))).exitCode,
 		).toBe(0);
-		server = new BacklogServer(root);
+		server = new MemasterServer(root);
 		await server.start(0, false);
 		const response = await fetch(`http://127.0.0.1:${server.getPort()}/api/decisions/2`, {
 			method: "PUT",
@@ -222,7 +222,7 @@ describe("decision CLI content and view", () => {
 		}
 		const viewHelp = (await cli("view", "--help")).stdout.toString();
 		expect(viewHelp).toContain("--json");
-		expect(viewHelp).toContain("backlog decision view decision-1 --plain");
+		expect(viewHelp).toContain("memaster decision view decision-1 --plain");
 		const instructions = await $`bun ${cliPath} instructions overview`.cwd(root).quiet();
 		for (const command of ["decision create", "decision edit", "decision view"])
 			expect(instructions.stdout.toString()).toContain(command);

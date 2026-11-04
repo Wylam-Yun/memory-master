@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, test } from "bun:test";
 import { mkdir } from "node:fs/promises";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
+import { Core } from "../core/memaster.ts";
 import { AcceptanceCriteriaManager } from "../markdown/structured-sections.ts";
 import { getTestCliPath } from "./test-cli.ts";
 import { createUniqueTestDir, initializeFilesystemTestProject, safeCleanup } from "./test-utils.ts";
@@ -288,7 +288,7 @@ describe("Acceptance Criteria CLI", () => {
 					expect(stderr).toContain(`Malformed ${target.title} markers:`);
 					expect(stderr).toContain(invalid.detail);
 					expect(stderr).toContain("No changes were applied.");
-					expect(stderr).toContain("backlog task view TASK-1 --plain");
+					expect(stderr).toContain("memaster task view TASK-1 --plain");
 					expect(stderr).toContain("repair or remove the malformed marker block");
 					expect(await Bun.file(task.filePath).text()).toBe(before);
 				}
@@ -568,8 +568,8 @@ Test task with acceptance criteria
 				const msg = e.stderr == null ? "" : String(e.stderr);
 				expect(msg).toContain("Acceptance criterion #10 not found");
 				expect(msg).toContain("Available indexes: #1-#3.");
-				expect(msg).toContain("backlog task view TASK-1 --plain");
-				expect(msg).toContain("backlog task edit TASK-1 --help");
+				expect(msg).toContain("memaster task view TASK-1 --plain");
+				expect(msg).toContain("memaster task edit TASK-1 --help");
 			}
 		});
 
@@ -583,8 +583,8 @@ Test task with acceptance criteria
 				const msg = e.stderr == null ? "" : String(e.stderr);
 				expect(msg).toContain("Acceptance criterion #10 not found");
 				expect(msg).toContain("Available indexes: #1-#3.");
-				expect(msg).toContain("backlog task view TASK-1 --plain");
-				expect(msg).toContain("backlog task edit TASK-1 --help");
+				expect(msg).toContain("memaster task view TASK-1 --plain");
+				expect(msg).toContain("memaster task edit TASK-1 --help");
 			}
 		});
 

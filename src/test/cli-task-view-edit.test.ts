@@ -25,7 +25,7 @@ describe("CLI Integration", () => {
 
 	describe("task view command", () => {
 		beforeEach(async () => {
-			// Set up a git repository and initialize backlog
+			// Set up a git repository and initialize memaster
 			await $`git init -b main`.cwd(TEST_DIR).quiet();
 
 			const core = new Core(TEST_DIR);
@@ -143,7 +143,7 @@ describe("CLI Integration", () => {
 			expect(ambiguousOutput).toContain("Task ID TASK-9007199254740992 is ambiguous");
 			expect(ambiguousOutput).toContain("task-9007199254740992 - Huge-target.md");
 			expect(ambiguousOutput).toContain("task-09007199254740992 - Huge-padded-duplicate.md");
-			expect(ambiguousOutput).toContain("backlog doctor");
+			expect(ambiguousOutput).toContain("memaster doctor");
 			expect(ambiguousOutput).not.toContain("Huge neighbor");
 		});
 
@@ -214,7 +214,7 @@ describe("CLI Integration", () => {
 
 	describe("task edit command", () => {
 		beforeEach(async () => {
-			// Set up a git repository and initialize backlog
+			// Set up a git repository and initialize memaster
 			await $`git init -b main`.cwd(TEST_DIR).quiet();
 
 			const core = new Core(TEST_DIR);

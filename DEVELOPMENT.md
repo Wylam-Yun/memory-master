@@ -16,11 +16,11 @@ lock updater uses the pinned Node/npm build tools to download its generator.
 Hosted runner trust during initial action preparation remains the runner
 vendor's responsibility.
 
-The shipped Backlog CLI delegates remote fetches to native Git. Git uses the
-user's certificate, proxy and verification configuration. Backlog does not
+The shipped Memaster CLI delegates remote fetches to native Git. Git uses the
+user's certificate, proxy and verification configuration. Memaster does not
 replace the user's certificate store or impose its own HTTPS-proxy policy.
 These environment settings remain the responsibility of the installed tools;
-Backlog's build and release workflows manage their own download trust.
+Memaster's build and release workflows manage their own download trust.
 
 Run tests:
 
@@ -52,7 +52,7 @@ includes ip-address 10.7.2, affected by
 and Undici 6.29.0, which predates the
 [6.29.1 security fixes](https://github.com/nodejs/undici/releases/tag/v6.29.1).
 These are remaining upstream build-tool advisories. npm is not bundled into
-Backlog's native executable, and Backlog does not impose build-tool versions
+Memaster's native executable, and Memaster does not impose build-tool versions
 on users' Node installations.
 
 ## Standalone Builds
@@ -62,12 +62,12 @@ reduces parsing work at startup, at the cost of a larger executable. Release
 builds use the same settings for every supported target.
 
 For cross compilation, run `node scripts/prepare-bun-runtime.cjs <target>` with
-patched Node first, then set `BACKLOG_BUILD_EXECUTABLE_PATH` to its printed
+patched Node first, then set `MEMASTER_BUILD_EXECUTABLE_PATH` to its printed
 executable path. The helper verifies the official release SHA-256 before
 extracting the target runtime. CI exports this path automatically, keeping
 every target on the same verified Bun release.
 
-Set `BACKLOG_BUILD_OUTDIR` to emit JavaScript and browser assets instead. Nix
+Set `MEMASTER_BUILD_OUTDIR` to emit JavaScript and browser assets instead. Nix
 and integration tests use this bundle path without bytecode compilation.
 
 ## Nix Packaging
@@ -93,8 +93,8 @@ Bun lock format 1; update the existing lock instead of regenerating format 2.
 Validate the package with:
 
 ```bash
-nix build .#backlog-md
-./result/bin/backlog --version
+nix build .#memaster-md
+./result/bin/memaster --version
 nix flake check
 ```
 
@@ -159,25 +159,25 @@ Choose one of the methods below based on your agent:
 **Claude Code (Recommended for Development):**
 ```bash
 # Add to project (creates .mcp.json)
-claude mcp add backlog-dev -- bun run mcp
+claude mcp add memaster-dev -- bun run mcp
 ```
 
 **Codex CLI:**
 ```bash
 # Edit ~/.codex/config.toml
-[mcp_servers.backlog-dev]
+[mcp_servers.memaster-dev]
 command = "bun"
 args = ["run", "mcp"]
 ```
 
 **Gemini CLI:**
 ```bash
-gemini mcp add backlog-dev bun run mcp
+gemini mcp add memaster-dev bun run mcp
 ```
 
 **Kiro CLI:**
 ```bash
-kiro-cli mcp add --scope global --name backlog-dev --command bun --args run,mcp
+kiro-cli mcp add --scope global --name memaster-dev --command bun --args run,mcp
 ```
 
 #### 3. Test the Connection
@@ -199,7 +199,7 @@ Open your agent and test:
 Each AI agent has different configuration requirements. Start the server from your project root and follow the assistant's instructions to register it:
 
 ```bash
-backlog mcp start
+memaster mcp start
 ```
 
 ### Testing with MCP Inspector
@@ -212,11 +212,11 @@ Use the Inspector tooling when you want to exercise the stdio server outside an 
 2. Choose **STDIO** transport.
 3. Fill the connection fields exactly as follows:
    - **Command**: `bun`
-   - **Arguments** (enter each item separately): `--cwd`, `/Users/<you>/Projects/Backlog.md`, `src/cli.ts`, `mcp`, `start`
+   - **Arguments** (enter each item separately): `--cwd`, `/Users/<you>/Projects/Memaster`, `src/cli.ts`, `mcp`, `start`
    - Remove any proxy token; it is not needed for local stdio.
 4. Connect and use the tools/resources panes to issue MCP requests.
 
-> Replace `/Users/<you>/Projects/Backlog.md` with the absolute path to your local Backlog.md checkout.
+> Replace `/Users/<you>/Projects/Memaster` with the absolute path to your local Memaster checkout.
 
 `bun run mcp` by itself prints Bun's `$ bun …` preamble, which breaks the Inspector’s JSON parser. If you prefer using the package script here, add `--silent` so the startup log disappears:
 
@@ -225,7 +225,7 @@ Command: bun
 Arguments: run, --silent, mcp
 ```
 
-> Remember to substitute your own project directory for `/Users/<you>/Projects/Backlog.md`.
+> Remember to substitute your own project directory for `/Users/<you>/Projects/Memaster`.
 
 #### CLI workflow (`npx @modelcontextprotocol/inspector-cli`)
 
@@ -236,7 +236,7 @@ npx @modelcontextprotocol/inspector-cli \
   --cli \
   --transport stdio \
   --method tools/list \
-  -- bun --cwd /Users/<you>/Projects/Backlog.md src/cli.ts mcp start
+  -- bun --cwd /Users/<you>/Projects/Memaster src/cli.ts mcp start
 ```
 
 The key detail in both flows is to call `src/cli.ts mcp start` directly (or `bun run --silent mcp`) so stdout stays pure JSON for the MCP handshake.
@@ -247,7 +247,7 @@ The key detail in both flows is to call `src/cli.ts mcp start` directly (or `bun
 ### Project Structure
 
 ```
-backlog.md/
+memory-master/
 ├── src/
 │   ├── mcp/
 │   │   ├── errors/          # MCP error helpers
@@ -263,7 +263,7 @@ backlog.md/
 
 ## Release
 
-Backlog.md now relies on npm Trusted Publishing with GitHub Actions OIDC. The
+Memaster now relies on npm Trusted Publishing with GitHub Actions OIDC. The
 release workflow builds binaries, publishes all npm packages, and records
 provenance automatically. Follow the steps below to keep the setup healthy.
 
@@ -274,10 +274,10 @@ provenance automatically. Follow the steps below to keep the setup healthy.
   `package.json` files to match the tag, so you do **not** need to edit the
   version field manually.
 - In npm's **Trusted publishers** settings, link the
-  `MrLesk/Backlog.md` repository and the `Release multi-platform executables`
-  workflow for each package: `backlog.md`,
-  `backlog.md-linux-{x64,arm64}`, `backlog.md-darwin-{x64,arm64}`, and
-  `backlog.md-windows-x64`.
+  `Wylam-Yun/memory-master` repository and the `Release multi-platform executables`
+  workflow for each package: `memory-master`,
+  `memory-master-linux-{x64,arm64}`, `memory-master-darwin-{x64,arm64}`, and
+  `memory-master-windows-x64`.
 - Remove the legacy `NODE_AUTH_TOKEN` repository secret. Publishing now uses
   the GitHub-issued OIDC token, so no long-lived npm tokens should remain.
 - The workflow pins Node.js 26.12.1 and npm 12.2.1 for trusted publishing.

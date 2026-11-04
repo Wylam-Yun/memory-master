@@ -2,13 +2,13 @@ const PLATFORM_CONTRACT_FILES = [
 	// Filesystem, paths, locking, identity allocation, and real Git behavior.
 	"src/test/atomic-task-create.test.ts",
 	"src/test/auto-commit.test.ts",
-	"src/test/backlog-directory.test.ts",
+	"src/test/memaster-directory.test.ts",
 	"src/test/code-path.test.ts",
 	"src/test/description-newlines.test.ts",
 	"src/test/docs-recursive.test.ts",
 	"src/test/duplicate-task-repair.test.ts",
 	"src/test/filesystem.test.ts",
-	"src/test/find-backlog-root.test.ts",
+	"src/test/find-memaster-root.test.ts",
 	"src/test/git.test.ts",
 	"src/test/git-certificate-trust.test.ts",
 	"src/test/id-generation.test.ts",
@@ -65,7 +65,7 @@ async function runBunTest(
 		stdin: "inherit",
 		stdout: "inherit",
 		stderr: "inherit",
-		env: options.skipDomPreload ? { ...process.env, BACKLOG_TEST_SKIP_DOM_PRELOAD: "1" } : process.env,
+		env: options.skipDomPreload ? { ...process.env, MEMASTER_TEST_SKIP_DOM_PRELOAD: "1" } : process.env,
 	});
 	return await child.exited;
 }
@@ -87,7 +87,7 @@ const allTestFiles = [...new Bun.Glob("src/**/*.test.{ts,tsx}").scanSync()]
 // after the test run has completed" (BACK-585). A plain single-process
 // `bun test --isolate` run has never shown the failure, so the full profile
 // runs these files in a separate non-parallel pass with the DOM preload, and
-// every other pass skips the preload via BACKLOG_TEST_SKIP_DOM_PRELOAD.
+// every other pass skips the preload via MEMASTER_TEST_SKIP_DOM_PRELOAD.
 // Files are detected by content: anything referencing jsdom, plus
 // react-dom-preload.test.ts, which loads jsdom through react-dom-preload.ts.
 const domTestFiles = new Set<string>(["src/test/react-dom-preload.test.ts"]);

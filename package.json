@@ -9,7 +9,7 @@
     "LICENSE"
   ],
   "bin": {
-    "backlog": "scripts/cli.cjs"
+    "memaster": "scripts/cli.cjs"
   },
   "optionalDependencies": {},
   "devDependencies": {
@@ -75,7 +75,7 @@
     "kanban",
     "task",
     "project-management",
-    "backlog",
+    "memaster",
     "agents"
   ],
   "license": "MIT",

@@ -3,15 +3,15 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { $ } from "bun";
-import { Core } from "../core/backlog.ts";
-import type { BacklogConfig } from "../types/index.ts";
+import { Core } from "../core/memaster.ts";
+import type { MemasterConfig } from "../types/index.ts";
 
 describe("Offline Integration Tests", () => {
 	let tempDir: string;
 	let core: Core;
 
 	beforeEach(async () => {
-		tempDir = await mkdtemp(join(tmpdir(), "backlog-offline-integration-"));
+		tempDir = await mkdtemp(join(tmpdir(), "memaster-offline-integration-"));
 
 		// Initialize a git repo without remote
 		await $`git init`.cwd(tempDir).quiet();
@@ -21,14 +21,14 @@ describe("Offline Integration Tests", () => {
 		await $`git add README.md`.cwd(tempDir).quiet();
 		await $`git commit -m "Initial commit"`.cwd(tempDir).quiet();
 
-		// Create basic backlog structure
-		const backlogDir = join(tempDir, "backlog");
-		await mkdir(backlogDir, { recursive: true });
-		await mkdir(join(backlogDir, "tasks"), { recursive: true });
-		await mkdir(join(backlogDir, "drafts"), { recursive: true });
+		// Create basic memaster structure
+		const memasterDir = join(tempDir, "memaster");
+		await mkdir(memasterDir, { recursive: true });
+		await mkdir(join(memasterDir, "tasks"), { recursive: true });
+		await mkdir(join(memasterDir, "drafts"), { recursive: true });
 
 		// Create config with remote operations disabled
-		const config: BacklogConfig = {
+		const config: MemasterConfig = {
 			projectName: "Offline Test Project",
 			statuses: ["To Do", "In Progress", "Done"],
 			labels: ["bug", "feature"],
@@ -38,13 +38,13 @@ describe("Offline Integration Tests", () => {
 		};
 
 		await writeFile(
-			join(backlogDir, "config.yml"),
+			join(memasterDir, "config.yml"),
 			`project_name: "${config.projectName}"
 statuses: ["To Do", "In Progress", "Done"]
 labels: ["bug", "feature"]
 milestones: []
 date_format: YYYY-MM-DD
-backlog_directory: "backlog"
+memaster_directory: "memaster"
 remote_operations: false
 `,
 		);
@@ -156,7 +156,7 @@ remote_operations: false
 
 		// Simulate config set command
 		if (!initialConfig) throw new Error("Config not loaded");
-		const updatedConfig: BacklogConfig = { ...initialConfig, remoteOperations: true };
+		const updatedConfig: MemasterConfig = { ...initialConfig, remoteOperations: true };
 		await core.filesystem.saveConfig(updatedConfig);
 
 		// Verify config was updated
@@ -165,7 +165,7 @@ remote_operations: false
 
 		// Test changing it back
 		if (!newConfig) throw new Error("Config not loaded");
-		const finalConfig: BacklogConfig = { ...newConfig, remoteOperations: false };
+		const finalConfig: MemasterConfig = { ...newConfig, remoteOperations: false };
 		await core.filesystem.saveConfig(finalConfig);
 
 		const verifyConfig = await core.filesystem.loadConfig();
@@ -174,15 +174,15 @@ remote_operations: false
 
 	it("should migrate existing configs to include remoteOperations", async () => {
 		// Create a config without remoteOperations field
-		const backlogDir = join(tempDir, "backlog");
+		const memasterDir = join(tempDir, "memaster");
 		await writeFile(
-			join(backlogDir, "config.yml"),
+			join(memasterDir, "config.yml"),
 			`project_name: "Legacy Project"
 statuses: ["To Do", "Done"]
 labels: []
 milestones: []
 date_format: YYYY-MM-DD
-backlog_directory: "backlog"
+memaster_directory: "memaster"
 `,
 		);
 

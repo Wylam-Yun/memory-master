@@ -3,7 +3,7 @@ import { readdir, stat } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { FileSystem } from "../file-system/operations.ts";
 import { parseDecision, parseDocument, parseTask } from "../markdown/parser.ts";
-import type { BacklogConfig, Decision, Document, Task, TaskListFilter } from "../types/index.ts";
+import type { Decision, Document, MemasterConfig, Task, TaskListFilter } from "../types/index.ts";
 import { watchConfigFile } from "../utils/config-watcher.ts";
 import { documentIdKey, documentIdsEqual } from "../utils/document-id.ts";
 import { normalizeDocumentRelativePath } from "../utils/document-path.ts";
@@ -28,7 +28,7 @@ export interface TaskCorpusSnapshot {
 	archivedTasks: Task[];
 	identityIndex?: TaskIdentityIndex;
 	branchStateEntries?: BranchTaskStateEntry[];
-	config?: BacklogConfig | null;
+	config?: MemasterConfig | null;
 }
 
 type TaskLoaderResult = Task[] | TaskCorpusSnapshot;
@@ -51,7 +51,7 @@ export type ContentStoreEvent =
 	| { type: "tasks"; tasks: Task[]; snapshot: ContentSnapshot; version: number }
 	| { type: "documents"; documents: Document[]; snapshot: ContentSnapshot; version: number }
 	| { type: "decisions"; decisions: Decision[]; snapshot: ContentSnapshot; version: number }
-	| { type: "config"; config: BacklogConfig; snapshot: ContentSnapshot; version: number };
+	| { type: "config"; config: MemasterConfig; snapshot: ContentSnapshot; version: number };
 
 export type ContentStoreListener = (event: ContentStoreEvent) => void;
 
@@ -120,7 +120,7 @@ export class ContentStore {
 	private archivedTasks: Task[] = [];
 	private taskIdentityIndex?: TaskIdentityIndex;
 	private branchTaskStateEntries: BranchTaskStateEntry[] = [];
-	private taskCorpusConfig: BacklogConfig | null | undefined;
+	private taskCorpusConfig: MemasterConfig | null | undefined;
 	private cachedDocuments: Document[] = [];
 	private cachedDecisions: Decision[] = [];
 
@@ -155,7 +155,7 @@ export class ContentStore {
 	};
 	private readonly pendingTaskPublications = new Map<string, { root: string; task: Task }>();
 	private publishedRoot: string;
-	private boundBacklogDir: string | null = null;
+	private boundMemasterDir: string | null = null;
 	private closed = false;
 	private readonly deferredRechecks = new Map<string, DeferredRecheck>();
 	private taskBatchDepth = 0;
@@ -572,7 +572,7 @@ export class ContentStore {
 		this.emit({ type: "ready", snapshot, version: this.version });
 	}
 
-	private notifyConfig(config: BacklogConfig): void {
+	private notifyConfig(config: MemasterConfig): void {
 		if (this.closed || !this.initialized) {
 			return;
 		}
@@ -591,7 +591,7 @@ export class ContentStore {
 	}
 
 	private currentRoot(): string {
-		return resolve(this.filesystem.backlogDir);
+		return resolve(this.filesystem.memasterDir);
 	}
 
 	private isPublicationOwnerCurrent(owner: PublicationOwner): boolean {
@@ -615,7 +615,7 @@ export class ContentStore {
 				throw new Error("ContentStore has been disposed.");
 			}
 			const owner: PublicationOwner = { root: this.currentRoot() };
-			await this.filesystem.ensureBacklogStructure();
+			await this.filesystem.ensureMemasterStructure();
 			if (!this.isPublicationOwnerCurrent(owner)) {
 				continue;
 			}
@@ -664,7 +664,7 @@ export class ContentStore {
 		if (!this.rootWatchersInitialized) {
 			const epoch = this.rootWatcherEpoch + 1;
 			this.rootWatcherEpoch = epoch;
-			this.boundBacklogDir = this.filesystem.backlogDir;
+			this.boundMemasterDir = this.filesystem.memasterDir;
 			try {
 				await this.bindRootWatchers(epoch);
 			} catch (error) {
@@ -723,13 +723,13 @@ export class ContentStore {
 		});
 	}
 
-	private async handleConfigChanged(config: BacklogConfig, bestEffortWatcherBinding = false): Promise<void> {
+	private async handleConfigChanged(config: MemasterConfig, bestEffortWatcherBinding = false): Promise<void> {
 		if (this.closed) return;
 
-		const nextBacklogDir = resolve(this.filesystem.backlogDir);
-		const transitionOwner: PublicationOwner = { root: nextBacklogDir };
-		const previousBacklogDir = this.boundBacklogDir ? resolve(this.boundBacklogDir) : null;
-		const rootChanged = previousBacklogDir !== null && previousBacklogDir !== nextBacklogDir;
+		const nextMemasterDir = resolve(this.filesystem.memasterDir);
+		const transitionOwner: PublicationOwner = { root: nextMemasterDir };
+		const previousMemasterDir = this.boundMemasterDir ? resolve(this.boundMemasterDir) : null;
+		const rootChanged = previousMemasterDir !== null && previousMemasterDir !== nextMemasterDir;
 		const needsRootWatcher = !this.hasCurrentRootWatchers();
 		let transitionEpoch = this.rootWatcherEpoch;
 
@@ -746,7 +746,7 @@ export class ContentStore {
 			)
 				return;
 
-			await this.filesystem.ensureBacklogStructure();
+			await this.filesystem.ensureMemasterStructure();
 			if (
 				this.closed ||
 				(rootChanged && transitionEpoch !== this.rootWatcherEpoch) ||
@@ -755,7 +755,7 @@ export class ContentStore {
 				return;
 
 			if (rootChanged || needsRootWatcher) {
-				this.boundBacklogDir = nextBacklogDir;
+				this.boundMemasterDir = nextMemasterDir;
 				try {
 					await this.bindRootWatchers(transitionEpoch);
 				} catch (error) {
@@ -835,8 +835,8 @@ export class ContentStore {
 	private hasCurrentRootWatchers(): boolean {
 		return (
 			this.rootWatchersInitialized &&
-			this.boundBacklogDir !== null &&
-			resolve(this.boundBacklogDir) === this.currentRoot()
+			this.boundMemasterDir !== null &&
+			resolve(this.boundMemasterDir) === this.currentRoot()
 		);
 	}
 
@@ -1875,7 +1875,7 @@ export class ContentStore {
 			const projectPath = isAbsolute(path) ? relative(this.filesystem.rootDir, path) : path;
 			return `${canonicalTaskId(id)}\0${normalizeTaskLifecyclePath(
 				projectPath.replaceAll("\\", "/"),
-				this.filesystem.backlogDirName,
+				this.filesystem.memasterDirName,
 			)}`;
 		};
 		const nextIdentities = new Set(

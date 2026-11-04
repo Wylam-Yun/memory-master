@@ -257,7 +257,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 
 			const label = bucket.label || bucket.milestone;
 			const confirmed = window.confirm(
-				`Archive milestone "${label}"? This moves it to backlog/archive/milestones and hides it from the milestones view.`,
+				`Archive milestone "${label}"? This moves it to memaster/archive/milestones and hides it from the milestones view.`,
 			);
 			if (!confirmed) return;
 

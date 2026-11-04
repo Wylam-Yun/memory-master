@@ -38,7 +38,7 @@ export function parseCompletionContext(line: string, point: number): CompletionC
 	// Split into words, handling quotes
 	const words = textBeforeCursor.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
 
-	// Remove "backlog" from the start
+	// Remove "memaster" from the start
 	const cleanWords = words.slice(1);
 
 	// Determine if we're completing a partial word or starting a new one
