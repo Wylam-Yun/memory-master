@@ -45,7 +45,19 @@
 ## 已知边界 / 未做
 
 - `loadLibraryProject` 对坏 config 仍静默跳过该目录（评审 M7 完整版未做）。
-- 双 serve 实例无单实例锁（同端口会失败，改端口双开各自写 settings）。
+- 双 serve 实例无单实例锁：`settings.json` 进程级缓存，双开会互相覆盖外部改动。
+- `service.stop()` 不 drain 在途写：shutdown 期间被放行的挂起写仍可能落盘。
+- `ProjectPage.advance` 推进按钮硬编码 [To Do/In Progress/Done]，未读 config.statuses。
 - `memaster` 需在客户端 PATH（connect 打印的 command 是 `memaster`）；dev 环境可改
   配置为 `bun <repo>/src/cli.ts`。
 - 撤权重检→落盘之间残留 µs 级窗口（评审已接受，文档化）。
+- bridge 10s 超时后服务端写可能已落盘（错误文案已提示"先核查再重试"）。
+
+## 评审修复记录（commit a1dd1c92）
+
+独立 review 发现 4 Major 已修：overview whole-line marker 解析（修子串注入腐蚀）、
+mutating 路由强制 application/json（封 CSRF simple-POST 面）、服务边界拒 Draft
+（demote 旁路绕过 preWrite）、waitForWaiter 让挂起写验收不再是空转通过。
+Minor 已修：缺 overview.md 先建再锁、createProject 自校验防悬挂 ID、拒 `/` 库根、
+字符串强校验、锁冲突→409、settings chmod 前置、bridge 超时文案、IPv6 Host、
+App 瞬断显示重试而非 Setup 页。
