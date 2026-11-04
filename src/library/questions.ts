@@ -1,6 +1,6 @@
 import { mkdir, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { parseFrontmatter } from "../markdown/frontmatter.ts";
+import { parseFrontmatter, stringifyFrontmatter } from "../markdown/frontmatter.ts";
 import type { Actor } from "./history.ts";
 
 /**
@@ -45,21 +45,19 @@ function slugify(title: string): string {
 }
 
 function render(q: ProjectQuestion): string {
-	const fm: Record<string, string> = {
+	// The repo's real frontmatter serializer (gray-matter/js-yaml) — hand-rolled
+	// YAML escaping breaks on backslashes, colons, and multiline values.
+	return stringifyFrontmatter(`${q.detail?.trim() ?? ""}\n`, {
 		id: q.id,
-		title: q.title.replace(/"/g, '\\"'),
+		title: q.title,
 		status: q.status,
 		...(q.task ? { task: q.task } : {}),
 		asked_by: q.askedBy,
 		asked_date: q.askedAt,
-		...(q.answer !== undefined ? { answer: q.answer.replace(/"/g, '\\"') } : {}),
+		...(q.answer !== undefined ? { answer: q.answer } : {}),
 		...(q.answeredBy ? { answered_by: q.answeredBy } : {}),
 		...(q.answeredAt ? { answered_date: q.answeredAt } : {}),
-	};
-	const yaml = Object.entries(fm)
-		.map(([k, v]) => `${k}: "${v}"`)
-		.join("\n");
-	return `---\n${yaml}\n---\n\n${q.detail?.trim() ?? ""}\n`;
+	});
 }
 
 function parseQuestion(content: string, filePath: string): ProjectQuestion | null {

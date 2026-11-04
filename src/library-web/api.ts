@@ -65,7 +65,7 @@ export interface Task {
 export interface HistoryEntry {
 	ts: string;
 	actor: { type: "user" } | { type: "agent"; client: string };
-	target: { type: "project" | "task" | "overview" | "question"; id?: string; title?: string };
+	target: { type: "project" | "task" | "overview" | "question" | "resource"; id?: string; title?: string };
 	action: "create" | "update";
 	changes: Record<string, { from?: string; to?: string }>;
 	version: string;

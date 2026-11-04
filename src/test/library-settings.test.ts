@@ -74,6 +74,7 @@ describe("AppSettingsStore", () => {
 			connection: "configured",
 			installError: null,
 			lastSeenAt: null,
+			setupGeneration: 1,
 		});
 		expect(await restarted.getClient("codex")).toEqual({
 			enabled: false,
@@ -81,6 +82,7 @@ describe("AppSettingsStore", () => {
 			connection: "none",
 			installError: null,
 			lastSeenAt: null,
+			setupGeneration: 0,
 		});
 	});
 

@@ -126,7 +126,9 @@ describe("phase 3+4: questions, resources, client setup", () => {
 		const agentsMd = await readFile(join(clientHome, ".codex", "AGENTS.md"), "utf8");
 		expect(agentsMd).toContain("# 用户自己的 AGENTS");
 		expect(agentsMd).toContain("<!-- memory-master:begin -->");
-		expect(await Bun.file(join(clientHome, ".codex", "skills", "memory-master.md")).exists()).toBe(true);
+		// Codex discovers skills as ~/.agents/skills/<name>/SKILL.md — the flat
+		// .codex/skills/x.md form is never read.
+		expect(await Bun.file(join(clientHome, ".agents", "skills", "memory-master", "SKILL.md")).exists()).toBe(true);
 
 		// Disable → re-enable: managed blocks get replaced, never appended twice.
 		await req("/api/clients/codex", { method: "PUT", body: { enabled: false } });
@@ -137,6 +139,102 @@ describe("phase 3+4: questions, resources, client setup", () => {
 		expect((toml2.match(/>>> memory-master >>>/g) ?? []).length).toBe(1);
 		const agentsMd2 = await readFile(join(clientHome, ".codex", "AGENTS.md"), "utf8");
 		expect((agentsMd2.match(/<!-- memory-master:begin -->/g) ?? []).length).toBe(1);
+	});
+
+	test("a same-name MCP table or corrupted managed block is refused, never duplicated", async () => {
+		// Pre-existing hand-written [mcp_servers.memory-master] — appending ours
+		// would duplicate the table and corrupt the WHOLE Codex config.
+		const tomlPath = join(clientHome, ".codex", "config.toml");
+		await Bun.write(tomlPath, 'model = "gpt-5"\n\n[mcp_servers.memory-master]\ncommand = "old"\n');
+		const refused = await req("/api/clients/codex", { method: "PUT", body: { enabled: true } });
+		expect(refused.status).toBe(502);
+		expect((await json(refused)).installError).toContain("mcp_servers.memory-master");
+		// The file is untouched — still the user's original content.
+		expect(await readFile(tomlPath, "utf8")).toContain('command = "old"');
+		expect(await readFile(tomlPath, "utf8")).not.toContain(">>>");
+
+		// A BEGIN marker without END is a corrupted managed block — refuse too.
+		await Bun.write(
+			tomlPath,
+			'model = "gpt-5"\n\n# >>> memory-master >>>\n[mcp_servers.memory-master]\ncommand = "x"\n',
+		);
+		const corrupt = await req("/api/clients/codex", { method: "PUT", body: { enabled: true } });
+		expect(corrupt.status).toBe(502);
+		expect((await json(corrupt)).installError).toContain("memory-master <<<");
+
+		// After the user cleans up, enable converges and the result parses as TOML.
+		await Bun.write(tomlPath, 'model = "gpt-5"\n');
+		expect((await req("/api/clients/codex", { method: "PUT", body: { enabled: true } })).status).toBe(200);
+		Bun.TOML.parse(await readFile(tomlPath, "utf8"));
+	});
+
+	test("question create parked before commit cannot land after revoke", async () => {
+		const project = await createProject("订单系统");
+		const token = await connectClient("codex");
+		const holds = service.holds;
+
+		const hold = await json(await req("/api/test/holds", { method: "POST", body: { name: "q" } }));
+		const createPromise = req(`/api/agent/projects/${project.id}/questions`, {
+			method: "POST",
+			token,
+			body: { title: "会被撤销的提问" },
+		});
+		await holds.waitForWaiter();
+		expect((await req("/api/clients/codex", { method: "PUT", body: { enabled: false } })).status).toBe(200);
+		await req(`/api/test/holds/${hold.id}`, { method: "DELETE" });
+
+		const res = await createPromise;
+		expect(res.status).toBe(403);
+		// Vetoed create leaves NOTHING on disk and nothing in history.
+		const files = await readdir(join(project.dir, "memaster", "questions")).catch(() => []);
+		expect(files.length).toBe(0);
+		const history = await json(await req(`/api/projects/${project.id}/history`));
+		expect(history.filter((e: { target: { type: string } }) => e.target.type === "question").length).toBe(0);
+	});
+
+	test("upload lands a history entry; corrupt base64 is rejected before decode", async () => {
+		const project = await createProject("订单系统");
+		const bad = await req(`/api/projects/${project.id}/resources`, {
+			method: "POST",
+			body: { name: "x.txt", base64: "!!!not-base64!!!" },
+		});
+		expect(bad.status).toBe(400);
+		expect((await readdir(join(project.dir, "资料"))).length).toBe(0);
+
+		await req(`/api/projects/${project.id}/resources`, {
+			method: "POST",
+			body: { name: "spec.md", base64: Buffer.from("hi").toString("base64") },
+		});
+		const history = await json(await req(`/api/projects/${project.id}/history`));
+		const upload = history.find((e: { target: { type: string } }) => e.target.type === "resource");
+		expect(upload).toBeTruthy();
+		expect(upload.target.id).toBe("spec.md");
+		expect(upload.actor).toEqual({ type: "user" });
+	});
+
+	test("a disable landing mid-install is not undone by the late completion", async () => {
+		// ensureToken bumps the generation; the disable bumps it again — the
+		// install's markConfigured with the stale generation must no-op.
+		const settings = service.settings;
+		const { token, generation } = await settings.ensureToken("codex");
+		expect(token).toMatch(/^mm_codex_/);
+		await settings.setClientEnabled("codex", false);
+		const slot = await settings.markConfigured("codex", generation);
+		expect(slot.enabled).toBe(false);
+	});
+
+	test("titles with backslashes and quotes round-trip through frontmatter", async () => {
+		const project = await createProject("订单系统");
+		const token = await connectClient("codex");
+		const res = await req(`/api/agent/projects/${project.id}/questions`, {
+			method: "POST",
+			token,
+			body: { title: '缓存放 C:\\cache 还是 "默认" 目录？' },
+		});
+		expect(res.status).toBe(201);
+		const list = await json(await req(`/api/projects/${project.id}/questions`));
+		expect(list.length).toBe(1);
+		expect(list[0].title).toBe('缓存放 C:\\cache 还是 "默认" 目录？');
 	});
 
 	test("one client's failed setup is reported and never damages the other", async () => {

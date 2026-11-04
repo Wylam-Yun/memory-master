@@ -153,6 +153,10 @@ const FIELD_LABELS: Record<string, string> = {
 	goal: "目标",
 	current: "当前进展",
 	name: "名称",
+	task: "关联任务",
+	answer: "回答",
+	answered_by: "回答人",
+	size: "大小",
 };
 
 function actorLabel(actor: HistoryEntry["actor"]): string {
@@ -163,6 +167,8 @@ function actorLabel(actor: HistoryEntry["actor"]): string {
 function targetLabel(entry: HistoryEntry): string {
 	if (entry.target.type === "project") return "项目";
 	if (entry.target.type === "overview") return "概览";
+	if (entry.target.type === "question") return `事项 ${entry.target.id ?? ""}`;
+	if (entry.target.type === "resource") return `资料 ${entry.target.id ?? ""}`;
 	return entry.target.id ?? "任务";
 }
 
@@ -478,6 +484,10 @@ function ResourcesSection({
 }) {
 	const [busy, setBusy] = useState(false);
 	const upload = async (file: File) => {
+		if (file.size > 10 * 1024 * 1024) {
+			await onError(new Error(`文件超过 10MB 上限：${file.name}`));
+			return;
+		}
 		setBusy(true);
 		try {
 			const bytes = new Uint8Array(await file.arrayBuffer());
@@ -611,7 +621,11 @@ function SettingsPage({ libraryRoot, reload }: { libraryRoot: string; reload: ()
 									<div>
 										<div className="flex items-center gap-2 text-sm font-medium">
 											{c.label}
-											<span className={`rounded px-2 py-0.5 text-xs ${conn.cls}`}>{conn.text}</span>
+											{c.enabled ? (
+												<span className={`rounded px-2 py-0.5 text-xs ${conn.cls}`}>{conn.text}</span>
+											) : (
+												<span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">已停用</span>
+											)}
 										</div>
 										<div className="font-mono text-xs text-gray-400">{c.token ?? "启用后生成凭据"}</div>
 										{c.lastSeenAt ? (

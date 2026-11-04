@@ -1,5 +1,6 @@
 import { mkdir, readdir, stat } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
+import { RESOURCES_DIR_NAME } from "./registry.ts";
 import { LIBRARY_ERROR_CODES, LibraryError } from "./types.ts";
 
 /**
@@ -9,7 +10,6 @@ import { LIBRARY_ERROR_CODES, LibraryError } from "./types.ts";
  * there is no update path, only upload → list → read.
  */
 
-export const RESOURCE_DIR_NAME = "资料";
 export const MAX_RESOURCE_BYTES = 10 * 1024 * 1024;
 
 export interface ResourceInfo {
@@ -19,13 +19,14 @@ export interface ResourceInfo {
 }
 
 export function resourcesDir(projectDir: string): string {
-	return join(projectDir, RESOURCE_DIR_NAME);
+	return join(projectDir, RESOURCES_DIR_NAME);
 }
 
-/** Names must be plain basenames — no traversal, no hidden files, no nested paths. */
+/** Names must be plain basenames — no traversal, no hidden files, no nested paths, no control chars. */
 export function assertSafeResourceName(name: string): string {
 	const trimmed = name.trim();
-	if (!trimmed || trimmed !== basename(trimmed) || trimmed.startsWith(".")) {
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally rejecting control characters
+	if (!trimmed || trimmed !== basename(trimmed) || trimmed.startsWith(".") || /[\x00-\x1f\x7f]/.test(trimmed)) {
 		throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, `Invalid resource name "${name}".`, 400);
 	}
 	return trimmed;
@@ -42,7 +43,13 @@ export async function saveResource(projectDir: string, name: string, bytes: Uint
 	}
 	const dir = resourcesDir(projectDir);
 	await mkdir(dir, { recursive: true });
-	await Bun.write(join(dir, safe), bytes);
+	const filePath = join(dir, safe);
+	// Never write through a planted symlink — uploads must land inside 资料/.
+	const { lstat } = await import("node:fs/promises");
+	if ((await lstat(filePath).catch(() => null))?.isSymbolicLink()) {
+		throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, `Refusing to overwrite symlinked resource "${safe}".`, 400);
+	}
+	await Bun.write(filePath, bytes);
 	const info = await stat(join(dir, safe));
 	return { name: safe, size: info.size, modifiedAt: info.mtime.toISOString() };
 }
@@ -94,8 +101,10 @@ export interface ResourceContent {
 
 export async function readResource(projectDir: string, name: string): Promise<ResourceContent> {
 	const safe = assertSafeResourceName(name);
-	const file = Bun.file(join(resourcesDir(projectDir), safe));
-	if (!(await file.exists())) {
+	const filePath = join(resourcesDir(projectDir), safe);
+	const info = await stat(filePath).catch(() => null);
+	const file = Bun.file(filePath);
+	if (!info?.isFile() || !(await file.exists())) {
 		throw new LibraryError(LIBRARY_ERROR_CODES.PROJECT_NOT_FOUND, `Resource "${safe}" not found.`, 404);
 	}
 	const bytes = await file.bytes();

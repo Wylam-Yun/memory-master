@@ -80,6 +80,10 @@ Memaster itself. The full task ledger lives in this repo's [memaster folder](mem
 * **Create and manage projects** from the web UI — overview sections (what it is / goal / current progress) and tasks.
 * **Authorize agent clients** in `/settings`: Codex and Claude Code have independent switches and credentials, off by default. Revoking takes effect immediately, including writes already in flight.
 * **Connect an agent**: `memaster connect codex` (or `claude-code`) prints a ready-to-paste `mcpServers` config; the agent talks to the service through `memaster bridge` and can open projects by name from any directory.
+* **One-click client setup**: enabling a client in `/settings` installs its MCP config, a short instruction block, and the collaboration skill into its real config files — existing user config is preserved and re-enabling is idempotent. A client only gains project access after its bridge actually pings the service (`configured` → `connected`, shown per client in the UI).
+* **Pending questions (待决定事项)**: agents raise decisions that need the user (`question_ask`); the web page shows them and the user can answer there — or answer in the dialog and the agent records it. Both paths converge on the same record and history timeline.
+* **Project resources (项目资料)**: upload files into a project's `资料/` directory from the web UI; connected agents list and read them via `resource_list` / `resource_read`. Disabled clients lose even list access.
+* **Versions & history**: every record carries a content-hash version — updates must send `baseVersion` back, conflicts return the latest value. A per-project changelog (`memaster/changelog.jsonl`) attributes each write to the user or a specific agent, and record + history commit atomically.
 
 ---
 

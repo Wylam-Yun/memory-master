@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Server } from "bun";
@@ -612,10 +612,10 @@ export class LibraryService {
 				lastSeenAt: slot.lastSeenAt,
 			});
 		}
-		const token = await this.settings.ensureToken(id);
+		const { token, generation } = await this.settings.ensureToken(id);
 		const install = await installClient(id, { serviceUrl: this.baseUrl(), token });
 		if (!install.ok) {
-			const slot = await this.settings.markInstallFailed(id, install.error ?? "Unknown setup failure.");
+			const slot = await this.settings.markInstallFailed(id, install.error ?? "Unknown setup failure.", generation);
 			return json(
 				{
 					id,
@@ -630,7 +630,7 @@ export class LibraryService {
 				502,
 			);
 		}
-		const slot = await this.settings.markConfigured(id);
+		const slot = await this.settings.markConfigured(id, generation);
 		return json({
 			id,
 			label: LIBRARY_CLIENT_LABELS[id],
@@ -669,14 +669,16 @@ export class LibraryService {
 		const askedBy = actor.type === "user" ? "user" : actor.client;
 
 		return await store.withWriteLock(async () => {
+			// Authorization/stop re-checks fire BEFORE the record lands — a vetoed
+			// create must leave nothing on disk (same contract as tasks/preWrite).
+			await this.holds.waitIfAny();
+			this.assertRunning();
+			if (token !== null) await this.settings.assertAuthorized(token);
 			const question = await createQuestion(
 				project.dir,
 				input as { title: string; task?: string; detail?: string },
 				askedBy,
 			);
-			await this.holds.waitIfAny();
-			this.assertRunning();
-			if (token !== null) await this.settings.assertAuthorized(token);
 			const version = contentVersion(await Bun.file(question.filePath as string).bytes());
 			try {
 				this.holds.throwIfHistoryFailpoint();
@@ -724,12 +726,8 @@ export class LibraryService {
 			const beforeBytes = before.filePath ? await Bun.file(before.filePath).bytes() : null;
 			// Answered is a write-once state — a second answer conflicts rather than overwriting.
 			if (before.status !== "Open") {
-				throw new LibraryError(
-					LIBRARY_ERROR_CODES.VERSION_CONFLICT,
-					`Question "${questionId}" is already answered.`,
-					409,
-					{ current: { ...(before as object), version: contentVersion(beforeBytes ?? new Uint8Array()) } },
-				);
+				const currentVersion = contentVersion(beforeBytes ?? new Uint8Array());
+				throw versionConflictError({ ...before, version: currentVersion }, currentVersion);
 			}
 			await this.holds.waitIfAny();
 			this.assertRunning();
@@ -761,8 +759,9 @@ export class LibraryService {
 
 	private async handleListQuestions(projectId: string, req: Request): Promise<Response> {
 		const project = await this.projectFor(projectId);
-		const status = new URL(req.url).searchParams.get("status");
-		const questions = await listQuestions(project.dir, status === "Open" || status === "Answered" ? status : undefined);
+		const raw = new URL(req.url).searchParams.get("status");
+		const status = raw?.toLowerCase() === "open" ? "Open" : raw?.toLowerCase() === "answered" ? "Answered" : undefined;
+		const questions = await listQuestions(project.dir, status);
 		return json(await Promise.all(questions.map((q) => this.questionWithVersion(q))));
 	}
 
@@ -815,27 +814,54 @@ export class LibraryService {
 		return json(await listResources(project.dir));
 	}
 
-	/** Web upload: JSON {name, base64} — keeps the JSON-only body gate uniform. */
+	/**
+	 * Web upload: JSON {name, base64} — keeps the JSON-only body gate uniform.
+	 * Same write unit as every mutation: project write lock → stop check →
+	 * record write → history append → rollback on history failure.
+	 */
 	private async handleUploadResource(req: Request, projectId: string): Promise<Response> {
 		const project = await this.projectFor(projectId);
+		const store = this.storeFor(project);
 		const body = await parseBody(req);
 		const name = typeof body.name === "string" ? body.name : "";
-		if (typeof body.base64 !== "string") {
-			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "base64 file content is required.", 400);
+		if (typeof body.base64 !== "string" || !/^[A-Za-z0-9+/]*={0,2}$/.test(body.base64)) {
+			throw new LibraryError(
+				LIBRARY_ERROR_CODES.VALIDATION,
+				"base64 file content is required and must be valid base64.",
+				400,
+			);
 		}
-		let bytes: Uint8Array;
-		try {
-			bytes = new Uint8Array(Buffer.from(body.base64, "base64"));
-		} catch {
-			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "base64 content is not decodable.", 400);
-		}
-		const info = await saveResource(project.dir, name, bytes);
-		return json(info, 201);
+		const bytes = new Uint8Array(Buffer.from(body.base64, "base64"));
+
+		return await store.withWriteLock(async () => {
+			await this.holds.waitIfAny();
+			this.assertRunning();
+			const info = await saveResource(project.dir, name, bytes);
+			try {
+				this.holds.throwIfHistoryFailpoint();
+				await appendHistory(project.dir, {
+					ts: new Date().toISOString(),
+					actor: { type: "user" },
+					target: { type: "resource", id: info.name, title: info.name },
+					action: "create",
+					changes: diffFields({}, { name: info.name, size: String(info.size) }),
+					version: "",
+				});
+			} catch (error) {
+				const { unlink } = await import("node:fs/promises");
+				const { resourcesDir } = await import("./resources.ts");
+				await unlink(join(resourcesDir(project.dir), info.name)).catch(() => {});
+				throw error;
+			}
+			return json(info, 201);
+		});
 	}
 
 	private async handleGetResource(projectId: string, name: string): Promise<Response> {
 		const project = await this.projectFor(projectId);
-		return json(await readResource(project.dir, decodeURIComponent(name)));
+		// Bun decodes :param segments already — decoding again would corrupt
+		// names that legitimately contain '%' (e.g. "50%.md").
+		return json(await readResource(project.dir, name));
 	}
 
 	/** The short instructions + skill agents should operate under — one source. */
@@ -909,7 +935,9 @@ export class LibraryService {
 	private requireWebKey(req: Request): void {
 		const header = req.headers.get("authorization") ?? "";
 		const key = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
-		if (key !== this.webKey) {
+		const a = Buffer.from(key);
+		const b = Buffer.from(this.webKey);
+		if (a.length !== b.length || !timingSafeEqual(a, b)) {
 			throw unauthorizedError(
 				"Missing or invalid web access key. Open the keyed URL printed by `memaster serve` (…/?k=…), or paste the key on the entry screen.",
 			);

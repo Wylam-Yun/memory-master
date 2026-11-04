@@ -49,6 +49,15 @@ function assertValidProjectName(name: string): string {
 			400,
 		);
 	}
+	// config.yml is line-based — a newline would inject forged config keys.
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally rejecting control characters
+	if (/[\x00-\x1f\x7f]/.test(trimmed)) {
+		throw new LibraryError(
+			LIBRARY_ERROR_CODES.VALIDATION,
+			`Project name "${name}" cannot contain control characters.`,
+			400,
+		);
+	}
 	return trimmed;
 }
 
@@ -146,6 +155,10 @@ export async function createProject(
 	// Validate the working directory before creating anything, so a bad value
 	// leaves no half-made project directory behind.
 	const workingDirRaw = options.workingDir?.trim() || undefined;
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally rejecting control characters
+	if (workingDirRaw && /[\x00-\x1f\x7f]/.test(workingDirRaw)) {
+		throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Working directory cannot contain control characters.", 400);
+	}
 	const workingDir = workingDirRaw ? resolve(workingDirRaw) : undefined;
 	if (workingDir && !(await isDirectory(workingDir))) {
 		throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, `Working directory "${workingDirRaw}" does not exist.`, 400);

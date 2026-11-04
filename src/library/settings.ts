@@ -110,6 +110,10 @@ export class AppSettingsStore {
 						connection: connection === "configured" || connection === "connected" ? connection : "none",
 						installError: typeof installError === "string" ? installError : null,
 						lastSeenAt: typeof lastSeenAt === "string" ? lastSeenAt : null,
+						setupGeneration:
+							typeof (slot as Record<string, unknown>).setupGeneration === "number"
+								? ((slot as Record<string, unknown>).setupGeneration as number)
+								: 0,
 					};
 				}
 			}
@@ -156,6 +160,9 @@ export class AppSettingsStore {
 	/** Serialize a mutation: fn gets a mutable draft, result is persisted then returned. */
 	private mutate<T>(fn: (draft: LibrarySettings) => T): Promise<T> {
 		const run = this.queue.then(async () => {
+			// Foreign edits (hand edit or another process) must not be silently
+			// overwritten by a draft built from the stale cache.
+			await this.refreshIfChanged();
 			const current = await this.getSettings();
 			const draft: LibrarySettings = structuredClone(current);
 			const result = fn(draft);
@@ -197,6 +204,9 @@ export class AppSettingsStore {
 		return await this.mutate((draft) => {
 			const slot = draft.clients[clientId];
 			slot.enabled = enabled;
+			// Any explicit toggle invalidates an install still in flight — its
+			// completion must not resurrect a state the user already changed.
+			slot.setupGeneration = (slot.setupGeneration ?? 0) + 1;
 			if (enabled && !slot.token) {
 				slot.token = AppSettingsStore.generateToken(clientId);
 			}
@@ -207,30 +217,49 @@ export class AppSettingsStore {
 		});
 	}
 
-	/** Issue (or reuse) a credential for an install attempt; does not enable. */
-	async ensureToken(clientId: LibraryClientId): Promise<string> {
+	/**
+	 * Issue (or reuse) a credential for an install attempt; does not enable.
+	 * Returns the token and a generation number — the install completes with
+	 * markConfigured(generation), which no-ops when a concurrent mutation
+	 * (e.g. a disable landing mid-install) has moved the slot on.
+	 */
+	async ensureToken(clientId: LibraryClientId): Promise<{ token: string; generation: number }> {
 		return await this.mutate((draft) => {
 			const slot = draft.clients[clientId];
 			if (!slot.token) slot.token = AppSettingsStore.generateToken(clientId);
-			return slot.token as string;
+			slot.setupGeneration = (slot.setupGeneration ?? 0) + 1;
+			return { token: slot.token as string, generation: slot.setupGeneration };
 		});
 	}
 
-	/** Install succeeded: enabled + configured, awaiting the client's first contact. */
-	async markConfigured(clientId: LibraryClientId): Promise<ClientSlot> {
+	/**
+	 * Install succeeded: enabled + configured (or kept connected when the slot
+	 * already proved itself — re-installing must not downgrade a live client).
+	 * Ignored if the slot was mutated (disabled/retried) after this attempt began.
+	 */
+	async markConfigured(clientId: LibraryClientId, generation?: number): Promise<ClientSlot> {
 		return await this.mutate((draft) => {
 			const slot = draft.clients[clientId];
+			if (generation !== undefined && slot.setupGeneration !== generation) {
+				return { ...slot };
+			}
+			// Idempotent re-install on a still-enabled slot keeps `connected`;
+			// a disable→enable cycle must re-prove itself with a fresh ping.
+			const wasDisabled = !slot.enabled;
 			slot.enabled = true;
-			slot.connection = "configured";
+			if (wasDisabled || slot.connection !== "connected") slot.connection = "configured";
 			slot.installError = null;
 			return { ...slot };
 		});
 	}
 
 	/** Install failed: stays disabled, records why for the UI's retry affordance. */
-	async markInstallFailed(clientId: LibraryClientId, error: string): Promise<ClientSlot> {
+	async markInstallFailed(clientId: LibraryClientId, error: string, generation?: number): Promise<ClientSlot> {
 		return await this.mutate((draft) => {
 			const slot = draft.clients[clientId];
+			if (generation !== undefined && slot.setupGeneration !== generation) {
+				return { ...slot };
+			}
 			slot.enabled = false;
 			slot.installError = error;
 			return { ...slot };

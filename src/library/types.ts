@@ -39,6 +39,8 @@ export interface ClientSlot {
 	installError: string | null;
 	/** Last successful contact from this client's bridge. */
 	lastSeenAt: string | null;
+	/** Internal: monotonically bumped per install attempt; stale completions are ignored. */
+	setupGeneration?: number;
 }
 
 /** Application settings persisted in <home>/settings.json (independent of project storage). */

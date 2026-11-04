@@ -66,10 +66,33 @@
 
 ## 下一步
 
-1. 派三个独立子 agent 评审 Phase 3+4（安全 / 外部配置集成 / SPEC 符合度）
-2. 用户在真实 Claude Code / Codex 会话里验收：启用 → 打开客户端 → 桥自动 ping →
+1. 用户在真实 Claude Code / Codex 会话里验收：启用 → 打开客户端 → 桥自动 ping →
    设置页变"已连接" → 按名开项目 → 提问 → 网页回答 → agent 读到
-3. Phase 5：macOS DMG 打包（未开始）
+2. Phase 5：macOS DMG 打包（未开始）
+
+## 三方独立评审修复记录（本次）
+
+三份评审（安全 / 客户端集成 / SPEC 符合度）均给出条件结果；全部 Major 已修：
+
+- **question create 顺序**：holds→stopping→授权重检前移到 `createQuestion` 之前——
+  撤权否决的创建不再残留磁盘文件（对齐 task 的 preWrite 契约）。
+- **frontmatter 注入**：`render()` 改走 `stringifyFrontmatter`（真实 js-yaml），
+  反斜杠/换行/冒号不再能破坏或走私字段。
+- **enable↔disable 竞态**：`setupGeneration` 代际守卫——安装中途的 disable
+  使迟到的 markConfigured/markInstallFailed 失效。
+- **re-enable 语义**：停用→再启用回退为 configured 需重新 ping；仍 enabled 的
+  幂等重装保留 connected。
+- **上传写入单元**：包进 withWriteLock + holds + stopping + history + 回滚；
+  history target 增加 "resource"（SPEC §4:75）。
+- **TOML 安全**：marker 块外已有同名表 → 拒绝（防整个 config.toml 重复表头）；
+  BEGIN 无 END → 拒绝；写入前 `Bun.TOML.parse` 验证。
+- **Codex skill 路径**：`~/.codex/skills/x.md`（不读）→ `~/.agents/skills/memory-master/SKILL.md`。
+- **bridgeConfig 编译产物**：script 不存在时退化为 `["bridge"]` 自调用。
+- **小项**：decodeURIComponent 双重解码、base64 死校验改 charset 检查、
+  控制字符拒入项目名/workingDir/资源名、writeAtomic 创建即带 mode、
+  timingSafeEqual 比密钥、mcpServers 类型守卫、上传防 symlink 写穿、
+  资源目录常量去重、SKILL.md 版本措辞、UI 停用徽标与 10MB 预检、
+  `connect codex` 输出 TOML 块。
 
 ## 已知边界 / 未做
 
