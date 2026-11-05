@@ -9,7 +9,7 @@ import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import { LibraryService } from "../library/service.ts";
 import { AppSettingsStore } from "../library/settings.ts";
 import OverviewPage from "../library-web/pages/OverviewPage.tsx";
-import { clearDraft } from "../library-web/components/drafts.ts";
+import { clearDraft, setDraft } from "../library-web/components/drafts.ts";
 import { setNativeInputValue } from "./react-dom-input.ts";
 
 let home: string,
@@ -239,4 +239,64 @@ test("修正归档日期时保留原日期，未知日期不会自动变成今�
 	await flush();
 	await click("修正日期", details);
 	expect(container.querySelector<HTMLInputElement>('form input[type="checkbox"]')?.checked).toBe(true);
+});
+
+test("项目约定在概览按需展开，人与Agent读取同一正文，进展更新不覆盖约定", async () => {
+	await mount();
+	expect(Array.from(container.querySelectorAll("summary")).some((s) => s.textContent === "项目约定")).toBe(false);
+	await click("编辑");
+	await fill("项目约定", "## 已确定的安排\n\n- 网页保持五页，问题在聊天确认。\n- 只使用用户主动选入的资料。");
+	await fill("当前进展", "资料已经整理好，仍需确认参与者能否打开。下一步先核对材料入口。");
+	await click("保存");
+	const o = await snapshot();
+	expect(o.agreements).toContain("网页保持五页");
+	expect(await disk()).toContain(o.agreements);
+	const details = Array.from(container.querySelectorAll("details")).find(
+		(d) => d.querySelector("summary")?.textContent === "项目约定",
+	)!;
+	expect(Boolean(details)).toBe(true);
+	expect(details.open).toBe(false);
+	await act(async () => {
+		details.open = true;
+		await new Promise((r) => setTimeout(r, 25));
+	});
+	expect(details.textContent).toContain("只使用用户主动选入");
+	await click("编辑");
+	await fill("当前进展", "材料入口已核对，参与者已能打开；下一步整理反馈。");
+	await click("保存");
+	expect((await snapshot()).agreements).toBe(o.agreements);
+});
+
+test("旧草稿缺少约定字段时保留已有编辑，并补入当前约定供冲突核对", async () => {
+	const before = await snapshot();
+	expect(
+		(await api("overview", { baseVersion: before.version, agreements: "用户已明确：不增加待决定页面。" }, "PUT"))
+			.status,
+	).toBe(200);
+	setDraft(
+		project.id,
+		"overview",
+		JSON.stringify({
+			baseVersion: before.version,
+			fields: {
+				description: before.description,
+				goal: before.goal,
+				current: "旧草稿里还没保存的详细进展。",
+				features: before.features,
+			},
+		}),
+	);
+	await mount();
+	expect(container.querySelector<HTMLTextAreaElement>('[aria-label="项目约定"]')?.value).toBe(
+		"用户已明确：不增加待决定页面。",
+	);
+	expect(container.querySelector<HTMLTextAreaElement>('[aria-label="当前进展"]')?.value).toBe(
+		"旧草稿里还没保存的详细进展。",
+	);
+	await click("保存");
+	expect(container.textContent).toContain("内容已更新");
+	expect(container.querySelector<HTMLTextAreaElement>('[aria-label="当前进展"]')?.value).toBe(
+		"旧草稿里还没保存的详细进展。",
+	);
+	expect((await snapshot()).agreements).toBe("用户已明确：不增加待决定页面。");
 });

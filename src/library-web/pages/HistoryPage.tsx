@@ -9,6 +9,7 @@ const FIELD_LABELS: Record<string, string> = {
 	status: "状态",
 	description: "描述",
 	goal: "目标",
+	agreements: "项目约定",
 	current: "当前进展",
 	features: "功能与用法",
 	name: "名称",

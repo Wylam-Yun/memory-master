@@ -1,49 +1,39 @@
-# V1.1 方案交接
+# V1.1 当前状态与接手位置
 
-更新时间为 2026-11-05（实施后更新）。
+更新日期：2026-11-05。分支：`feat/v1.1-project-workspace`。动态概览、架构阅读和主题修正已先提交为`79ed3a41`；本轮在该基线上补齐项目约定与接手内容规范。
 
-## 当前状态
+## 已完成
 
-[动态概览改造](DYNAMIC-OVERVIEW.md)已实现：目标独立维护和完成/调整归档，阶段成果记录、修正与分页，精准最新简报，网页及6个新增MCP工具，两端Skill均已接通。104项library测试、类型/格式检查及实际构建程序的HTTP+磁盘+历史验收通过。6421服务已更新，真实两端MCP配置均读到同一份状态；实际页面DOM的折叠历史与完整说明已核对。详见[DYNAMIC-IMPLEMENTATION.md](DYNAMIC-IMPLEMENTATION.md)。
+- 基础R1–R3：概览、任务、项目架构、资料和变更记录五页；资料点文件名阅读，任务P0/P1，两端一键配置与六文件Skill安装包；保留旧接口兼容，不恢复待决定页。
+- 架构阅读：组成表在原位显示职责说明，补充信息按需展开，节点可定位说明，编辑预览一致。项目空间及Markdown保持统一浅色。
+- 动态概览：一句话目标独立创建、完成或调整归档并保留日期；关键成果记录、修正与分页回顾；最新简报整理替换，旧目标原文保留。共享版本、去重、确认、撤权及失败回滚覆盖人和Agent。
+- 项目约定：概览按需保存并展开长期决定、约束和重要排除项，进展重写不覆盖约定；旧文件读取不迁移，旧草稿补齐字段后仍核对冲突。Web与原有overview MCP工具共用同一正文。
+- 接手Skill：要求准确停点、一个可执行下一步、已回答问题、必要材料引用、相关可用Skill及过期状态核对。吸收Jiaojie和Matt handoff规则，固定上游版本并保留完整MIT许可；安装源与本机Codex/Claude Code均已同步。
 
-下一步仍是完整五页视觉验收和真实LLM会话主动接手；未使用computer use，不把程序化或MCP桥接核对说成这些验收已完成。
+详细方案与边界见[项目约定实施记录](AGREEMENTS-HANDOFF-IMPLEMENTATION.md)、[动态概览实施记录](DYNAMIC-IMPLEMENTATION.md)、[架构阅读修正](ARCHITECTURE-READING-FIX.md)。
 
-**R1–R3 已在分支 `feat/v1.1-project-workspace` 实现**（基线 `86f3e07a`），经独立设计评审与独立 code review 两轮修正。R4（真实用户多 Agent 验收）尚未做，需用户在真实环境验收五页、双端 Agent 与安装。
+## 本轮验证结果
 
-已实现：
-- **R1**：概览四节（新「功能与用法」）；任务 P0/P1 优先级（老项目懒迁移补 `priorities:` 配置，读取不改写）；`memaster/architecture.md` 版本化项目架构（web+agent 双通道、乐观并发、首建失败回滚到未创建态）；`GET /api/projects/:id` 元信息（statuses/doneStatus/p0/p1）；web 通道单文件资源读取；MCP `architecture_read`/`architecture_write`、overview_write+features、task_*+priority；问题 API 保留兼容、描述去掉网页承诺。
-- **R2**：`src/library-web/` 重写为五页（概览/任务/项目架构/资料+文件名点击阅读/变更记录）+ 侧栏壳（≥960px）/顶栏菜单（<960px）；任务只显示 P0、勾选写 doneStatus；编辑草稿跨页保留、409 冲突面板；Markdown 渲染沿用 strict mermaid + HTML 文本化。
-- **R3**：`src/library/agent-content/` 六个安装真理源（SKILL+CONTENT-STANDARD+ARCHITECTURE-FORMAT+ARCHITECTURE-SKILL+UPSTREAM+UPSTREAM-LICENSE）；`installSkill` 全量安装（installed=8）；客户端短指令改为七条新规则（不再引导 question_ask，决策在对话内提问）。
+110项library相关测试通过，867条断言；类型、格式、diff检查与实际发行构建通过。测试核对真实HTTP/MCP返回和文件，不只依赖模拟。React异步用例仍有act提示。
 
-独立评审修复要点：历史页改为取最新 N 条（原实现误取最旧）；组成行按 `id||name` 选中；版本与内容单读防 TOCTOU；create 路径优先级迁移前重跑撤权闸；同名资源上传回滚恢复旧字节（原为删除）；资源读取拒绝 symlink；上传按钮可键盘操作。
+构建产物在隔离目录实际运行，核对约定存取、目标归档后约定保留、阶段数据、简报、自动历史及页面脚本返回码。本机6421已重启，两端实际配置的stdio MCP都读到同一约定和版本。项目文件、HTTP、任务完成态、阶段成果与自动历史分别核对一致。真实概览组件连接6421的DOM检查通过：约定默认折叠、展开全文、历史可读、资源为新版。
 
-验证：新增 `src/test/library-v11.test.ts`（16 用例）+ `library-web-helpers.test.ts` 全部黑盒断言磁盘终态/HTTP/MCP；全量 `bun test --timeout=15000` 见提交说明；`bun --check` 595 文件零错；`bun scripts/build.ts` 通过；前端 agent 做过真服务冒烟（全端点实测）。
+memmaster已更新简介以外的相关说明、约定、最新简报、架构和阶段记录；TASK-10完成。此结果只证明已核对的程序化行为。全程未用computer use，未把stdio直连当成真实LLM自主行为验收。
 
-## 下一步
+## 下一步与尚未验证范围
 
-R4 验收：真实 Codex/Claude Code 安装→连接→读写→人+Agent 协同走查（按 SPEC R4 清单）；浏览器人工核对响应式断点与 200% 缩放；DMG 发布后验证属发布期工作。
+1. 优先TASK-2：在Claude Code的新会话打开memmaster并接手一项真实待办，核对能否沿用约定、从实际停点继续、需要时在聊天问用户并主动更新共享进展。Codex和Claude两个真实LLM会话分别核对，不能以一个成功代表另一个。
+2. TASK-3：完整五页、文件阅读与返回、响应式和200%缩放仍待实际浏览器视觉验收。用户已禁止computer use，本轮未执行该类操作。
+3. MCP直接创建项目、macOS安装包与飞书是后续范围。已有工具不支持创建项目时仍从网页创建，不伪造工具。
 
-## 已知验证情况
-
-- 浏览器内逐页点击的人工验收与宽度断点未人工核对（自动冒烟覆盖端点级）。
-- `bun test`（默认 5s 超时）下若干 CLI 子进程/git 测试因环境负载超时——用 `--timeout=15000` 重跑为准；与本次改动无关（未触相关代码）。
+暂无阻止当前交付的阻塞。用户主观认可的目标保持活动状态，不以代码或程序化检查替代用户确认。
 
 ## 环境关键事实
 
-- 实现基线 `86f3e07a` → 分支 `feat/v1.1-project-workspace`。
-- 存储：Markdown 为权威；`memaster/` 下 overview.md（四节标记）、architecture.md、changelog.jsonl、tasks/、`资料/`。
-- 版本契约：写必须带读到的 version；架构缺失文件 version = 空内容哈希。
-- 任务完成态 = config.yml `statuses` 末位（勿硬编码 "Done"）；P0 值经 normalize 为小写 `p0`。
-- `?raw` 导入不可用——Markdown 文本用 `with { type: "text" }`。
-- memaster 板有 TASK-2/3/4 追踪三段实施。
-</content>
+- 服务：`http://127.0.0.1:6421`，启动入口`bun src/cli.ts serve --no-open --port 6421`。应用关闭时不可继续读写。
+- 共享项目：memmaster，ID为`p_b7b809674c`，位于`/Users/wylam/Documents/MemoryMaster/memmaster`；与代码目录独立，写入使用MCP，不手改记忆文件。
+- Markdown为权威。`memaster/overview.md`含原有正文节、按需AGREEMENTS节及TRACKING元数据；另有architecture.md、changelog.jsonl、tasks和用户资料。
+- 每次更新使用刚读到的version；概览、约定、目标、阶段成果共享版本。冲突重读比较后合并。任务完成态以项目配置为准。
+- 两端Skill已安装到`~/.agents/skills/memory-master`和`~/.claude/skills/memory-master`。旧会话可能缓存工具schema，需要重连MCP或新开会话；不自动重启用户聊天。
 
-## 2026-11-05：架构页阅读修正
-
-组成表在原位置显示为一份职责说明，不再与底部折叠列表重复。职责常显，补充信息按需展开；图节点定位并短暂突出说明，编辑预览一致。同步Skill安装源与本机Codex/Claude Code标准，已通过MCP清理memmaster架构里的测试过程文字。
-
-62项相关测试、类型检查、格式检查通过；6421服务已重启，HTTP核对新版资源及真实项目数据，独立核对磁盘和自动变更记录。未使用computer use，浏览器视觉、完整五页及另一真实客户端接手仍不计为已验收。详见[本次修正记录](ARCHITECTURE-READING-FIX.md)。
-
-## 2026-11-05：修正系统深色偏好下的黑底正文
-
-固定浅色的项目空间与自动跟随系统主题的Markdown组件发生冲突。现已在页面与正文组件声明浅色，正文外层和预览层背景透明、文字继承页面，覆盖概览、架构、资料及预览。上一轮漏测的系统深色场景已由加载真实依赖CSS的回归测试覆盖。64项相关测试、类型检查与格式检查通过；6421服务已重启，HTTP核对新的页面、脚本和样式成功。未使用computer use，未进行浏览器视觉验收。
+本轮最终复核采用`79ed3a41`加本轮变更的独立快照，类型检查、110项测试、实际构建及构建程序终态检查通过。工作区另有正在新增客户端接入的改动，本次未合入、未覆盖；上述结果不代表那组尚未完成的改动已验收。

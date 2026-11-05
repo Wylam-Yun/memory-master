@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { diffFields, type HistoryTarget } from "./history.ts";
+import { hasOverviewSectionMarker } from "./overview.ts";
 import { LIBRARY_ERROR_CODES, LibraryError } from "./types.ts";
 
 export type GoalStatus = "active" | "completed" | "adjusted";
@@ -51,7 +52,7 @@ const normalized = (title: string) => title.trim().replace(/\s+/g, " ").toLocale
 function text(value: unknown, field: string, oneLine = false): string {
 	if (typeof value !== "string" || !value.trim()) return invalid(`${field}不能为空。`);
 	if (oneLine && /[\r\n]/.test(value)) return invalid(`${field}请用一句话填写。`);
-	if (/^<!-- SECTION:[A-Z][A-Z0-9_]*:(BEGIN|END) -->$/m.test(value)) return invalid(`${field}包含保留标记。`);
+	if (hasOverviewSectionMarker(value)) return invalid(`${field}包含保留标记。`);
 	return value.trim();
 }
 export function checkFields(input: Record<string, unknown>, allowed: string[]) {

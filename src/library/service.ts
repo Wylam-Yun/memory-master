@@ -10,7 +10,13 @@ import { instructionBlock, SKILL_FILES, SKILL_MD } from "./agent-content.ts";
 import { architectureFilePath } from "./architecture.ts";
 import { installClient } from "./client-setup.ts";
 import { type Actor, appendHistory, contentVersion, diffFields, type HistoryEntry, readHistory } from "./history.ts";
-import { applyOverviewUpdate, initialOverviewContent, overviewFilePath, parseOverviewContent } from "./overview.ts";
+import {
+	applyOverviewUpdate,
+	hasOverviewSectionMarker,
+	initialOverviewContent,
+	overviewFilePath,
+	parseOverviewContent,
+} from "./overview.ts";
 import { ProjectStore, type TaskWriteInput } from "./project-store.ts";
 import { answerQuestion, createQuestion, getQuestion, listQuestions, type ProjectQuestion } from "./questions.ts";
 import { createProject, getProjectById, listProjects, resolveProject } from "./registry.ts";
@@ -30,9 +36,6 @@ import {
 } from "./types.ts";
 
 const SERVICE_HOST = "127.0.0.1";
-
-/** Same sentinel guard tasks get — a marker line inside an overview value would hijack parsing. */
-const SECTION_MARKER_LINE = /^<!-- SECTION:[A-Z][A-Z0-9_]*:(BEGIN|END) -->$/m;
 
 /** The service answers loopback hosts only; anything else is treated as a rebinding attempt. */
 function isLoopbackHost(req: Request): boolean {
@@ -461,11 +464,11 @@ export class LibraryService {
 	private async writeOverview(
 		identity: { token: string; id: LibraryClientId } | null,
 		projectId: string,
-		update: { description?: string; goal?: string; current?: string; features?: string },
+		update: { description?: string; goal?: string; current?: string; features?: string; agreements?: string },
 		baseVersion: string | undefined,
 	): Promise<unknown> {
 		for (const [key, value] of Object.entries(update))
-			if (typeof value === "string" && SECTION_MARKER_LINE.test(value))
+			if (typeof value === "string" && hasOverviewSectionMarker(value))
 				throw new LibraryError(
 					LIBRARY_ERROR_CODES.VALIDATION,
 					`Overview field "${key}" contains a reserved section marker line.`,
@@ -749,8 +752,11 @@ export class LibraryService {
 		identity: { token: string; id: LibraryClientId } | null,
 	): Promise<Response> {
 		const body = await parseBody(req);
-		checkFields(body, ["baseVersion", "description", "goal", "current", "features"]);
+		checkFields(body, ["baseVersion", "description", "goal", "current", "features", "agreements"]);
+		if (body.agreements !== undefined && typeof body.agreements !== "string")
+			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "项目约定必须是正文字符串。", 400);
 		const update = {
+			...(typeof body.agreements === "string" ? { agreements: body.agreements } : {}),
 			...(typeof body.description === "string" ? { description: body.description } : {}),
 			...(typeof body.goal === "string" ? { goal: body.goal } : {}),
 			...(typeof body.current === "string" ? { current: body.current } : {}),
@@ -759,7 +765,7 @@ export class LibraryService {
 		if (Object.keys(update).length === 0) {
 			throw new LibraryError(
 				LIBRARY_ERROR_CODES.VALIDATION,
-				"Nothing to update — send at least one of: description, goal, current, features.",
+				"Nothing to update — send at least one of: description, goal, current, features, agreements.",
 				400,
 			);
 		}

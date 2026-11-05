@@ -140,10 +140,17 @@ export class LibraryBridge {
 				case "overview_read":
 					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/overview`));
 				case "overview_write": {
-					const fields = this.writeArgs(args, ["base_version", "description", "goal", "current", "features"]);
+					const fields = this.writeArgs(args, [
+						"base_version",
+						"description",
+						"goal",
+						"current",
+						"features",
+						"agreements",
+					]);
 					const baseVersion = this.requireBaseVersion(fields);
 					const body: Record<string, unknown> = { baseVersion };
-					for (const key of ["description", "goal", "current", "features"] as const) {
+					for (const key of ["description", "goal", "current", "features", "agreements"] as const) {
 						if (fields[key] !== undefined) body[key] = fields[key];
 					}
 					return ok(
@@ -377,7 +384,7 @@ export class LibraryBridge {
 			{
 				name: "overview_read",
 				description:
-					"Read introduction, legacy goal text, current precise brief, features, active structured goals, archive counts and shared version. Read archived goals/progress with goal_list/progress_list.",
+					"Read introduction, project agreements (confirmed decisions/constraints), legacy goal text, current precise brief, features, active structured goals, archive counts and shared version. Read archived goals/progress with goal_list/progress_list.",
 				inputSchema: { type: "object" as const, properties: {} },
 			},
 			{
@@ -389,6 +396,9 @@ export class LibraryBridge {
 					properties: {
 						base_version: str("The `version` value returned by your last overview_read (required)"),
 						description: str("What the project is"),
+						agreements: str(
+							"Long-lived confirmed project decisions, constraints, answered choices and important do-not-revive paths. Preserve other valid agreements; do not replace with the latest brief or invent decisions.",
+						),
 						goal: str("Legacy goal text only; once structured goals exist use goal_create / goal_update"),
 						current: str(
 							"Replace the latest precise brief, more detailed than a goal; include results, remaining/unverified scope and next step. Never append a chat diary.",

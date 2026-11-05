@@ -11,6 +11,7 @@ export interface LibraryProject {
 }
 
 export interface ProjectOverview {
+	agreements?: string;
 	goals?: Goal[];
 	currentUpdatedAt?: string | null;
 	archiveCounts?: { completed: number; adjusted: number; progress: number };

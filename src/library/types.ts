@@ -65,8 +65,10 @@ export interface LibraryProject {
 	workingDir?: string;
 }
 
-/** The four maintained sections of a project's memaster/overview.md. */
+/** Maintained overview sections, including optional long-lived project agreements. */
 export interface ProjectOverview {
+	/** Long-lived confirmed project decisions and constraints. */
+	agreements: string;
 	description: string;
 	goal: string;
 	current: string;

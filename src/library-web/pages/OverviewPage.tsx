@@ -7,9 +7,10 @@ import { Goals, StageProgress, dateLabel } from "../components/GoalProgress.tsx"
 import Markdown from "../components/Markdown.tsx";
 import { ErrorNote, LoadingNote, SuccessNote } from "../components/StatusMessage.tsx";
 
-/** 阅读顺序：简介 → 当前进展 → 目标 → 功能与用法。 */
+/** 阅读顺序：简介 → 项目约定（按需）→ 当前进展 → 目标 → 功能与用法。 */
 const SECTIONS = [
 	{ key: "description", label: "简介" },
+	{ key: "agreements", label: "项目约定" },
 	{ key: "current", label: "当前进展" },
 	{ key: "goal", label: "目标" },
 	{ key: "features", label: "功能与用法" },
@@ -21,7 +22,13 @@ type Fields = Record<FieldKey, string>;
 const DRAFT_WHICH = "overview";
 
 function fieldsOf(o: ProjectOverview): Fields {
-	return { description: o.description, current: o.current, goal: o.goal, features: o.features };
+	return {
+		agreements: o.agreements ?? "",
+		description: o.description,
+		current: o.current,
+		goal: o.goal,
+		features: o.features,
+	};
 }
 
 interface DraftShape {
@@ -80,6 +87,15 @@ function OverviewInner({ project }: { project: { id: string } }) {
 			.then((fresh) => {
 				// 恢复的草稿基于旧版本 → 提示有新内容，供比较入口使用。
 				const edit = editingRef.current;
+				// In-memory drafts from older versions lack this field. Keep their edits and old base version.
+				if (edit && edit.fields.agreements === undefined) {
+					const expanded = {
+						...edit,
+						fields: { ...fieldsOf(fresh), ...edit.fields, agreements: fresh.agreements ?? "" },
+					};
+					setDraft(projectId, DRAFT_WHICH, JSON.stringify(expanded));
+					setEditing(expanded);
+				}
 				if (edit && fresh.version !== edit.baseVersion) setNewer(fresh);
 			})
 			.catch(setLoadError);
@@ -298,7 +314,20 @@ function OverviewInner({ project }: { project: { id: string } }) {
 					{SECTIONS.map(({ key, label }) => {
 						if (key === "goal")
 							return <Goals key={key} projectId={projectId} overview={overview} onChanged={refreshTracking} />;
-						const body = overview[key];
+						const body = overview[key] ?? "";
+						if (key === "agreements")
+							return body.trim() ? (
+								<section key={key} className="mb-8">
+									<details>
+										<summary className="w-fit cursor-pointer py-2 text-[20px] font-semibold leading-7">
+											项目约定
+										</summary>
+										<div className="mt-3 text-[16px] leading-7">
+											<Markdown source={body} />
+										</div>
+									</details>
+								</section>
+							) : null;
 						return (
 							<section key={key} className="mb-8">
 								<div className="mb-3 flex flex-wrap items-baseline gap-3">

@@ -4,7 +4,7 @@ import type { ProjectOverview } from "./types.ts";
 /**
  * Project overview persistence.
  *
- * Each library project keeps its overview in `memaster/overview.md`: four
+ * Each library project keeps its overview in `memaster/overview.md`: maintained
  * sections using the same `<!-- SECTION:NAME:BEGIN/END -->` marker convention
  * as task files. The file is the authoritative record of what the project is,
  * what it should achieve, where it currently stands, and what it offers.
@@ -12,9 +12,8 @@ import type { ProjectOverview } from "./types.ts";
 
 export const OVERVIEW_FILE_NAME = "overview.md";
 
-// FEATURES trails the array so applyOverviewUpdate appends the missing section
-// at the end of older three-section files — no rewrite of untouched content.
-export const OVERVIEW_SECTION_KEYS = ["DESCRIPTION", "GOAL", "CURRENT", "FEATURES"] as const;
+// New optional sections trail the array so older files preserve untouched content.
+export const OVERVIEW_SECTION_KEYS = ["DESCRIPTION", "GOAL", "CURRENT", "FEATURES", "AGREEMENTS"] as const;
 export type OverviewSectionKey = (typeof OVERVIEW_SECTION_KEYS)[number];
 
 const SECTION_HEADINGS: Record<OverviewSectionKey, string> = {
@@ -22,6 +21,7 @@ const SECTION_HEADINGS: Record<OverviewSectionKey, string> = {
 	GOAL: "目标",
 	CURRENT: "当前进展",
 	FEATURES: "功能与用法",
+	AGREEMENTS: "项目约定",
 };
 
 const SECTION_FIELD: Record<OverviewSectionKey, keyof ProjectOverview> = {
@@ -29,6 +29,7 @@ const SECTION_FIELD: Record<OverviewSectionKey, keyof ProjectOverview> = {
 	GOAL: "goal",
 	CURRENT: "current",
 	FEATURES: "features",
+	AGREEMENTS: "agreements",
 };
 
 function beginMarker(key: OverviewSectionKey): string {
@@ -41,6 +42,11 @@ function endMarker(key: OverviewSectionKey): string {
 
 export function overviewFilePath(projectDir: string): string {
 	return join(projectDir, "memaster", OVERVIEW_FILE_NAME);
+}
+
+/** Match the same trimmed whole lines that section parsing recognizes. */
+export function hasOverviewSectionMarker(value: string): boolean {
+	return value.split("\n").some((line) => /^<!-- SECTION:[A-Z][A-Z0-9_]*:(BEGIN|END) -->$/.test(line.trim()));
 }
 
 /** Initial overview content for a freshly created project. */
@@ -88,9 +94,10 @@ function extractSection(content: string, key: OverviewSectionKey): string {
 		.trim();
 }
 
-/** Parse the four maintained sections out of file text; missing sections yield "". */
+/** Parse the maintained sections out of file text; missing sections yield "". */
 export function parseOverviewContent(content: string): ProjectOverview {
 	return {
+		agreements: extractSection(content, "AGREEMENTS"),
 		description: extractSection(content, "DESCRIPTION"),
 		goal: extractSection(content, "GOAL"),
 		current: extractSection(content, "CURRENT"),
@@ -98,7 +105,7 @@ export function parseOverviewContent(content: string): ProjectOverview {
 	};
 }
 
-/** Read the four maintained sections; a missing or partial file yields empty strings. */
+/** Read the maintained sections; a missing or partial file yields empty strings. */
 export async function readOverview(projectDir: string): Promise<ProjectOverview> {
 	const file = Bun.file(overviewFilePath(projectDir));
 	const content = (await file.exists()) ? await file.text() : "";
@@ -119,6 +126,8 @@ export function applyOverviewUpdate(content: string, update: Partial<ProjectOver
 		const start = findMarkerLine(lines, beginMarker(key));
 		const stop = start === -1 ? -1 : findMarkerLine(lines, endMarker(key), start + 1);
 		if (stop === -1) {
+			// Old clients and unrelated edits do not migrate a missing, empty agreement section.
+			if (key === "AGREEMENTS" && !value.trim()) continue;
 			// Section missing entirely: append it in the canonical order at the end.
 			next = `${next.trimEnd()}\n\n${renderOverviewSection(key, value)}\n`;
 			continue;
