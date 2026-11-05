@@ -21,4 +21,4 @@
 
 memmaster通过MCP更新了当前进展、功能用法、约定与架构，记录一条本轮关键成果；TASK-3保持进行中，完整视觉体验继续跟进。独立核对HTTP200、真实Markdown、阶段记录与自动历史一致。
 
-查看：http://127.0.0.1:6421/projects/p_b7b809674c/progress 及/features。代码在工作区未提交。未使用computer use，未将DOM/HTTP结果当作浏览器像素、窄屏或缩放验收；下一步是用户查看阅读效果后继续调整。
+查看：http://127.0.0.1:6421/projects/p_b7b809674c/progress 及/features。相关代码已保存为fa8c9eee并合入本机main，见[主干合并记录](MERGE-TO-MAIN.md)。未使用computer use，未将DOM/HTTP结果当作浏览器像素、窄屏或缩放验收；下一步是用户查看阅读效果后继续调整。
