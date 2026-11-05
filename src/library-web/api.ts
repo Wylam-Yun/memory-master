@@ -96,9 +96,11 @@ export interface ResourceInfo {
 export type ClientConnection = "none" | "configured" | "connected";
 
 export interface ClientSlotInfo {
-	id: "codex" | "claude-code";
+	id: string;
 	label: string;
 	enabled: boolean;
+	/** The harness's config/binary paths were found on this machine. */
+	detected: boolean;
 	token: string | null;
 	connection: ClientConnection;
 	installError: string | null;

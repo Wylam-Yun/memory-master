@@ -8,8 +8,12 @@
  * per-client authorization) live outside project storage in settings.json.
  */
 
-/** Agent client slots with independent authorization switches. */
-export const LIBRARY_CLIENT_IDS = ["codex", "claude-code"] as const;
+/**
+ * Agent client slots with independent authorization switches. Every entry
+ * must have a label below, a token prefix in settings.ts, and a ClientFiles
+ * record in client-setup.ts — tests assert the maps stay in sync.
+ */
+export const LIBRARY_CLIENT_IDS = ["codex", "claude-code", "devin", "cursor", "opencode", "hermes", "dsh"] as const;
 export type LibraryClientId = (typeof LIBRARY_CLIENT_IDS)[number];
 
 export function isLibraryClientId(value: string): value is LibraryClientId {
@@ -19,6 +23,11 @@ export function isLibraryClientId(value: string): value is LibraryClientId {
 export const LIBRARY_CLIENT_LABELS: Record<LibraryClientId, string> = {
 	codex: "Codex",
 	"claude-code": "Claude Code",
+	devin: "Devin",
+	cursor: "Cursor",
+	opencode: "OpenCode",
+	hermes: "Hermes",
+	dsh: "DeepSeek Harness",
 };
 
 /**

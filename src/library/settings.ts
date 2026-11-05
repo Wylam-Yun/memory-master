@@ -17,6 +17,11 @@ const DEFAULT_SERVICE_PORT = 6420;
 const TOKEN_PREFIXES: Record<LibraryClientId, string> = {
 	codex: "mm_codex",
 	"claude-code": "mm_claude",
+	devin: "mm_devin",
+	cursor: "mm_cursor",
+	opencode: "mm_opencode",
+	hermes: "mm_hermes",
+	dsh: "mm_dsh",
 };
 
 /**

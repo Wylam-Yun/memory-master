@@ -6310,7 +6310,9 @@ program
 // Connect command — prints a ready-to-use MCP client configuration
 program
 	.command("connect <client>")
-	.description("print the MCP client configuration for a client (codex | claude-code)")
+	.description(
+		"print the MCP client configuration for a client (codex | claude-code | devin | cursor | opencode | hermes | dsh)",
+	)
 	.action(async (client: string) => {
 		try {
 			const { AppSettingsStore } = await import("./library/settings.ts");
@@ -6328,21 +6330,11 @@ program
 				);
 				process.exit(1);
 			}
-			const { bridgeConfig, codexTomlBlock } = await import("./library/client-setup.ts");
+			const { bridgeConfig, connectSnippet } = await import("./library/client-setup.ts");
 			const spec = bridgeConfig(`http://127.0.0.1:${await settings.getPort()}`, slot.token);
-			if (client === "codex") {
-				// Codex config is TOML — print the same managed block the installer writes.
-				console.log(codexTomlBlock(spec));
-			} else {
-				const config = {
-					mcpServers: {
-						// Same spec the auto-installer writes — an absolute runtime +
-						// script pair, so nothing depends on `memaster` being on PATH.
-						"memory-master": spec,
-					},
-				};
-				console.log(JSON.stringify(config, null, 2));
-			}
+			// Same spec the auto-installer writes — an absolute runtime + script
+			// pair, so nothing depends on `memaster` being on PATH.
+			console.log(connectSnippet(client, spec));
 			if (!slot.enabled) {
 				console.error(
 					`\nNote: ${LIBRARY_CLIENT_LABELS[client]} is currently disabled — enable it in settings before use.`,

@@ -142,6 +142,11 @@ export default function SettingsPage({ libraryRoot, reload }: { libraryRoot: str
 													MCP 服务列表里 memory-master 是否报错。
 												</p>
 											) : null}
+											{!c.detected ? (
+												<p className="mt-1 text-[14px] leading-[22px] text-[#88550D]">
+													本机未检测到 {c.label} 的配置目录或程序 —— 安装后再启用。
+												</p>
+											) : null}
 											{c.installError ? (
 												<div className="mt-2">
 													<ErrorNote

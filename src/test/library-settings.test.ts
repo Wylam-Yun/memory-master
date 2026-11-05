@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AppSettingsStore } from "../library/settings.ts";
-import { LIBRARY_ERROR_CODES, LibraryError } from "../library/types.ts";
+import { LIBRARY_CLIENT_IDS, LIBRARY_ERROR_CODES, LibraryError } from "../library/types.ts";
 
 let home: string;
 
@@ -22,20 +22,15 @@ describe("AppSettingsStore", () => {
 
 		expect(settings.libraryRoot).toBeNull();
 		expect(settings.port).toBe(6420);
-		expect(settings.clients.codex).toEqual({
-			enabled: false,
-			token: null,
-			connection: "none",
-			installError: null,
-			lastSeenAt: null,
-		});
-		expect(settings.clients["claude-code"]).toEqual({
-			enabled: false,
-			token: null,
-			connection: "none",
-			installError: null,
-			lastSeenAt: null,
-		});
+		for (const id of LIBRARY_CLIENT_IDS) {
+			expect(settings.clients[id]).toEqual({
+				enabled: false,
+				token: null,
+				connection: "none",
+				installError: null,
+				lastSeenAt: null,
+			});
+		}
 	});
 
 	it("persists library root and port across instances (service restart)", async () => {
@@ -89,8 +84,9 @@ describe("AppSettingsStore", () => {
 	it("resolves tokens to clients and enforces the current enabled state", async () => {
 		const store = new AppSettingsStore(home);
 		const { token } = await store.setClientEnabled("codex", true);
+		if (!token) throw new Error("expected a token on enable");
 
-		expect(await store.resolveToken(token!)).toBe("codex");
+		expect(await store.resolveToken(token)).toBe("codex");
 		expect(await store.resolveToken("mm_codex_wrong")).toBeNull();
 		// Enabled + configured is not yet authorized — the client must connect first.
 		expect(await store.isAuthorized(token)).toBe(false);
@@ -102,7 +98,7 @@ describe("AppSettingsStore", () => {
 		// Revocation takes effect on the very next check — the same credential is refused.
 		await store.setClientEnabled("codex", false);
 		expect(await store.isAuthorized(token)).toBe(false);
-		expect(await store.resolveToken(token!)).toBe("codex"); // still identifies, just not authorized
+		expect(await store.resolveToken(token)).toBe("codex"); // still identifies, just not authorized
 	});
 
 	it("assertAuthorized distinguishes unknown credentials from disabled clients", async () => {

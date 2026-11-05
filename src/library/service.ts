@@ -8,7 +8,7 @@ import type { Task } from "../types/index.ts";
 import { getVersion } from "../utils/version.ts";
 import { instructionBlock, SKILL_FILES, SKILL_MD } from "./agent-content.ts";
 import { architectureFilePath } from "./architecture.ts";
-import { installClient } from "./client-setup.ts";
+import { clientDetected, installClient } from "./client-setup.ts";
 import { type Actor, appendHistory, contentVersion, diffFields, type HistoryEntry, readHistory } from "./history.ts";
 import {
 	applyOverviewUpdate,
@@ -843,6 +843,7 @@ export class LibraryService {
 					id,
 					label: LIBRARY_CLIENT_LABELS[id],
 					enabled: slot.enabled,
+					detected: clientDetected(id),
 					token: slot.token,
 					connection: slot.connection,
 					installError: slot.installError,
