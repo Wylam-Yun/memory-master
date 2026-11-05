@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { Link, NavLink, Outlet, useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate, useOutletContext, useParams } from "react-router-dom";
 import type { LibraryProject } from "../api.ts";
+import { isOverviewPage } from "../overview-pages.ts";
 
 const NAV_ITEMS = [
 	{ to: ".", label: "概览", end: true },
@@ -118,19 +119,28 @@ function Dropdown({
 }
 
 function ProjectNav({ onNavigate }: { onNavigate?: () => void }) {
+	const { id = "" } = useParams();
+	const { pathname } = useLocation();
+	const overviewActive = isOverviewPage(id, pathname);
 	return (
 		<nav className="flex flex-col gap-0.5" aria-label="项目导航">
-			{NAV_ITEMS.map((item) => (
-				<NavLink
-					key={item.label}
-					to={item.to}
-					end={"end" in item && item.end}
-					className={navLinkClass}
-					onClick={onNavigate}
-				>
-					{item.label}
-				</NavLink>
-			))}
+			{NAV_ITEMS.map((item) =>
+				item.to === "." ? (
+					<Link
+						key={item.label}
+						to="."
+						className={navLinkClass({ isActive: overviewActive })}
+						aria-current={overviewActive ? "page" : undefined}
+						onClick={onNavigate}
+					>
+						概览
+					</Link>
+				) : (
+					<NavLink key={item.label} to={item.to} className={navLinkClass} onClick={onNavigate}>
+						{item.label}
+					</NavLink>
+				),
+			)}
 		</nav>
 	);
 }
@@ -164,9 +174,7 @@ export default function AppShell({ projects }: { projects: LibraryProject[] }) {
 							key={p.id}
 							type="button"
 							className={`block w-full px-3 py-2 text-left text-[15px] leading-6 ${
-								p.id === project.id
-									? "bg-[#EEF2FF] font-medium text-[#3B57D0]"
-									: "text-[#202124] hover:bg-[#EEF2FF]/60"
+								p.id === project.id ? "bg-[#EEF2FF] font-medium text-[#3B57D0]" : "text-[#202124] hover:bg-[#EEF2FF]/60"
 							}`}
 							onClick={() => {
 								close();

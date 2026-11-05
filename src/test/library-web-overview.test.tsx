@@ -5,10 +5,10 @@ import { join } from "node:path";
 import { JSDOM } from "jsdom";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
+
 import { LibraryService } from "../library/service.ts";
 import { AppSettingsStore } from "../library/settings.ts";
-import OverviewPage from "../library-web/pages/OverviewPage.tsx";
+import App from "../library-web/App.tsx";
 import { clearDraft, setDraft } from "../library-web/components/drafts.ts";
 import { setNativeInputValue } from "./react-dom-input.ts";
 
@@ -91,7 +91,16 @@ beforeEach(async () => {
 });
 afterEach(async () => {
 	await act(async () => root.unmount());
-	for (const key of ["overview", "dynamic:goals", "dynamic:progress"]) clearDraft(project.id, key);
+	for (const key of [
+		"overview",
+		"overview:description",
+		"overview:current",
+		"overview:features",
+		"overview:agreements",
+		"dynamic:goals",
+		"dynamic:progress",
+	])
+		clearDraft(project.id, key);
 	dom.window.close();
 	globalThis.fetch = nativeFetch;
 	for (const [key, descriptor] of saved) {
@@ -102,19 +111,30 @@ afterEach(async () => {
 	await service.stop();
 	await rm(home, { recursive: true, force: true });
 });
-async function mount() {
-	await act(async () =>
-		root.render(
-			<MemoryRouter>
-				<Routes>
-					<Route element={<Outlet context={{ project }} />}>
-						<Route path="/" element={<OverviewPage />} />
-					</Route>
-				</Routes>
-			</MemoryRouter>,
-		),
+async function mount(page = "progress") {
+	dom.window.history.replaceState({}, "", `/projects/${project.id}${page ? `/${page}` : ""}`);
+	await act(async () => root.render(<App />));
+	for (
+		let i = 0;
+		i < 60 &&
+		!Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "编辑" || b.textContent === "保存");
+		i++
+	)
+		await flush();
+}
+async function navigate(label: string) {
+	const link = Array.from(container.querySelectorAll<HTMLAnchorElement>('[aria-label="概览页面"] a')).find(
+		(a) => a.textContent === label,
 	);
-	await flush();
+	if (!link) throw new Error(`Page link missing: ${label}`);
+	await act(async () => link.click());
+	for (
+		let i = 0;
+		i < 60 &&
+		!Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "编辑" || b.textContent === "保存");
+		i++
+	)
+		await flush();
 }
 
 test("人在概览创建目标、完成并展开归档，服务器文件确实改变", async () => {
@@ -183,6 +203,14 @@ test("关键阶段的详细成果能保存与修正，归档只在展开时读�
 	await click("显示更多", details);
 	expect(details.querySelectorAll("article").length).toBe(22);
 	const article = Array.from(details.querySelectorAll("article")).find((e) => e.textContent?.includes("完成首次交流"))!;
+	expect(article.textContent).not.toContain("参与者完成主题讨论");
+	const record = article.querySelector("details")!;
+	expect(record.open).toBe(false);
+	await act(async () => {
+		record.open = true;
+	});
+	await flush();
+	expect(article.textContent).toContain("参与者完成主题讨论");
 	await click("修正记录", article);
 	await fill("成果说明", "交流完成后，阅读材料与主题讨论记录均已发给参与者。");
 	await click("保存");
@@ -241,33 +269,25 @@ test("修正归档日期时保留原日期，未知日期不会自动变成今�
 	expect(container.querySelector<HTMLInputElement>('form input[type="checkbox"]')?.checked).toBe(true);
 });
 
-test("项目约定在概览按需展开，人与Agent读取同一正文，进展更新不覆盖约定", async () => {
-	await mount();
-	expect(Array.from(container.querySelectorAll("summary")).some((s) => s.textContent === "项目约定")).toBe(false);
+test("项目约定独立完整阅读，单页编辑与进展更新均保存到同一正文", async () => {
+	await mount("agreements");
 	await click("编辑");
-	await fill("项目约定", "## 已确定的安排\n\n- 网页保持五页，问题在聊天确认。\n- 只使用用户主动选入的资料。");
-	await fill("当前进展", "资料已经整理好，仍需确认参与者能否打开。下一步先核对材料入口。");
+	await fill("项目约定", "## 已确定的安排\n\n- 网页保持五个一级入口，问题在聊天确认。\n- 只使用用户主动选入的资料。");
+	expect(container.querySelector('[aria-label="当前进展"]')).toBeNull();
 	await click("保存");
 	const o = await snapshot();
-	expect(o.agreements).toContain("网页保持五页");
+	expect(o.agreements).toContain("五个一级入口");
 	expect(await disk()).toContain(o.agreements);
-	const details = Array.from(container.querySelectorAll("details")).find(
-		(d) => d.querySelector("summary")?.textContent === "项目约定",
-	)!;
-	expect(Boolean(details)).toBe(true);
-	expect(details.open).toBe(false);
-	await act(async () => {
-		details.open = true;
-		await new Promise((r) => setTimeout(r, 25));
-	});
-	expect(details.textContent).toContain("只使用用户主动选入");
+	expect(container.querySelector("details")).toBeNull();
+	expect(container.textContent).toContain("只使用用户主动选入");
+	await navigate("进展与目标");
 	await click("编辑");
 	await fill("当前进展", "材料入口已核对，参与者已能打开；下一步整理反馈。");
 	await click("保存");
 	expect((await snapshot()).agreements).toBe(o.agreements);
 });
 
-test("旧草稿缺少约定字段时保留已有编辑，并补入当前约定供冲突核对", async () => {
+test("旧草稿分到对应页面，进展冲突保留输入并保持最新约定", async () => {
 	const before = await snapshot();
 	expect(
 		(await api("overview", { baseVersion: before.version, agreements: "用户已明确：不增加待决定页面。" }, "PUT"))
@@ -287,9 +307,7 @@ test("旧草稿缺少约定字段时保留已有编辑，并补入当前约定�
 		}),
 	);
 	await mount();
-	expect(container.querySelector<HTMLTextAreaElement>('[aria-label="项目约定"]')?.value).toBe(
-		"用户已明确：不增加待决定页面。",
-	);
+	expect(container.querySelector('[aria-label="项目约定"]')).toBeNull();
 	expect(container.querySelector<HTMLTextAreaElement>('[aria-label="当前进展"]')?.value).toBe(
 		"旧草稿里还没保存的详细进展。",
 	);
@@ -299,4 +317,146 @@ test("旧草稿缺少约定字段时保留已有编辑，并补入当前约定�
 		"旧草稿里还没保存的详细进展。",
 	);
 	expect((await snapshot()).agreements).toBe("用户已明确：不增加待决定页面。");
+});
+
+test("默认完整简介与四个真实地址隔离正文，刷新直达仍选中概览", async () => {
+	const o = await snapshot();
+	const intro = "读书会为第一次参与的读者提供完整背景。".repeat(12);
+	expect(
+		(
+			await api(
+				"overview",
+				{
+					baseVersion: o.version,
+					description: intro,
+					current: "当前专属进展正文",
+					features: "### 阅读材料\n用法专属步骤正文",
+					agreements: "约定专属正文",
+				},
+				"PUT",
+			)
+		).status,
+	).toBe(200);
+	await mount("");
+	expect(container.textContent).toContain(intro);
+	expect(container.textContent).not.toContain("当前专属进展正文");
+	expect(container.textContent).not.toContain("用法专属步骤正文");
+	const sidebar = container.querySelector('[aria-label="项目导航"]');
+	expect(sidebar?.querySelector('[aria-current="page"]')?.textContent).toBe("概览");
+	for (const [label, path, body, absent] of [
+		["进展与目标", "progress", "当前专属进展正文", intro],
+		["功能与用法", "features", "用法专属步骤正文", "当前专属进展正文"],
+		["项目约定", "agreements", "约定专属正文", "用法专属步骤正文"],
+		["项目简介", "", intro, "约定专属正文"],
+	]) {
+		await navigate(label!);
+		expect(dom.window.location.pathname).toBe(`/projects/${project.id}${path ? `/${path}` : ""}`);
+		expect(container.textContent).toContain(body!);
+		expect(container.textContent).not.toContain(absent!);
+		expect(container.querySelector('[aria-label="项目导航"] [aria-current="page"]')?.textContent).toBe("概览");
+	}
+	await act(async () => root.unmount());
+	root = createRoot(container);
+	await mount("features");
+	expect(container.querySelector("h1")?.textContent).toBe("功能与用法");
+	expect(container.textContent).toContain("用法专属步骤正文");
+});
+
+test("切页保留各自草稿，单页覆盖冲突不会覆盖其他页新内容", async () => {
+	const original = await snapshot();
+	await mount("");
+	await click("编辑");
+	await fill("项目简介", "我修改的完整简介，保留用途与使用背景。");
+	await navigate("功能与用法");
+	await click("编辑");
+	await fill("功能与用法", "我尚未保存的详细使用步骤。");
+	await navigate("项目简介");
+	expect(container.querySelector<HTMLTextAreaElement>('[aria-label="项目简介"]')?.value).toContain("我修改的完整简介");
+	expect(container.querySelectorAll("textarea")).toHaveLength(1);
+	await click("保存");
+	const saved = await snapshot();
+	expect(saved.description).toContain("我修改的完整简介");
+	expect(saved.current).toBe(original.current);
+	await navigate("功能与用法");
+	expect(container.querySelector<HTMLTextAreaElement>('[aria-label="功能与用法"]')?.value).toContain("我尚未保存");
+	await click("保存");
+	expect(container.textContent).toContain("内容已更新");
+	await click("以我的内容覆盖");
+	const final = await snapshot();
+	expect(final.description).toBe(saved.description);
+	expect(final.features).toContain("我尚未保存");
+	expect(final.current).toBe(original.current);
+	expect(await disk()).toContain(final.features);
+	expect(await disk()).toContain(final.description);
+});
+
+test("概览导航已标明当前页，正文不再重复显示同名大标题且保留可访问标题", async () => {
+	await mount("features");
+	const main = container.querySelector("#main-content")!;
+	expect(main.querySelector('[aria-label="概览页面"] [aria-current="page"]')?.textContent).toBe("功能与用法");
+	const title = main.querySelector("h1")!;
+	expect(title.textContent).toBe("功能与用法");
+	expect(title.classList.contains("sr-only")).toBe(true);
+	const header = main.querySelector("header")!;
+	expect(header.querySelector('[aria-label="概览页面"]')).not.toBeNull();
+	expect(Array.from(header.querySelectorAll("button")).some((b) => b.textContent === "编辑")).toBe(true);
+});
+
+test("功能目录逐项定位真实标题，完整正文、全局引用及HTML文本化保持有效", async () => {
+	const before = await snapshot();
+	const features =
+		"# 项目使用说明\n\n## 创建项目\n\n先读[入口说明][guide]。\n\n## 读取资料\n\n资料正文完整可读。\n\n```md\n## 不应进入目录\n```\n\n## 更新进展\n\n<img src=x onerror=alert(1)>\n\n[guide]: https://example.com/guide";
+	expect((await api("overview", { baseVersion: before.version, features }, "PUT")).status).toBe(200);
+	await mount("features");
+	const directory = container.querySelector('[aria-label="功能与用法目录"]')!;
+	expect(directory).not.toBeNull();
+	const links = Array.from(directory.querySelectorAll<HTMLAnchorElement>("a"));
+	expect(links.map((a) => a.textContent)).toEqual(["创建项目", "读取资料", "更新进展"]);
+	for (const link of links) {
+		const id = decodeURIComponent(new URL(link.href).hash.slice(1));
+		expect(document.getElementById(id)?.textContent).toContain(link.textContent!);
+	}
+	const content = container.querySelector('article[aria-label="功能与用法"]')!;
+	expect(content.querySelector('a[href="https://example.com/guide"]')).not.toBeNull();
+	expect(content.querySelector("img")).toBeNull();
+	expect(content.textContent).toContain("<img src=x onerror=alert(1)>");
+	await act(async () => links[1]!.click());
+	await flush();
+	expect(decodeURIComponent(dom.window.location.hash.slice(1))).toBe(
+		decodeURIComponent(new URL(links[1]!.href).hash.slice(1)),
+	);
+	expect((await snapshot()).features).toBe(features);
+	expect(await disk()).toContain(features);
+});
+
+test("少量用法无需目录；当前进展四段可直接阅读，旧文不生成推测状态", async () => {
+	const before = await snapshot();
+	const current =
+		"## 已完成\n\n资料已保存。\n\n## 当前停点\n\n正在核对材料入口。\n\n## 未完成或未验证\n\n尚未确认另一位参与者能打开。\n\n## 下一步\n\n先用参与者的入口核对。";
+	expect(
+		(await api("overview", { baseVersion: before.version, current, features: "### 阅读资料\n\n完整使用步骤。" }, "PUT"))
+			.status,
+	).toBe(200);
+	await mount("features");
+	expect(container.querySelector('[aria-label="功能与用法目录"]')).toBeNull();
+	expect(container.textContent).toContain("完整使用步骤");
+	await navigate("进展与目标");
+	const article = container.querySelector('article[aria-label="当前进展"]')!;
+	expect(Array.from(article.querySelectorAll("dt")).map((n) => n.textContent)).toEqual([
+		"已完成",
+		"当前停点",
+		"未完成或未验证",
+		"下一步",
+	]);
+	expect(article.textContent).toContain("尚未确认另一位参与者能打开");
+	expect(article.querySelector("dd:last-child")?.textContent).toContain("资料已保存");
+	expect((await snapshot()).current).toBe(current);
+	const latest = await snapshot();
+	const old = "材料已经整理好，正在确认参与者能否打开，日期还没定。";
+	expect((await api("overview", { baseVersion: latest.version, current: old }, "PUT")).status).toBe(200);
+	await navigate("项目简介");
+	await navigate("进展与目标");
+	const legacy = container.querySelector('article[aria-label="当前进展"]')!;
+	expect(legacy.textContent).toBe(old);
+	expect(legacy.querySelector("dt")).toBeNull();
 });

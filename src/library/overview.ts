@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { PROJECT_CONTENT_NAMES } from "./project-content.ts";
 import type { ProjectOverview } from "./types.ts";
 
 /**
@@ -17,11 +18,11 @@ export const OVERVIEW_SECTION_KEYS = ["DESCRIPTION", "GOAL", "CURRENT", "FEATURE
 export type OverviewSectionKey = (typeof OVERVIEW_SECTION_KEYS)[number];
 
 const SECTION_HEADINGS: Record<OverviewSectionKey, string> = {
-	DESCRIPTION: "项目简介",
-	GOAL: "目标",
-	CURRENT: "当前进展",
-	FEATURES: "功能与用法",
-	AGREEMENTS: "项目约定",
+	DESCRIPTION: PROJECT_CONTENT_NAMES.description,
+	GOAL: PROJECT_CONTENT_NAMES.goal,
+	CURRENT: PROJECT_CONTENT_NAMES.current,
+	FEATURES: PROJECT_CONTENT_NAMES.features,
+	AGREEMENTS: PROJECT_CONTENT_NAMES.agreements,
 };
 
 const SECTION_FIELD: Record<OverviewSectionKey, keyof ProjectOverview> = {

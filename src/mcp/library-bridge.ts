@@ -1,6 +1,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { CURRENT_PROGRESS_HEADINGS, PROJECT_CONTENT_NAMES } from "../library/project-content.ts";
 import { getVersion } from "../utils/version.ts";
 
 /**
@@ -383,8 +384,7 @@ export class LibraryBridge {
 			},
 			{
 				name: "overview_read",
-				description:
-					"Read introduction, project agreements (confirmed decisions/constraints), legacy goal text, current precise brief, features, active structured goals, archive counts and shared version. Read archived goals/progress with goal_list/progress_list.",
+				description: `读取项目概览：${PROJECT_CONTENT_NAMES.description}、${PROJECT_CONTENT_NAMES.agreements}、${PROJECT_CONTENT_NAMES.current}、${PROJECT_CONTENT_NAMES.features}、${PROJECT_CONTENT_NAMES.goal}与归档数量及共享版本。阶段进展用progress_list读取，历史目标用goal_list读取。名称与人类网页一致。`,
 				inputSchema: { type: "object" as const, properties: {} },
 			},
 			{
@@ -395,15 +395,17 @@ export class LibraryBridge {
 					type: "object" as const,
 					properties: {
 						base_version: str("The `version` value returned by your last overview_read (required)"),
-						description: str("What the project is"),
+						description: str(
+							`${PROJECT_CONTENT_NAMES.description}：完整说明项目用途、对象和使用方式，与网页同一正文。`,
+						),
 						agreements: str(
-							"Long-lived confirmed project decisions, constraints, answered choices and important do-not-revive paths. Preserve other valid agreements; do not replace with the latest brief or invent decisions.",
+							`${PROJECT_CONTENT_NAMES.agreements}：跨会话有效的已确认决定、约束和重要排除项，保留其他有效约定，不用当前进展替换，不编造决定。`,
 						),
 						goal: str("Legacy goal text only; once structured goals exist use goal_create / goal_update"),
 						current: str(
-							"Replace the latest precise brief, more detailed than a goal; include results, remaining/unverified scope and next step. Never append a chat diary.",
+							`${PROJECT_CONTENT_NAMES.current}：整理替换比目标详细、精准的最新情况，按实际内容使用${CURRENT_PROGRESS_HEADINGS.map((title) => `## ${title}`).join("、")}小标题，与网页同一正文；有内容才写，不补空段或推测状态。`,
 						),
-						features: str("可用能力或交付内容及其使用方法"),
+						features: str(`${PROJECT_CONTENT_NAMES.features}：已有功能或成果，以及具体入口和使用步骤。`),
 					},
 					required: ["base_version"],
 				},
@@ -451,7 +453,7 @@ export class LibraryBridge {
 						occurred_at: date,
 						replacement_title: str("New goal when direction changes; old goal stays archived"),
 						current: str(
-							"Replacement latest brief, more detailed than a goal: actual results, work in progress, remaining/unverified scope, next step",
+							`替换同一份${PROJECT_CONTENT_NAMES.current}，比目标详细；按实际信息使用${CURRENT_PROGRESS_HEADINGS.map((title) => `## ${title}`).join("、")}小标题，有内容才写。`,
 						),
 						progress: { type: "object", properties: progressProperties, required: ["key", "title", "summary"] },
 					},

@@ -1,3 +1,4 @@
+import { PROJECT_CONTENT_NAMES } from "../../library/project-content.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api, type Goal, type Progress, type ProjectOverview } from "../api.ts";
 import { useImeGuard } from "../useImeGuard.ts";
@@ -297,6 +298,40 @@ function RecordEditor({
 		</form>
 	);
 }
+function ProgressResult({
+	record,
+	version,
+	onEdit,
+}: {
+	record: Progress;
+	version: string;
+	onEdit?: (r: Progress, version: string) => void;
+}) {
+	const [open, setOpen] = useState(false);
+	return (
+		<article>
+			<details onToggle={(e) => setOpen(e.currentTarget.open)}>
+				<summary className="cursor-pointer py-2 text-[16px] leading-7">
+					<span className="font-medium">{record.title}</span>
+					<span className="ml-3 text-[14px] text-[#555B65]">完成于 {dateLabel(record.completedAt)}</span>
+				</summary>
+				{open ? (
+					<div className="space-y-3 py-3 text-[16px] leading-7">
+						<Markdown source={record.summary} />
+						<button
+							type="button"
+							className="min-h-10 text-[15px] font-medium text-[#3B57D0]"
+							onClick={() => onEdit?.(record, version)}
+						>
+							修正记录
+						</button>
+					</div>
+				) : null}
+			</details>
+		</article>
+	);
+}
+
 function Archive({
 	projectId,
 	kind,
@@ -321,7 +356,8 @@ function Archive({
 		[error, setError] = useState<unknown>(null);
 	const epoch = useRef(0),
 		inFlight = useRef(false);
-	const label = kind === "progress" ? "阶段进展" : kind === "completed" ? "已完成目标" : "已调整的目标";
+	const label =
+		kind === "progress" ? PROJECT_CONTENT_NAMES.progress : kind === "completed" ? "已完成目标" : "已调整的目标";
 	const load = useCallback(
 		async (offset: number, generation = epoch.current) => {
 			if (inFlight.current) return;
@@ -370,27 +406,18 @@ function Archive({
 			</summary>
 			{open ? (
 				<div className="mt-3 space-y-5 pl-2">
-					{rows.map((r) => (
-						<article key={r.id} className="space-y-2">
-							<div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-								<h3 className="text-[16px] font-medium">{r.title}</h3>
-								<span className="text-[14px] text-[#555B65]">
-									{kind === "adjusted" ? "调整于" : "完成于"}{" "}
-									{dateLabel(kind === "adjusted" && "adjustedAt" in r ? r.adjustedAt : r.completedAt)}
-								</span>
-							</div>
-							{"summary" in r ? (
-								<>
-									<Markdown source={r.summary} />
-									<button
-										type="button"
-										className="text-[15px] font-medium text-[#3B57D0]"
-										onClick={() => onEdit?.(r, version)}
-									>
-										修正记录
-									</button>
-								</>
-							) : (
+					{rows.map((r) =>
+						"summary" in r ? (
+							<ProgressResult key={r.id} record={r} version={version} onEdit={onEdit} />
+						) : (
+							<article key={r.id} className="space-y-2">
+								<div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+									<h3 className="text-[16px] font-medium">{r.title}</h3>
+									<span className="text-[14px] text-[#555B65]">
+										{kind === "adjusted" ? "调整于" : "完成于"}{" "}
+										{dateLabel(kind === "adjusted" && "adjustedAt" in r ? r.adjustedAt : r.completedAt)}
+									</span>
+								</div>
 								<button
 									type="button"
 									className="text-[15px] font-medium text-[#3B57D0]"
@@ -398,9 +425,9 @@ function Archive({
 								>
 									修正日期
 								</button>
-							)}
-						</article>
-					))}
+							</article>
+						),
+					)}
 					{loading ? <LoadingNote /> : null}
 					<ErrorNote error={error} onRetry={() => void load(rows.length)} />
 					{!loading && !error && rows.length < total ? (
@@ -429,7 +456,7 @@ export function Goals({
 	return (
 		<section className="mb-8">
 			<div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-				<h2 className="text-[20px] font-semibold leading-7">目标</h2>
+				<h2 className="text-[20px] font-semibold leading-7">{PROJECT_CONTENT_NAMES.goal}</h2>
 				<button
 					type="button"
 					className={button}

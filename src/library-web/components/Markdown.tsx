@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import MDEditor from "@uiw/react-md-editor";
 import { renderMermaidIn } from "../../web/utils/mermaid";
 
@@ -38,8 +38,47 @@ const CONTENT_STYLE = { backgroundColor: "transparent", color: "inherit" };
  * 项目内容受控渲染器：Markdown + Mermaid（securityLevel strict，HTML 全部
  * 文本化）。与 src/web 的 MermaidMarkdown 同一渲染链，只是不接任务 ID 链接。
  */
-export default function Markdown({ source }: { source: string }) {
+interface HeadingAnchor {
+	line: number;
+	id: string;
+}
+interface MarkdownNode {
+	type?: string;
+	tagName?: string;
+	position?: { start?: { line?: number } };
+	properties?: Record<string, unknown>;
+	children?: MarkdownNode[];
+}
+const NO_ANCHORS: readonly HeadingAnchor[] = [];
+
+export default function Markdown({
+	source,
+	headingAnchors = NO_ANCHORS,
+}: {
+	source: string;
+	headingAnchors?: readonly HeadingAnchor[];
+}) {
 	const ref = useRef<HTMLDivElement | null>(null);
+	const rehypePlugins = useMemo(() => {
+		if (!headingAnchors.length) return [];
+		const ids = new Map(headingAnchors.map((item) => [item.line, item.id]));
+		return [
+			function applyHeadingAnchors() {
+				return (tree: unknown) => {
+					const visit = (node: MarkdownNode) => {
+						const line = node.position?.start?.line;
+						const id = line === undefined ? undefined : ids.get(line);
+						if (node.type === "element" && /^h[1-6]$/.test(node.tagName ?? "") && id) {
+							node.properties ??= {};
+							node.properties.id = id;
+						}
+						if (Array.isArray(node.children)) node.children.forEach(visit);
+					};
+					visit(tree as MarkdownNode);
+				};
+			},
+		];
+	}, [headingAnchors]);
 
 	useEffect(() => {
 		if (!ref.current) return;
@@ -62,6 +101,7 @@ export default function Markdown({ source }: { source: string }) {
 				style={CONTENT_STYLE}
 				urlTransform={keepHashLinksInCurrentRoute}
 				remarkPlugins={REMARK_PLUGINS}
+				rehypePlugins={rehypePlugins}
 			/>
 		</div>
 	);

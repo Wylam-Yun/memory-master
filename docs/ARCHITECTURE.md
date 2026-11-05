@@ -46,8 +46,28 @@ overview.md新增按需创建的AGREEMENTS标记节，对应agreements正文。�
 
 agreements通过既有overview_read/write和Web概览API维护，共享overview的内容哈希版本、写锁、撤权复核、失败回滚和自动历史。新增字段已同步后端类型、解析、写入允许列表、MCP schema、Web API及历史标签。current更新不触碰agreements；旧客户端省略新字段时保持原文。
 
-概览在简介后按需显示可展开的项目约定，编辑时提供带标签的正文框，版本冲突比较包含约定。旧会话草稿缺少新字段时补入最新已保存约定，保留旧编辑和旧baseVersion，发生冲突仍需明确核对后保存。
+概览内使用四个独立路由：项目根地址完整阅读description，progress阅读current与目标/历史，features阅读功能与用法，agreements完整阅读项目约定。overview-pages.ts提供统一字段、路径和名称，App注册路由，AppShell让这些子页保持概览选中。单页编辑只提交当前字段，冲突比较和覆盖也只影响本页。旧overview多字段草稿拆到overview:字段名，保留各自旧baseVersion；缺失字段不猜内容，取消或保存一页不清其他页草稿。
 
 CONTENT-STANDARD的“接手与交接”描述停点、下一步、长期决定与已回答问题的保护、相关文件和可用Skill、过期状态核对及脱敏；SKILL.md通过明确指针要求接手时读取。接手信息分别来自概览、约定与任务，不产生平行的长期进度文件。上游规则固定到提交版本，UPSTREAM记录适配边界，UPSTREAM-LICENSE保留两位作者完整MIT许可。
 
-library-agreements.test.ts覆盖实际HTTP/MCP与磁盘，分别断言旧文无迁移、两种客户端写读、重启、类型与标记拒绝、项目隔离、冲突/撤权/历史失败终态。真实页面测试核对折叠展示、保存及旧草稿兼容；浏览器视觉和真实LLM自主行为需要另外验证。
+library-agreements.test.ts覆盖实际HTTP/MCP与磁盘，分别断言旧文无迁移、两种客户端写读、重启、类型与标记拒绝、项目隔离、冲突/撤权/历史失败终态。真实页面测试核对独立分页、保存及旧草稿兼容；浏览器视觉和真实LLM自主行为需要另外验证。
+
+## 概览阅读隔离
+
+四页共用原有概览API与内容版本，读取仍是一份权威记录，当前页面只挂载本页正文。简介全文保留，不添加摘要字段或改变MCP。进展与目标页沿用Goals/StageProgress，阶段记录外层按需分页，内层单条details打开后才挂载summary正文与修正按钮，避免一次展开所有成果长文。导航随窄屏换行，正文保持正常字号与单列宽度。
+
+实际App连接临时HTTP服务的测试覆盖默认完整简介、四个URL与一级导航、直达刷新、单字段磁盘终态、跨页草稿和冲突保护；原有目标、日期、分页与历史测试继续执行。
+
+## 内容命名与概览页头
+
+project-content.ts提供人类可读的共享名称，overview持久化节标题、网页字段名与历史标签、MCP概览工具描述共用；旧英文工具参数与存储标记保持兼容。Skill和内容标准使用相同名称，并明确进展与目标是页面分组、简报是当前进展的写法。
+
+OverviewPage的导航与操作合并为header，选中导航承担可见页面名称，唯一h1使用sr-only保留可访问标题。正文不再由通用PageHeader重复显示同名大标题；其他一级页面继续使用各自原有页头。真实App回归覆盖当前页导航、可访问标题和操作区的实际DOM。
+
+## 概览内容的四种阅读组织
+
+overview-content.ts使用现有mdast-util-from-markdown解析真实顶层标题。功能目录取主要章节，单个文档总标题保留在正文；目录ID按标题与出现次序确定，重复标题不会碰撞，代码块标题不成为入口。Markdown的可选headingAnchors通过rehype按源行号设置真实标题ID，原文整体渲染，因此引用定义、列表、HTML文本化和strict Mermaid保持原链路。
+
+当前进展只识别project-content.ts的CURRENT_PROGRESS_HEADINGS四个标题，按源顺序显示实际内容，保留前言、未知补充和引用定义。有内容才展示，无标题旧文完整阅读，不提取推测摘要。OverviewContent区分简介文章、进展分段、带目录用法和约定列表；目标与当前进展先呈现，阶段历史后置。数据仍来自相同overview字段，不迁移、不新增副本。
+
+实际App与HTTP服务测试核对目录链接对应真实DOM标题、点击后的URL、少量内容无目录、正文及引用完整、HTML安全、四段与旧文兼容、保存与磁盘终态。

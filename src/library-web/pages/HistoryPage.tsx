@@ -1,3 +1,4 @@
+import { PROJECT_CONTENT_NAMES } from "../../library/project-content.ts";
 import { useCallback, useEffect, useState } from "react";
 import { api, type HistoryEntry, type LibraryProject, type ProjectMeta } from "../api.ts";
 import { PageHeader, useProject } from "../components/AppShell.tsx";
@@ -7,11 +8,11 @@ import { groupHistoryByDay, isDoneStatus } from "../utils.ts";
 const FIELD_LABELS: Record<string, string> = {
 	title: "标题",
 	status: "状态",
-	description: "描述",
-	goal: "目标",
-	agreements: "项目约定",
-	current: "当前进展",
-	features: "功能与用法",
+	description: PROJECT_CONTENT_NAMES.description,
+	goal: PROJECT_CONTENT_NAMES.goal,
+	agreements: PROJECT_CONTENT_NAMES.agreements,
+	current: PROJECT_CONTENT_NAMES.current,
+	features: PROJECT_CONTENT_NAMES.features,
 	name: "名称",
 	task: "关联任务",
 	answer: "回答",
