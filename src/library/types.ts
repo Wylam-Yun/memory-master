@@ -65,11 +65,13 @@ export interface LibraryProject {
 	workingDir?: string;
 }
 
-/** The three maintained sections of a project's memaster/overview.md. */
+/** The four maintained sections of a project's memaster/overview.md. */
 export interface ProjectOverview {
 	description: string;
 	goal: string;
 	current: string;
+	/** 功能与用法 — what the project can do and how to use each capability. */
+	features: string;
 }
 
 /** Error codes surfaced through the agent/web API boundary. */

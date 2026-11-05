@@ -114,13 +114,29 @@ export class LibraryBridge {
 				case "overview_write": {
 					const baseVersion = this.requireBaseVersion(args);
 					const body: Record<string, unknown> = { baseVersion };
-					for (const key of ["description", "goal", "current"] as const) {
+					for (const key of ["description", "goal", "current", "features"] as const) {
 						if (args[key] !== undefined) body[key] = args[key];
 					}
 					return ok(
 						await this.api(`/api/agent/projects/${this.requireProject().id}/overview`, {
 							method: "PUT",
 							body,
+						}),
+					);
+				}
+				case "architecture_read":
+					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/architecture`));
+				case "architecture_write": {
+					const baseVersion = this.requireBaseVersion(args);
+					// content is required — a missing value must fail loudly rather
+					// than silently clear the record.
+					if (typeof args.content !== "string") {
+						throw new Error("content is required — pass the full architecture Markdown document.");
+					}
+					return ok(
+						await this.api(`/api/agent/projects/${this.requireProject().id}/architecture`, {
+							method: "PUT",
+							body: { content: args.content, baseVersion },
 						}),
 					);
 				}
@@ -138,12 +154,17 @@ export class LibraryBridge {
 					return ok(
 						await this.api(`/api/agent/projects/${this.requireProject().id}/tasks`, {
 							method: "POST",
-							body: { title: args.title, status: args.status, description: args.description },
+							body: {
+								title: args.title,
+								status: args.status,
+								description: args.description,
+								priority: args.priority,
+							},
 						}),
 					);
 				case "task_update": {
 					const body: Record<string, unknown> = { baseVersion: this.requireBaseVersion(args) };
-					for (const key of ["title", "status", "description"] as const) {
+					for (const key of ["title", "status", "description", "priority"] as const) {
 						if (args[key] !== undefined) body[key] = args[key];
 					}
 					return ok(
@@ -243,8 +264,28 @@ export class LibraryBridge {
 						description: str("What the project is"),
 						goal: str("Project goal"),
 						current: str("Current progress"),
+						features: str("可用能力或交付内容及其使用方法"),
 					},
 					required: ["base_version"],
+				},
+			},
+			{
+				name: "architecture_read",
+				description:
+					"Read the selected project's architecture record (项目架构) — the full Markdown document and its version.",
+				inputSchema: { type: "object" as const, properties: {} },
+			},
+			{
+				name: "architecture_write",
+				description:
+					"Replace the selected project's architecture record with the given Markdown content. Requires base_version from a preceding architecture_read — the write conflicts if the record changed since that read.",
+				inputSchema: {
+					type: "object" as const,
+					properties: {
+						content: str("The full architecture Markdown document"),
+						base_version: str("The `version` value returned by your last architecture_read (required)"),
+					},
+					required: ["content", "base_version"],
 				},
 			},
 			{
@@ -266,13 +307,15 @@ export class LibraryBridge {
 			},
 			{
 				name: "task_create",
-				description: "Create a task in the selected project.",
+				description:
+					"Create a task in the selected project. Priority is P0 (current focus, the default) or P1 (later).",
 				inputSchema: {
 					type: "object" as const,
 					properties: {
 						title: str("Task title"),
 						status: str("Initial status"),
 						description: str("Details"),
+						priority: str("Priority: P0 (current focus, default) or P1 (later)"),
 					},
 					required: ["title"],
 				},
@@ -280,7 +323,7 @@ export class LibraryBridge {
 			{
 				name: "task_update",
 				description:
-					"Update a task's title, status, or description. Requires base_version from a preceding task_get/task_list — the write conflicts if the record changed since that read.",
+					"Update a task's title, status, description, or priority (P0 = current focus, P1 = later). Requires base_version from a preceding task_get/task_list — the write conflicts if the record changed since that read.",
 				inputSchema: {
 					type: "object" as const,
 					properties: {
@@ -289,6 +332,7 @@ export class LibraryBridge {
 						title: str("New title"),
 						status: str("New status"),
 						description: str("New description"),
+						priority: str("New priority: P0 or P1"),
 					},
 					required: ["task_id", "base_version"],
 				},
@@ -308,7 +352,7 @@ export class LibraryBridge {
 			{
 				name: "question_ask",
 				description:
-					"Record a decision the user must make (a question that would change the expected outcome). Also ask the user directly in the conversation — this persists it on the project so the web page shows it too. Link a task with task_id when relevant.",
+					"Record a decision the user must make (a question that would change the expected outcome). Ask the user directly in the current conversation — this persists the question on the project record. Link a task with task_id when relevant.",
 				inputSchema: {
 					type: "object" as const,
 					properties: {
@@ -339,7 +383,7 @@ export class LibraryBridge {
 			{
 				name: "question_answer",
 				description:
-					"Write the answer the user gave you in conversation back into the question. Once answered it is final — a second answer conflicts.",
+					"Write the answer the user gave you in the current conversation back into the question. Once answered it is final — a second answer conflicts.",
 				inputSchema: {
 					type: "object" as const,
 					properties: {

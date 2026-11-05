@@ -189,6 +189,8 @@ export async function createProject(
 	const id = generateProjectId();
 	if (config) {
 		config.projectId = id;
+		// New projects are born speaking the P0/P1 priority vocabulary.
+		config.priorities = ["P0", "P1"];
 		if (workingDir) config.workingDir = workingDir;
 		await core.filesystem.saveConfig(config);
 	}

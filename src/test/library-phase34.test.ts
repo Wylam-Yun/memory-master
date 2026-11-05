@@ -35,6 +35,17 @@ describe("phase 3+4: questions, resources, client setup", () => {
 	};
 	const json = async (res: Response) => await res.json();
 
+	// The whole bundle the installer must land — asserted by name rather than
+	// imported from SKILL_FILES so a dropped file can't pass silently.
+	const EXPECTED_SKILL_FILES = [
+		"SKILL.md",
+		"CONTENT-STANDARD.md",
+		"ARCHITECTURE-FORMAT.md",
+		"ARCHITECTURE-SKILL.md",
+		"UPSTREAM.md",
+		"UPSTREAM-LICENSE.md",
+	];
+
 	beforeEach(async () => {
 		home = await mkdtemp(join(tmpdir(), "mm-p34-"));
 		library = join(home, "library");
@@ -78,7 +89,8 @@ describe("phase 3+4: questions, resources, client setup", () => {
 		const slot = await json(res);
 		expect(slot.connection).toBe("configured");
 		expect(slot.token).toMatch(/^mm_claude_/);
-		expect(slot.installed.length).toBe(3);
+		// config + instructions + the six skill-bundle files.
+		expect(slot.installed.length).toBe(8);
 
 		// External end state: ~/.claude.json merged, user keys intact.
 		const claudeJson = JSON.parse(await readFile(join(clientHome, ".claude.json"), "utf8"));
@@ -91,10 +103,19 @@ describe("phase 3+4: questions, resources, client setup", () => {
 		const claudeMd = await readFile(join(clientHome, ".claude", "CLAUDE.md"), "utf8");
 		expect(claudeMd).toContain("# 我自己的规则");
 		expect(claudeMd).toContain("<!-- memory-master:begin -->");
-		expect(claudeMd).toContain("question_ask");
-		// Skill installed.
-		const skill = await readFile(join(clientHome, ".claude", "skills", "memory-master", "SKILL.md"), "utf8");
-		expect(skill).toContain("name: memory-master");
+		// The V1.1 block: read-first writes with base_version, questions asked
+		// in the conversation — question_ask is no longer promoted.
+		expect(claudeMd).toContain("project_open");
+		expect(claudeMd).toContain("history_list");
+		expect(claudeMd).toContain("base_version");
+		expect(claudeMd).not.toContain("question_ask");
+		// The whole skill bundle lands, not just SKILL.md.
+		const skillDir = join(clientHome, ".claude", "skills", "memory-master");
+		for (const name of EXPECTED_SKILL_FILES) {
+			expect(await Bun.file(join(skillDir, name)).exists()).toBe(true);
+		}
+		expect(await readFile(join(skillDir, "SKILL.md"), "utf8")).toContain("name: memory-master");
+		expect(await readFile(join(skillDir, "CONTENT-STANDARD.md"), "utf8")).toContain("共同写作规则");
 
 		// Configured but NOT yet connected: project routes stay closed.
 		const gated = await req("/api/agent/projects", { token: slot.token });
@@ -107,6 +128,13 @@ describe("phase 3+4: questions, resources, client setup", () => {
 		expect(after.find((c: { id: string }) => c.id === "claude-code").connection).toBe("connected");
 		expect(after.find((c: { id: string }) => c.id === "claude-code").lastSeenAt).not.toBeNull();
 		expect((await req("/api/agent/projects", { token: slot.token })).status).toBe(200);
+
+		// The instructions endpoint serves the same bundle manifest agents
+		// can reconcile against the files on disk.
+		const agentContent = await json(await req("/api/agent/instructions", { token: slot.token }));
+		expect(agentContent.instructions).toContain("<!-- memory-master:begin -->");
+		expect(agentContent.skill).toContain("name: memory-master");
+		expect(agentContent.skillFiles).toEqual(EXPECTED_SKILL_FILES);
 	});
 
 	test("codex installs a marker-guarded TOML block; re-enable never duplicates", async () => {
@@ -127,8 +155,10 @@ describe("phase 3+4: questions, resources, client setup", () => {
 		expect(agentsMd).toContain("# 用户自己的 AGENTS");
 		expect(agentsMd).toContain("<!-- memory-master:begin -->");
 		// Codex discovers skills as ~/.agents/skills/<name>/SKILL.md — the flat
-		// .codex/skills/x.md form is never read.
-		expect(await Bun.file(join(clientHome, ".agents", "skills", "memory-master", "SKILL.md")).exists()).toBe(true);
+		// .codex/skills/x.md form is never read. The whole bundle lands there.
+		for (const name of EXPECTED_SKILL_FILES) {
+			expect(await Bun.file(join(clientHome, ".agents", "skills", "memory-master", name)).exists()).toBe(true);
+		}
 
 		// Disable → re-enable: managed blocks get replaced, never appended twice.
 		await req("/api/clients/codex", { method: "PUT", body: { enabled: false } });

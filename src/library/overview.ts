@@ -4,27 +4,31 @@ import type { ProjectOverview } from "./types.ts";
 /**
  * Project overview persistence.
  *
- * Each library project keeps its overview in `memaster/overview.md`: three
+ * Each library project keeps its overview in `memaster/overview.md`: four
  * sections using the same `<!-- SECTION:NAME:BEGIN/END -->` marker convention
  * as task files. The file is the authoritative record of what the project is,
- * what it should achieve, and where it currently stands.
+ * what it should achieve, where it currently stands, and what it offers.
  */
 
 export const OVERVIEW_FILE_NAME = "overview.md";
 
-export const OVERVIEW_SECTION_KEYS = ["DESCRIPTION", "GOAL", "CURRENT"] as const;
+// FEATURES trails the array so applyOverviewUpdate appends the missing section
+// at the end of older three-section files — no rewrite of untouched content.
+export const OVERVIEW_SECTION_KEYS = ["DESCRIPTION", "GOAL", "CURRENT", "FEATURES"] as const;
 export type OverviewSectionKey = (typeof OVERVIEW_SECTION_KEYS)[number];
 
 const SECTION_HEADINGS: Record<OverviewSectionKey, string> = {
 	DESCRIPTION: "项目简介",
 	GOAL: "目标",
 	CURRENT: "当前进展",
+	FEATURES: "功能与用法",
 };
 
 const SECTION_FIELD: Record<OverviewSectionKey, keyof ProjectOverview> = {
 	DESCRIPTION: "description",
 	GOAL: "goal",
 	CURRENT: "current",
+	FEATURES: "features",
 };
 
 function beginMarker(key: OverviewSectionKey): string {
@@ -52,6 +56,8 @@ export function initialOverviewContent(projectName: string): string {
 		"",
 		renderOverviewSection("CURRENT", "项目刚创建。"),
 		"",
+		renderOverviewSection("FEATURES", "待补充当前可用的能力或交付内容及使用方法。"),
+		"",
 	].join("\n");
 }
 
@@ -65,7 +71,7 @@ function renderOverviewSection(key: OverviewSectionKey, body: string): string {
  */
 function findMarkerLine(lines: string[], marker: string, fromIndex = 0): number {
 	for (let i = fromIndex; i < lines.length; i++) {
-		if (lines[i]!.trim() === marker) return i;
+		if (lines[i]?.trim() === marker) return i;
 	}
 	return -1;
 }
@@ -82,15 +88,21 @@ function extractSection(content: string, key: OverviewSectionKey): string {
 		.trim();
 }
 
-/** Read the three maintained sections; a missing or partial file yields empty strings. */
-export async function readOverview(projectDir: string): Promise<ProjectOverview> {
-	const file = Bun.file(overviewFilePath(projectDir));
-	const content = (await file.exists()) ? await file.text() : "";
+/** Parse the four maintained sections out of file text; missing sections yield "". */
+export function parseOverviewContent(content: string): ProjectOverview {
 	return {
 		description: extractSection(content, "DESCRIPTION"),
 		goal: extractSection(content, "GOAL"),
 		current: extractSection(content, "CURRENT"),
+		features: extractSection(content, "FEATURES"),
 	};
+}
+
+/** Read the four maintained sections; a missing or partial file yields empty strings. */
+export async function readOverview(projectDir: string): Promise<ProjectOverview> {
+	const file = Bun.file(overviewFilePath(projectDir));
+	const content = (await file.exists()) ? await file.text() : "";
+	return parseOverviewContent(content);
 }
 
 /**

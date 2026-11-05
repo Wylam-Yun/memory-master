@@ -1,4 +1,5 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
+import { unlink } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Server } from "bun";
@@ -6,14 +7,21 @@ import type { TaskWriteHooks } from "../core/memaster.ts";
 import libraryIndexHtml from "../library-web/index.html";
 import type { Task } from "../types/index.ts";
 import { getVersion } from "../utils/version.ts";
-import { instructionBlock, SKILL_MD } from "./agent-content.ts";
+import { instructionBlock, SKILL_FILES, SKILL_MD } from "./agent-content.ts";
+import { architectureFilePath } from "./architecture.ts";
 import { installClient } from "./client-setup.ts";
 import { type Actor, appendHistory, contentVersion, diffFields, type HistoryEntry, readHistory } from "./history.ts";
-import { initialOverviewContent, overviewFilePath, readOverview, writeOverview } from "./overview.ts";
+import {
+	initialOverviewContent,
+	overviewFilePath,
+	parseOverviewContent,
+	readOverview,
+	writeOverview,
+} from "./overview.ts";
 import { ProjectStore, type TaskWriteInput } from "./project-store.ts";
 import { answerQuestion, createQuestion, getQuestion, listQuestions, type ProjectQuestion } from "./questions.ts";
 import { createProject, getProjectById, listProjects, resolveProject } from "./registry.ts";
-import { listResources, readResource, saveResource } from "./resources.ts";
+import { assertSafeResourceName, listResources, readResource, resourcesDir, saveResource } from "./resources.ts";
 import { AppSettingsStore } from "./settings.ts";
 import { TestHolds } from "./test-holds.ts";
 import {
@@ -195,10 +203,11 @@ export class LibraryService {
 	}
 
 	private async overviewWithVersion(projectDir: string): Promise<unknown> {
-		const path = overviewFilePath(projectDir);
-		const file = Bun.file(path);
-		const version = contentVersion((await file.exists()) ? await file.bytes() : "");
-		return { ...(await readOverview(projectDir)), version };
+		const file = Bun.file(overviewFilePath(projectDir));
+		// One read feeds both the returned content and its version — two reads
+		// could race a writer and hand back a mismatched pair.
+		const bytes = (await file.exists()) ? await file.bytes() : new Uint8Array();
+		return { ...parseOverviewContent(new TextDecoder().decode(bytes)), version: contentVersion(bytes) };
 	}
 
 	private async writeTask(
@@ -211,6 +220,7 @@ export class LibraryService {
 		const store = this.storeFor(await this.projectFor(projectId));
 		// Validate up front for a 400 (Core would otherwise throw a plain 500 error).
 		const status = input.status !== undefined ? await store.assertValidStatus(input.status) : undefined;
+		const priority = input.priority !== undefined ? await store.assertValidPriority(input.priority) : undefined;
 		if (status?.toLowerCase() === "draft") {
 			// Demotion bypasses updateTaskFromInput's hook seam; library projects have no
 			// draft concept in phase 1, so refuse it outright at the boundary.
@@ -232,11 +242,21 @@ export class LibraryService {
 					throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Task title is required.", 400);
 				}
 				const hooks = this.writeHooks(token);
+				// Creates normalize priority inside createTaskFromInput — BEFORE
+				// preWrite runs — so the P0/P1 config vocabulary has to exist by
+				// call time. The migration still waits for the same gates the
+				// write itself waits for: a parked-then-revoked write leaves
+				// config.yml untouched too.
+				await this.holds.waitIfAny();
+				this.assertRunning();
+				if (token !== null) await this.settings.assertAuthorized(token);
+				await store.ensureTaskPriorities();
 				const { task, filePath } = await store.core.createTaskFromInput(
 					{
 						title: input.title,
 						...(status !== undefined ? { status } : {}),
 						...(input.description !== undefined ? { description: input.description } : {}),
+						priority: priority ?? "p0",
 					},
 					false,
 					hooks,
@@ -253,6 +273,7 @@ export class LibraryService {
 							title: task.title,
 							...(task.status !== undefined ? { status: task.status } : {}),
 							...(task.description !== undefined ? { description: task.description } : {}),
+							...(task.priority !== undefined ? { priority: task.priority } : {}),
 						},
 					),
 					version,
@@ -288,7 +309,13 @@ export class LibraryService {
 					throw versionConflictError(current ? { ...current, version: currentVersion } : null, currentVersion ?? "");
 				}
 			};
-			const hooks = this.writeHooks(token, recheckVersion);
+			// A priority write needs the P0/P1 vocabulary in config before Core
+			// normalizes it — migrated inside preWrite, after the authorization
+			// re-check, so a revoked client cannot even mutate config.yml.
+			const hooks = this.writeHooks(token, async () => {
+				await recheckVersion();
+				if (priority !== undefined) await store.ensureTaskPriorities();
+			});
 
 			let result: Task;
 			try {
@@ -298,6 +325,7 @@ export class LibraryService {
 						...(input.title !== undefined ? { title: input.title } : {}),
 						...(status !== undefined ? { status } : {}),
 						...(input.description !== undefined ? { description: input.description } : {}),
+						...(priority !== undefined ? { priority } : {}),
 					},
 					false,
 					{ includeCrossBranch: false },
@@ -317,8 +345,18 @@ export class LibraryService {
 			}
 
 			const changes = diffFields(
-				{ title: before.title, status: before.status, description: before.description },
-				{ title: result.title, status: result.status, description: result.description },
+				{
+					title: before.title,
+					status: before.status,
+					description: before.description,
+					priority: before.priority,
+				},
+				{
+					title: result.title,
+					status: result.status,
+					description: result.description,
+					priority: result.priority,
+				},
 			);
 			try {
 				this.holds.throwIfHistoryFailpoint();
@@ -352,7 +390,7 @@ export class LibraryService {
 	private async writeOverview(
 		identity: { token: string; id: LibraryClientId } | null,
 		projectId: string,
-		update: { description?: string; goal?: string; current?: string },
+		update: { description?: string; goal?: string; current?: string; features?: string },
 		baseVersion: string | undefined,
 	): Promise<unknown> {
 		if (baseVersion === undefined) {
@@ -403,8 +441,18 @@ export class LibraryService {
 					return { ...after, version: afterVersion };
 				}
 				const changes = diffFields(
-					{ description: before.description, goal: before.goal, current: before.current },
-					{ description: after.description, goal: after.goal, current: after.current },
+					{
+						description: before.description,
+						goal: before.goal,
+						current: before.current,
+						features: before.features,
+					},
+					{
+						description: after.description,
+						goal: after.goal,
+						current: after.current,
+						features: after.features,
+					},
 				);
 				try {
 					this.holds.throwIfHistoryFailpoint();
@@ -421,6 +469,99 @@ export class LibraryService {
 					throw error;
 				}
 				return { ...after, version: afterVersion };
+			});
+		});
+	}
+
+	/**
+	 * The architecture record — one whole Markdown document per project sharing
+	 * the overview write unit: project write lock → entity lock → in-lock
+	 * version re-check → holds/stop/auth gates → write → history → rollback.
+	 * Unlike the overview the file may legitimately not exist, so creation is a
+	 * first-class path: a conflicting create never touches the disk, and a
+	 * failed first write rolls back to "never created".
+	 */
+	private async writeArchitecture(
+		identity: { token: string; id: LibraryClientId } | null,
+		projectId: string,
+		content: string | undefined,
+		baseVersion: string | undefined,
+	): Promise<{ content: string; version: string }> {
+		if (baseVersion === undefined) {
+			throw new LibraryError(
+				LIBRARY_ERROR_CODES.VALIDATION,
+				"baseVersion is required for updates — read the record first and send back its version.",
+				400,
+			);
+		}
+		if (typeof content !== "string") {
+			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "content is required and must be a string.", 400);
+		}
+		const project = await this.projectFor(projectId);
+		const store = this.storeFor(project);
+		const actor = this.actorOf(identity);
+		const token = identity?.token ?? null;
+		const path = architectureFilePath(project.dir);
+
+		return await store.withWriteLock(async () => {
+			const existed = await Bun.file(path).exists();
+			const emptyVersion = contentVersion("");
+			if (!existed && baseVersion !== emptyVersion) {
+				// A create on a stale or foreign base is refused before the
+				// placeholder exists — no disk side effects at all.
+				throw versionConflictError({ content: "", version: emptyVersion }, emptyVersion);
+			}
+			if (!existed && content === "") {
+				// Writing the empty record back onto nothing changes nothing —
+				// keep the never-created state, placeholder file included.
+				return { content: "", version: emptyVersion };
+			}
+			if (!existed) {
+				// The lock mechanism stats the target file, so a first write needs
+				// a placeholder to realpath — same trick as the overview.
+				await Bun.write(path, "");
+			}
+			return await store.filesystem.withTaskLock({ id: "architecture", filePath: path }, async () => {
+				const lockBytes = await Bun.file(path).bytes();
+				const lockVersion = contentVersion(lockBytes);
+				if (lockVersion !== baseVersion) {
+					// Someone else wrote between the exists() check and the lock. When
+					// the file is still our own empty placeholder nothing was lost —
+					// remove it; otherwise keep their content and report it as current.
+					if (!existed && lockBytes.length === 0) await unlink(path).catch(() => {});
+					throw versionConflictError(
+						{ content: new TextDecoder().decode(lockBytes), version: lockVersion },
+						lockVersion,
+					);
+				}
+				await this.holds.waitIfAny();
+				this.assertRunning();
+				if (token !== null) await this.settings.assertAuthorized(token);
+				await Bun.write(path, content);
+				const afterBytes = await Bun.file(path).bytes();
+				const afterVersion = contentVersion(afterBytes);
+				// A no-op write leaves the record untouched — and records nothing.
+				if (afterVersion === lockVersion) {
+					return { content, version: afterVersion };
+				}
+				try {
+					this.holds.throwIfHistoryFailpoint();
+					await appendHistory(project.dir, {
+						ts: new Date().toISOString(),
+						actor,
+						target: { type: "architecture" },
+						action: existed ? "update" : "create",
+						changes: diffFields({ content: new TextDecoder().decode(lockBytes) }, { content }),
+						version: afterVersion,
+					});
+				} catch (error) {
+					// State and history stay in lockstep: an existing file rolls back
+					// to its pre-write bytes; a first create to never-created.
+					if (existed) await Bun.write(path, lockBytes);
+					else await unlink(path).catch(() => {});
+					throw error;
+				}
+				return { content, version: afterVersion };
 			});
 		});
 	}
@@ -495,9 +636,39 @@ export class LibraryService {
 		return json(project, 201);
 	}
 
+	private async handleGetProject(projectId: string): Promise<Response> {
+		const project = await this.projectFor(projectId);
+		return json({ ...project, ...(await this.storeFor(project).projectMeta()) });
+	}
+
 	private async handleGetOverview(projectId: string): Promise<Response> {
 		const project = await this.projectFor(projectId);
 		return json(await this.overviewWithVersion(project.dir));
+	}
+
+	private async handleGetArchitecture(projectId: string): Promise<Response> {
+		const project = await this.projectFor(projectId);
+		const file = Bun.file(architectureFilePath(project.dir));
+		// One read feeds both content and the version checked on write — a
+		// missing file reads as the empty record versioned by its empty bytes.
+		const bytes = (await file.exists()) ? await file.bytes() : new Uint8Array();
+		return json({ content: new TextDecoder().decode(bytes), version: contentVersion(bytes) });
+	}
+
+	private async handlePutArchitecture(
+		req: Request,
+		projectId: string,
+		identity: { token: string; id: LibraryClientId } | null,
+	): Promise<Response> {
+		const body = await parseBody(req);
+		return json(
+			await this.writeArchitecture(
+				identity,
+				projectId,
+				typeof body.content === "string" ? body.content : undefined,
+				typeof body.baseVersion === "string" ? body.baseVersion : undefined,
+			),
+		);
 	}
 
 	private async handlePutOverview(
@@ -510,6 +681,7 @@ export class LibraryService {
 			...(typeof body.description === "string" ? { description: body.description } : {}),
 			...(typeof body.goal === "string" ? { goal: body.goal } : {}),
 			...(typeof body.current === "string" ? { current: body.current } : {}),
+			...(typeof body.features === "string" ? { features: body.features } : {}),
 		};
 		const baseVersion = typeof body.baseVersion === "string" ? body.baseVersion : undefined;
 		return json(await this.writeOverview(identity, projectId, update, baseVersion));
@@ -542,6 +714,7 @@ export class LibraryService {
 			...(typeof body.title === "string" ? { title: body.title } : {}),
 			...(typeof body.status === "string" ? { status: body.status } : {}),
 			...(typeof body.description === "string" ? { description: body.description } : {}),
+			...(typeof body.priority === "string" ? { priority: body.priority } : {}),
 		};
 	}
 
@@ -626,6 +799,8 @@ export class LibraryService {
 					installError: slot.installError,
 					lastSeenAt: slot.lastSeenAt,
 					installed: install.installed,
+					error: slot.installError,
+					code: "SETUP_FAILED",
 				},
 				502,
 			);
@@ -833,10 +1008,16 @@ export class LibraryService {
 		}
 		const bytes = new Uint8Array(Buffer.from(body.base64, "base64"));
 
+		const safe = assertSafeResourceName(name);
 		return await store.withWriteLock(async () => {
 			await this.holds.waitIfAny();
 			this.assertRunning();
-			const info = await saveResource(project.dir, name, bytes);
+			// A same-name upload still has prior state to roll back to — snapshot
+			// the existing bytes before saveResource overwrites them.
+			const targetPath = join(resourcesDir(project.dir), safe);
+			const existed = await Bun.file(targetPath).exists();
+			const beforeBytes = existed ? await Bun.file(targetPath).bytes() : null;
+			const info = await saveResource(project.dir, safe, bytes);
 			try {
 				this.holds.throwIfHistoryFailpoint();
 				await appendHistory(project.dir, {
@@ -849,8 +1030,8 @@ export class LibraryService {
 				});
 			} catch (error) {
 				const { unlink } = await import("node:fs/promises");
-				const { resourcesDir } = await import("./resources.ts");
-				await unlink(join(resourcesDir(project.dir), info.name)).catch(() => {});
+				if (beforeBytes) await Bun.write(targetPath, beforeBytes).catch(() => {});
+				else await unlink(targetPath).catch(() => {});
 				throw error;
 			}
 			return json(info, 201);
@@ -866,7 +1047,11 @@ export class LibraryService {
 
 	/** The short instructions + skill agents should operate under — one source. */
 	private async handleAgentInstructions(): Promise<Response> {
-		return json({ instructions: instructionBlock(this.baseUrl()), skill: SKILL_MD });
+		return json({
+			instructions: instructionBlock(this.baseUrl()),
+			skill: SKILL_MD,
+			skillFiles: Object.keys(SKILL_FILES),
+		});
 	}
 
 	// --- Agent API handlers -----------------------------------------------------
@@ -1010,11 +1195,21 @@ export class LibraryService {
 					GET: async (req: Request) => this.withRoute(req, () => this.handleListProjects()),
 					POST: async (req: Request) => this.withRoute(req, () => this.handleCreateProject(req)),
 				},
+				"/api/projects/:id": {
+					GET: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handleGetProject(req.params.id)),
+				},
 				"/api/projects/:id/overview": {
 					GET: async (req: Request & { params: { id: string } }) =>
 						this.withRoute(req, () => this.handleGetOverview(req.params.id)),
 					PUT: async (req: Request & { params: { id: string } }) =>
 						this.withRoute(req, () => this.handlePutOverview(req, req.params.id, null)),
+				},
+				"/api/projects/:id/architecture": {
+					GET: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handleGetArchitecture(req.params.id)),
+					PUT: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handlePutArchitecture(req, req.params.id, null)),
 				},
 				"/api/projects/:id/tasks": {
 					GET: async (req: Request & { params: { id: string } }) =>
@@ -1050,6 +1245,10 @@ export class LibraryService {
 					POST: async (req: Request & { params: { id: string } }) =>
 						this.withRoute(req, () => this.handleUploadResource(req, req.params.id)),
 				},
+				"/api/projects/:id/resources/:name": {
+					GET: async (req: Request & { params: { id: string; name: string } }) =>
+						this.withRoute(req, () => this.handleGetResource(req.params.id, req.params.name)),
+				},
 				"/api/clients": { GET: async (req: Request) => this.withRoute(req, () => this.handleListClients()) },
 				"/api/clients/:id": {
 					PUT: async (req: Request & { params: { id: string } }) =>
@@ -1064,6 +1263,16 @@ export class LibraryService {
 				},
 				"/api/agent/projects/resolve": {
 					POST: async (req: Request) => this.withAgentRoute(req, () => this.handleAgentResolveProject(req)),
+				},
+				"/api/agent/projects/:id": {
+					GET: async (req: Request & { params: { id: string } }) =>
+						this.withAgentRoute(req, () => this.handleGetProject(req.params.id)),
+				},
+				"/api/agent/projects/:id/architecture": {
+					GET: async (req: Request & { params: { id: string } }) =>
+						this.withAgentRoute(req, () => this.handleGetArchitecture(req.params.id)),
+					PUT: async (req: Request & { params: { id: string } }) =>
+						this.withAgentRoute(req, (identity) => this.handlePutArchitecture(req, req.params.id, identity)),
 				},
 				"/api/agent/projects/:id/overview": {
 					GET: async (req: Request & { params: { id: string } }) =>

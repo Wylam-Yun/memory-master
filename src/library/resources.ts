@@ -102,9 +102,12 @@ export interface ResourceContent {
 export async function readResource(projectDir: string, name: string): Promise<ResourceContent> {
 	const safe = assertSafeResourceName(name);
 	const filePath = join(resourcesDir(projectDir), safe);
-	const info = await stat(filePath).catch(() => null);
+	// lstat does not follow links — a planted symlink reads as a link, never as
+	// the file it points at, so reads cannot escape 资料/.
+	const { lstat } = await import("node:fs/promises");
+	const info = await lstat(filePath).catch(() => null);
 	const file = Bun.file(filePath);
-	if (!info?.isFile() || !(await file.exists())) {
+	if (!info?.isFile() || info.isSymbolicLink() || !(await file.exists())) {
 		throw new LibraryError(LIBRARY_ERROR_CODES.PROJECT_NOT_FOUND, `Resource "${safe}" not found.`, 404);
 	}
 	const bytes = await file.bytes();

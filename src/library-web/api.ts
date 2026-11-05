@@ -48,6 +48,8 @@ export interface ProjectOverview {
 	description: string;
 	goal: string;
 	current: string;
+	/** 功能与用法 — available capabilities/deliverables and how to use them. */
+	features: string;
 	/** Content-hash version — must be sent back as baseVersion on update. */
 	version: string;
 }
@@ -58,6 +60,8 @@ export interface Task {
 	status: string;
 	description?: string;
 	createdDate?: string;
+	/** Normalized priority value ("p0"/"p1"); absent on pre-V1.1 records = P0. */
+	priority?: string;
 	/** Content-hash version — must be sent back as baseVersion on update. */
 	version?: string;
 }
@@ -65,10 +69,38 @@ export interface Task {
 export interface HistoryEntry {
 	ts: string;
 	actor: { type: "user" } | { type: "agent"; client: string };
-	target: { type: "project" | "task" | "overview" | "question" | "resource"; id?: string; title?: string };
+	target: {
+		type: "project" | "task" | "overview" | "question" | "resource" | "architecture";
+		id?: string;
+		title?: string;
+	};
 	action: "create" | "update";
 	changes: Record<string, { from?: string; to?: string }>;
 	version: string;
+}
+
+/** GET /api/projects/:id — project plus its task workflow/priority metadata. */
+export type ProjectMeta = LibraryProject & {
+	statuses: string[];
+	doneStatus: string | null;
+	p0: string;
+	p1: string;
+};
+
+/** 项目架构 — one whole Markdown record (diagram source + composition notes). */
+export interface ArchitectureRecord {
+	content: string;
+	/** Content-hash version — must be sent back as baseVersion on update. */
+	version: string;
+}
+
+/** Single resource read — UTF-8 text for textual files, base64 otherwise. */
+export interface ResourceContent {
+	name: string;
+	size: number;
+	contentType: string;
+	text?: string;
+	base64?: string;
 }
 
 export interface ProjectQuestion {
@@ -108,10 +140,16 @@ export interface ClientSlotInfo {
 export class ApiError extends Error {
 	readonly status: number;
 	readonly code?: string;
-	constructor(message: string, status: number, code?: string) {
+	/** VERSION_CONFLICT payloads carry the server's latest record… */
+	readonly current?: unknown;
+	/** …and that record's version, for retrying on top of it. */
+	readonly version?: string;
+	constructor(message: string, status: number, code?: string, current?: unknown, version?: string) {
 		super(message);
 		this.status = status;
 		this.code = code;
+		this.current = current;
+		this.version = version;
 	}
 }
 
@@ -123,10 +161,21 @@ async function request<T>(path: string, init?: { method?: string; body?: unknown
 		headers,
 		body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
 	});
-	const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+	const data = (await res.json().catch(() => ({}))) as {
+		error?: string;
+		code?: string;
+		current?: unknown;
+		version?: string;
+	};
 	if (!res.ok) {
 		if (res.status === 401) onUnauthorized?.();
-		throw new ApiError(data.error ?? `Request failed (${res.status})`, res.status, data.code);
+		throw new ApiError(
+			data.error ?? `Request failed (${res.status})`,
+			res.status,
+			data.code,
+			data.current,
+			data.version,
+		);
 	}
 	return data as T;
 }
@@ -143,6 +192,7 @@ export const api = {
 	listProjects: () => request<LibraryProject[]>("/api/projects"),
 	createProject: (name: string, workingDir?: string) =>
 		request<LibraryProject>("/api/projects", { method: "POST", body: { name, workingDir } }),
+	getProject: (id: string) => request<ProjectMeta>(`/api/projects/${id}`),
 	getOverview: (id: string) => request<ProjectOverview>(`/api/projects/${id}/overview`),
 	putOverview: (id: string, update: Partial<Omit<ProjectOverview, "version">>, baseVersion: string) =>
 		request<ProjectOverview>(`/api/projects/${id}/overview`, { method: "PUT", body: { ...update, baseVersion } }),
@@ -152,7 +202,7 @@ export const api = {
 	updateTask: (
 		id: string,
 		taskId: string,
-		update: Partial<Pick<Task, "title" | "status" | "description">>,
+		update: Partial<Pick<Task, "title" | "status" | "description" | "priority">>,
 		baseVersion: string,
 	) =>
 		request<Task>(`/api/projects/${id}/tasks/${taskId}`, {
@@ -183,4 +233,12 @@ export const api = {
 	listResources: (id: string) => request<ResourceInfo[]>(`/api/projects/${id}/resources`),
 	uploadResource: (id: string, name: string, base64: string) =>
 		request<ResourceInfo>(`/api/projects/${id}/resources`, { method: "POST", body: { name, base64 } }),
+	getResource: (id: string, name: string) =>
+		request<ResourceContent>(`/api/projects/${id}/resources/${encodeURIComponent(name)}`),
+	getArchitecture: (id: string) => request<ArchitectureRecord>(`/api/projects/${id}/architecture`),
+	putArchitecture: (id: string, content: string, baseVersion: string) =>
+		request<ArchitectureRecord>(`/api/projects/${id}/architecture`, {
+			method: "PUT",
+			body: { content, baseVersion },
+		}),
 };

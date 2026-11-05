@@ -1,6 +1,8 @@
 import { Core } from "../core/memaster.ts";
 import type { FileSystem } from "../file-system/operations.ts";
-import type { Task } from "../types/index.ts";
+import type { MemasterConfig, Task } from "../types/index.ts";
+import { getPriorityValues, resolvePriorityValue } from "../utils/priority-config.ts";
+import { getTerminalStatus } from "../utils/terminal-status.ts";
 import { contentVersion } from "./history.ts";
 import { LIBRARY_ERROR_CODES, LibraryError, type LibraryProject } from "./types.ts";
 
@@ -17,6 +19,7 @@ export type TaskWriteInput = {
 	title?: string;
 	status?: string;
 	description?: string;
+	priority?: string;
 };
 
 export class ProjectStore {
@@ -64,8 +67,8 @@ export class ProjectStore {
 		return await this.filesystem.loadTask(taskId);
 	}
 
-	/** Validate a requested status against the project's configured statuses. */
-	async assertValidStatus(status: string): Promise<string> {
+	/** A project directory without a readable config answers as not found. */
+	private async requireConfig(): Promise<MemasterConfig> {
 		const config = await this.filesystem.loadConfig();
 		if (!config) {
 			throw new LibraryError(
@@ -74,6 +77,12 @@ export class ProjectStore {
 				404,
 			);
 		}
+		return config;
+	}
+
+	/** Validate a requested status against the project's configured statuses. */
+	async assertValidStatus(status: string): Promise<string> {
+		const config = await this.requireConfig();
 		const found = config.statuses.find((s) => s.toLowerCase() === status.toLowerCase());
 		if (!found) {
 			throw new LibraryError(
@@ -83,5 +92,69 @@ export class ProjectStore {
 			);
 		}
 		return found;
+	}
+
+	/**
+	 * The labels this project accepts as task priorities: the configured list,
+	 * or P0/P1 when unset — always containing both P0 and P1 so the library UI
+	 * can rely on that vocabulary even over older hand-made configs.
+	 */
+	private effectivePriorityLabels(config: MemasterConfig): string[] {
+		const effective = config.priorities?.length ? [...config.priorities] : ["P0", "P1"];
+		// Membership is decided on normalized values (P0 → "p0"), so a configured
+		// "p0" already counts and the literal label is never duplicated.
+		const values = new Set(getPriorityValues(effective));
+		for (const required of ["P0", "P1"] as const) {
+			const normalized = required.toLowerCase();
+			if (!values.has(normalized)) {
+				values.add(normalized);
+				effective.push(required);
+			}
+		}
+		return effective;
+	}
+
+	/** Validate a requested priority against the effective list; returns its normalized value. */
+	async assertValidPriority(priority: string): Promise<string> {
+		const effective = this.effectivePriorityLabels(await this.requireConfig());
+		const resolved = resolvePriorityValue(priority, effective);
+		if (!resolved) {
+			throw new LibraryError(
+				LIBRARY_ERROR_CODES.VALIDATION,
+				`Invalid priority "${priority}". Valid priorities: ${effective.join(", ")}.`,
+				400,
+			);
+		}
+		return resolved;
+	}
+
+	/**
+	 * Lazy migration, called only inside the project write lock: persist the
+	 * effective labels when the config doesn't already carry them, so Core's
+	 * own priority normalization sees the P0/P1 vocabulary. saveConfig rewrites
+	 * the whole file from known keys — idempotent and lossless for configs this
+	 * service produced, but hand-added comments/unknown keys on older projects
+	 * are dropped (accepted: the file carries no history entry for this).
+	 */
+	async ensureTaskPriorities(): Promise<void> {
+		const config = await this.requireConfig();
+		const effective = this.effectivePriorityLabels(config);
+		const current = config.priorities ?? [];
+		if (current.length === effective.length && current.every((label, index) => label === effective[index])) return;
+		config.priorities = effective;
+		await this.filesystem.saveConfig(config);
+	}
+
+	/** Task metadata the web UI needs: status vocabulary and the P0/P1 values. */
+	async projectMeta(): Promise<{ statuses: string[]; doneStatus: string | null; p0: string; p1: string }> {
+		const config = await this.requireConfig();
+		const effective = this.effectivePriorityLabels(config);
+		return {
+			statuses: config.statuses,
+			doneStatus: getTerminalStatus(config.statuses),
+			// effective contains P0/P1 by construction — the fallbacks only narrow the type.
+			p0: resolvePriorityValue("P0", effective) ?? "p0",
+			p1: resolvePriorityValue("P1", effective) ?? "p1",
+		};
 	}
 }

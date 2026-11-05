@@ -1,0 +1,414 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { ApiError, api, type ArchitectureRecord, type LibraryProject, type ProjectMeta, type Task } from "../api.ts";
+import { GrowingTextarea, PageHeader, useProject } from "../components/AppShell.tsx";
+import { clearDraft, getDraft, setDraft } from "../components/drafts.ts";
+import Markdown from "../components/Markdown.tsx";
+import Modal from "../components/Modal.tsx";
+import { EmptyNote, ErrorNote, LoadingNote } from "../components/StatusMessage.tsx";
+import { type CompositionRow, extractMermaidNodeId, isP0Task, parseCompositionTable } from "../utils.ts";
+
+const DRAFT_WHICH = "architecture";
+const SEL_WHICH = "sel:node";
+
+interface DraftShape {
+	content: string;
+	baseVersion: string;
+}
+
+function readDraft(projectId: string): DraftShape | null {
+	const raw = getDraft(projectId, DRAFT_WHICH);
+	if (!raw) return null;
+	try {
+		const parsed = JSON.parse(raw) as DraftShape;
+		if (parsed && typeof parsed.content === "string" && typeof parsed.baseVersion === "string") return parsed;
+	} catch {}
+	return null;
+}
+
+export default function ArchitecturePage() {
+	const project = useProject();
+	return <ArchitectureInner key={project.id} project={project} />;
+}
+
+function ArchitectureInner({ project }: { project: LibraryProject }) {
+	const projectId = project.id;
+	const [record, setRecord] = useState<ArchitectureRecord | null>(null);
+	const [editing, setEditing] = useState<DraftShape | null>(() => readDraft(projectId));
+	const [saving, setSaving] = useState(false);
+	const [loadError, setLoadError] = useState<unknown>(null);
+	const [saveError, setSaveError] = useState<unknown>(null);
+	const [newer, setNewer] = useState<ArchitectureRecord | null>(null);
+	const [compareOpen, setCompareOpen] = useState(false);
+	const [zoomOpen, setZoomOpen] = useState(false);
+	const [zoomSvgs, setZoomSvgs] = useState<string[]>([]);
+	const [selectedId, setSelectedId] = useState<string | null>(() => getDraft(projectId, SEL_WHICH) || null);
+	const [meta, setMeta] = useState<ProjectMeta | null>(null);
+	const [tasks, setTasks] = useState<Task[] | null>(null);
+	const containerRef = useRef<HTMLDivElement | null>(null);
+	const editingRef = useRef(editing);
+	editingRef.current = editing;
+
+	const load = useCallback(async () => {
+		const fresh = await api.getArchitecture(projectId);
+		setRecord(fresh);
+		setLoadError(null);
+		return fresh;
+	}, [projectId]);
+
+	useEffect(() => {
+		load()
+			.then((fresh) => {
+				// 恢复的草稿基于旧版本 → 提示有新内容，供比较入口使用。
+				const edit = editingRef.current;
+				if (edit && fresh.version !== edit.baseVersion) setNewer(fresh);
+			})
+			.catch(setLoadError);
+	}, [load]);
+
+	// 关联任务只在需要时拉取（展开带任务列的组成行时）。
+	const ensureTasks = useCallback(async () => {
+		if (tasks) return;
+		try {
+			const [m, ts] = await Promise.all([api.getProject(projectId), api.listTasks(projectId)]);
+			setMeta(m);
+			setTasks(ts);
+		} catch {}
+	}, [projectId, tasks]);
+
+	// 窗口重新聚焦时核对版本：读态静默刷新，编辑态只提示有新版本、不碰草稿。
+	useEffect(() => {
+		const onFocus = () => {
+			api
+				.getArchitecture(projectId)
+				.then((fresh) => {
+					setRecord(fresh);
+					const edit = editingRef.current;
+					if (edit && fresh.version !== edit.baseVersion) setNewer(fresh);
+				})
+				.catch(() => {});
+		};
+		window.addEventListener("focus", onFocus);
+		return () => window.removeEventListener("focus", onFocus);
+	}, [projectId]);
+
+	const startEdit = () => {
+		if (!record) return;
+		setSaveError(null);
+		setCompareOpen(false);
+		const draft = { content: record.content, baseVersion: record.version };
+		setDraft(projectId, DRAFT_WHICH, JSON.stringify(draft));
+		setEditing(draft);
+	};
+
+	const changeContent = (value: string) => {
+		setEditing((prev) => {
+			if (!prev) return prev;
+			const next = { ...prev, content: value };
+			setDraft(projectId, DRAFT_WHICH, JSON.stringify(next));
+			return next;
+		});
+	};
+
+	const cancelEdit = () => {
+		clearDraft(projectId, DRAFT_WHICH);
+		setEditing(null);
+		setSaveError(null);
+		setNewer(null);
+		setCompareOpen(false);
+	};
+
+	const applySaved = (fresh: ArchitectureRecord) => {
+		clearDraft(projectId, DRAFT_WHICH);
+		setRecord(fresh);
+		setEditing(null);
+		setNewer(null);
+		setCompareOpen(false);
+		setSaveError(null);
+	};
+
+	const save = async (content: string, baseVersion: string) => {
+		setSaving(true);
+		setSaveError(null);
+		try {
+			applySaved(await api.putArchitecture(projectId, content, baseVersion));
+		} catch (e) {
+			if (e instanceof ApiError && e.code === "VERSION_CONFLICT" && e.current) {
+				setNewer(e.current as ArchitectureRecord);
+				setCompareOpen(true);
+			} else {
+				setSaveError(e);
+			}
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const content = editing ? editing.content : (record?.content ?? "");
+	const rows = parseCompositionTable(record?.content ?? "");
+
+	// 组成行选中键：无 ID 列的表按名称选，避免所有空 ID 行一起展开。
+	const rowKey = (row: CompositionRow) => row.id || row.name;
+
+	const selectRow = (row: CompositionRow) => {
+		const next = selectedId === rowKey(row) ? null : rowKey(row);
+		setSelectedId(next);
+		if (next) {
+			setDraft(projectId, SEL_WHICH, next);
+			if (row.tasks.length > 0) void ensureTasks();
+		} else {
+			clearDraft(projectId, SEL_WHICH);
+		}
+	};
+
+	// 恢复的选中态同样要拉取关联任务（否则展开行不显示任务链接）。
+	useEffect(() => {
+		if (!selectedId || tasks) return;
+		if (rows.some((r) => rowKey(r) === selectedId && r.tasks.length > 0)) void ensureTasks();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [selectedId, rows, tasks]);
+
+	// 图节点点击 → best-effort 匹配组成表 ID，命中即选中对应行。
+	const onDiagramClick = (e: React.MouseEvent) => {
+		const target = e.target as Element | null;
+		const node =
+			target?.closest?.("g.node") ??
+			target?.closest?.("[id^='flowchart-']") ??
+			target?.closest?.("g[id]");
+		const domId = node?.getAttribute("id") ?? "";
+		const nodeId = extractMermaidNodeId(domId) ?? domId;
+		const row = rows.find((r) => r.id && r.id === nodeId);
+		if (row) {
+			selectRow(row);
+			document.getElementById(`comp-${row.id}`)?.scrollIntoView({ block: "nearest" });
+		}
+	};
+
+	const openZoom = () => {
+		const svgs = Array.from(containerRef.current?.querySelectorAll(".mermaid svg") ?? []).map((s) => s.outerHTML);
+		setZoomSvgs(svgs);
+		setZoomOpen(true);
+	};
+
+	if (loadError && !record) {
+		return (
+			<div>
+				<PageHeader title="项目架构" />
+				<ErrorNote error={loadError} onRetry={() => load().catch(setLoadError)} />
+			</div>
+		);
+	}
+	if (!record) {
+		return (
+			<div>
+				<PageHeader title="项目架构" />
+				<LoadingNote />
+			</div>
+		);
+	}
+
+	const p0TaskIds = new Set((tasks ?? []).filter((t) => meta && isP0Task(t, meta.p0)).map((t) => t.id));
+
+	const headerActions = editing ? (
+		<>
+			<button
+				type="button"
+				className="h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white disabled:opacity-50"
+				disabled={saving}
+				onClick={() => save(editing.content, editing.baseVersion)}
+			>
+				{saving ? "保存中…" : "保存"}
+			</button>
+			<button
+				type="button"
+				className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124] disabled:opacity-50"
+				disabled={saving}
+				onClick={cancelEdit}
+			>
+				取消
+			</button>
+		</>
+	) : (
+		<>
+			<button
+				type="button"
+				className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124]"
+				onClick={startEdit}
+			>
+				编辑
+			</button>
+			{record.content.trim() ? (
+				<button
+					type="button"
+					className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124]"
+					onClick={openZoom}
+				>
+					放大
+				</button>
+			) : null}
+		</>
+	);
+
+	const conflictPanel = editing && compareOpen && newer ? (
+		<section className="mb-8 rounded-xl border border-[#E5E7EB] bg-white p-4">
+			<h2 className="mb-3 text-[16px] font-semibold leading-6">内容已更新</h2>
+			<p className="mb-3 text-[14px] leading-[22px] text-[#555B65]">
+				另一方已保存了新版本。以下是当前最新内容，你可以用自己的修改覆盖，或放弃本次修改。
+			</p>
+			<div className="max-h-72 overflow-y-auto rounded-lg bg-[#FAFAF8] p-3">
+				<Markdown source={newer.content || "（空）"} />
+			</div>
+			<div className="mt-4 flex flex-wrap gap-3">
+				<button
+					type="button"
+					className="h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white disabled:opacity-50"
+					disabled={saving}
+					onClick={() => save(editing.content, newer.version)}
+				>
+					以我的内容覆盖
+				</button>
+				<button
+					type="button"
+					className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124] disabled:opacity-50"
+					disabled={saving}
+					onClick={cancelEdit}
+				>
+					放弃本次修改
+				</button>
+				<button
+					type="button"
+					className="h-10 px-2 text-[15px] font-medium text-[#3B57D0]"
+					onClick={() => setCompareOpen(false)}
+				>
+					继续编辑
+				</button>
+			</div>
+		</section>
+	) : null;
+
+	return (
+		<div>
+			<PageHeader title="项目架构" actions={headerActions} />
+
+			{editing ? (
+				<>
+					{newer ? (
+						<div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-[#88550D]/30 bg-[#FFF6E4] px-3 py-2 text-[15px] leading-6 text-[#88550D]">
+							<span>内容已更新。</span>
+							<button type="button" className="font-medium underline" onClick={() => setCompareOpen(true)}>
+								查看最新内容
+							</button>
+						</div>
+					) : null}
+					{conflictPanel}
+					<GrowingTextarea
+						value={editing.content}
+						onChange={changeContent}
+						aria-label="项目架构 Markdown"
+						placeholder="# 项目架构&#10;&#10;```mermaid&#10;flowchart LR&#10;  a[组成甲] --> b[组成乙]&#10;```"
+					/>
+					<ErrorNote error={saveError} className="my-4" />
+					<h2 className="mb-3 mt-8 text-[20px] font-semibold leading-7">预览</h2>
+					<div ref={containerRef} onClick={onDiagramClick}>
+						<Markdown source={content} />
+					</div>
+					<div className="mt-6 flex gap-3">
+						<button
+							type="button"
+							className="h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white disabled:opacity-50"
+							disabled={saving}
+							onClick={() => save(editing.content, editing.baseVersion)}
+						>
+							{saving ? "保存中…" : "保存"}
+						</button>
+						<button
+							type="button"
+							className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124] disabled:opacity-50"
+							disabled={saving}
+							onClick={cancelEdit}
+						>
+							取消
+						</button>
+					</div>
+				</>
+			) : !record.content.trim() ? (
+				<div className="max-w-[560px]">
+					<EmptyNote>尚未整理项目架构</EmptyNote>
+					<div className="mt-4 flex items-center gap-3">
+						<button
+							type="button"
+							className="h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white"
+							onClick={startEdit}
+						>
+							编辑
+						</button>
+						<span className="text-[15px] leading-6 text-[#555B65]">也可以在聊天里让 Agent 整理</span>
+					</div>
+				</div>
+			) : (
+				<>
+					<div ref={containerRef} onClick={onDiagramClick} className="text-[16px] leading-7">
+						<Markdown source={record.content} />
+					</div>
+
+					{rows.length > 0 ? (
+						<ul className="mt-8 max-w-[820px]">
+							{rows.map((row) => {
+								const selected = selectedId === rowKey(row);
+								const linked = row.tasks.filter((tid) => p0TaskIds.has(tid));
+								return (
+									<li key={row.id || row.name} id={row.id ? `comp-${row.id}` : undefined}>
+										<button
+											type="button"
+											className={`flex min-h-12 w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[16px] font-medium leading-6 ${
+												selected ? "bg-[#EEF2FF] text-[#3B57D0]" : "text-[#202124] hover:bg-[#EEF2FF]/60"
+											}`}
+											aria-expanded={selected}
+											onClick={() => selectRow(row)}
+										>
+											{row.name}
+											<span aria-hidden="true">{selected ? "▾" : "▸"}</span>
+										</button>
+										{selected ? (
+											<div className="px-3 pb-4 pt-1 text-[15px] leading-6 text-[#202124]">
+												<p className="whitespace-pre-wrap">{row.description}</p>
+												{row.source ? <p className="mt-2 text-[14px] leading-[22px] text-[#555B65]">来源：{row.source}</p> : null}
+												{linked.length > 0 ? (
+													<p className="mt-2 text-[14px] leading-[22px] text-[#555B65]">
+														关联任务：
+														{linked.map((tid) => (
+															<Link
+																key={tid}
+																to={`/projects/${projectId}/tasks`}
+																className="mr-3 font-medium text-[#3B57D0]"
+															>
+																{(tasks ?? []).find((t) => t.id === tid)?.title ?? tid}
+															</Link>
+														))}
+													</p>
+												) : null}
+											</div>
+										) : null}
+									</li>
+								);
+							})}
+						</ul>
+					) : null}
+				</>
+			)}
+
+			<Modal open={zoomOpen} onClose={() => setZoomOpen(false)} title="项目架构" widthClass="w-[96vw] max-w-[1200px]">
+				<div className="max-h-[80vh] overflow-auto">
+					{zoomSvgs.length > 0 ? (
+						zoomSvgs.map((svg, i) => (
+							// 渲染自本页受控 Mermaid 输出（securityLevel strict）的 SVG 副本。
+							<div key={i} dangerouslySetInnerHTML={{ __html: svg }} />
+						))
+					) : (
+						<EmptyNote>没有可放大的图</EmptyNote>
+					)}
+				</div>
+			</Modal>
+		</div>
+	);
+}

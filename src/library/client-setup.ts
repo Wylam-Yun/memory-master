@@ -9,7 +9,7 @@ import {
 	instructionBlock,
 	MANAGED_BEGIN,
 	MANAGED_END,
-	SKILL_MD,
+	SKILL_FILES,
 } from "./agent-content.ts";
 import type { LibraryClientId } from "./types.ts";
 
@@ -197,10 +197,20 @@ async function installInstructions(clientId: LibraryClientId, serviceUrl: string
 	return [instructionsPath];
 }
 
+/**
+ * The skill is a directory, not a single file: SKILL.md's relative links
+ * (content standard, architecture format, upstream license) only resolve if
+ * every file in SKILL_FILES lands next to it.
+ */
 async function installSkill(clientId: LibraryClientId): Promise<string[]> {
 	const { skillPath } = clientFiles(clientId);
-	await writeAtomic(skillPath, SKILL_MD);
-	return [skillPath];
+	const installed: string[] = [];
+	for (const [name, content] of Object.entries(SKILL_FILES)) {
+		const path = join(dirname(skillPath), name);
+		await writeAtomic(path, content);
+		installed.push(path);
+	}
+	return installed;
 }
 
 export interface InstallResult {
