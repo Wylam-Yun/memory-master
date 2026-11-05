@@ -24,7 +24,7 @@ describe("phase 3+4: questions, resources, client setup", () => {
 		opts: { method?: string; token?: string | null; body?: unknown } = {},
 	): Promise<Response> => {
 		const headers: Record<string, string> = {};
-		const token = opts.token === undefined ? service.webKey : opts.token;
+		const token = opts.token ?? null;
 		if (token) headers.authorization = `Bearer ${token}`;
 		if (opts.body !== undefined) headers["content-type"] = "application/json";
 		return await fetch(`${base}${path}`, {

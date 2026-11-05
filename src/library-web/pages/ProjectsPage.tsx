@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { api, type LibraryProject } from "../api.ts";
 import Modal from "../components/Modal.tsx";
 import { EmptyNote, ErrorNote } from "../components/StatusMessage.tsx";
+import { useImeGuard } from "../useImeGuard.ts";
 
 export default function ProjectsPage({ projects, reload }: { projects: LibraryProject[]; reload: () => Promise<void> }) {
 	const navigate = useNavigate();
@@ -13,6 +14,7 @@ export default function ProjectsPage({ projects, reload }: { projects: LibraryPr
 	const [error, setError] = useState<unknown>(null);
 	const [busy, setBusy] = useState(false);
 	const [filter, setFilter] = useState("");
+	const ime = useImeGuard();
 
 	const closeModal = () => {
 		setModalOpen(false);
@@ -109,6 +111,10 @@ export default function ProjectsPage({ projects, reload }: { projects: LibraryPr
 
 			<Modal open={modalOpen} onClose={closeModal} title="新建项目">
 				<form
+					{...ime.compositionProps}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" && ime.inComposition(e)) e.preventDefault();
+					}}
 					onSubmit={(e) => {
 						e.preventDefault();
 						void create();

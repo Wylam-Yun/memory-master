@@ -1,12 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import {
-	api,
-	hasWebKey,
-	type LibraryProject,
-	setOnUnauthorized,
-	setWebKey,
-} from "./api.ts";
+import { api, type LibraryProject } from "./api.ts";
 import AppShell from "./components/AppShell.tsx";
 import { ErrorNote } from "./components/StatusMessage.tsx";
 import ArchitecturePage from "./pages/ArchitecturePage.tsx";
@@ -17,15 +11,6 @@ import ResourcesPage from "./pages/ResourcesPage.tsx";
 import ResourceViewPage from "./pages/ResourceViewPage.tsx";
 import SettingsPage from "./pages/SettingsPage.tsx";
 import TasksPage from "./pages/TasksPage.tsx";
-
-function ErrorBox({ error }: { error: unknown }) {
-	if (!error) return null;
-	return (
-		<div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-			{error instanceof Error ? error.message : String(error)}
-		</div>
-	);
-}
 
 /** First-run screen: choose (or accept the default) memory library location. */
 function SetupPage({ defaultRoot, onDone }: { defaultRoot: string; onDone: () => void }) {
@@ -85,40 +70,7 @@ function SetupPage({ defaultRoot, onDone }: { defaultRoot: string; onDone: () =>
 	);
 }
 
-/** Entry gate: the service only authorizes web calls holding the per-start session key. */
-function KeyPage({ error, onSubmit }: { error: string | null; onSubmit: (key: string) => void }) {
-	const [input, setInput] = useState("");
-	return (
-		<div className="flex min-h-screen items-center justify-center bg-gray-50">
-			<div className="w-full max-w-md rounded border bg-white p-6">
-				<h1 className="mb-2 text-xl font-semibold">输入访问密钥</h1>
-				<p className="mb-4 text-sm text-gray-600">
-					启动 <code>memaster serve</code> 的终端里打印了带密钥的访问地址（
-					<code>http://127.0.0.1:端口/?k=…</code>）。把完整地址或密钥粘贴到下面。
-				</p>
-				<input
-					className="mb-3 w-full rounded border px-3 py-2 font-mono text-sm"
-					placeholder="mm_web_… 或完整 ?k= 地址"
-					value={input}
-					onChange={(e) => setInput(e.target.value)}
-					onKeyDown={(e) => e.key === "Enter" && input.trim() && onSubmit(input)}
-				/>
-				<ErrorBox error={error} />
-				<button
-					className="mt-3 rounded bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-50"
-					disabled={!input.trim()}
-					onClick={() => onSubmit(input)}
-				>
-					进入
-				</button>
-			</div>
-		</div>
-	);
-}
-
 export default function App() {
-	const [authed, setAuthed] = useState(hasWebKey());
-	const [keyError, setKeyError] = useState<string | null>(null);
 	const [state, setState] = useState<{
 		loaded: boolean;
 		error: string | null;
@@ -138,14 +90,6 @@ export default function App() {
 		});
 	}, []);
 	useEffect(() => {
-		setOnUnauthorized(() => {
-			setAuthed(false);
-			setKeyError("密钥已失效——服务重启后会生成新密钥，请从终端输出重新复制访问地址。");
-		});
-		return () => setOnUnauthorized(null);
-	}, []);
-	useEffect(() => {
-		if (!authed) return;
 		load().catch((e) =>
 			setState((s) => ({
 				...s,
@@ -153,26 +97,8 @@ export default function App() {
 				error: e instanceof Error ? e.message : String(e),
 			})),
 		);
-	}, [load, authed]);
+	}, [load]);
 
-	if (!authed) {
-		return (
-			<KeyPage
-				error={keyError}
-				onSubmit={(key) => {
-					try {
-						setWebKey(key);
-					} catch {
-						setKeyError("地址或密钥格式不对——请粘贴终端输出的完整访问地址或 mm_web_ 开头的密钥。");
-						return;
-					}
-					setKeyError(null);
-					setState((s) => ({ ...s, loaded: false }));
-					setAuthed(true);
-				}}
-			/>
-		);
-	}
 	if (!state.loaded) {
 		return <div className="min-h-screen bg-[#FAFAF8] p-8 text-[15px] text-[#555B65]">加载中…</div>;
 	}

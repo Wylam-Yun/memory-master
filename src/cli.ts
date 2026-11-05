@@ -6252,13 +6252,8 @@ program
 				await settings.setPort(port);
 			}
 			const url = service.baseUrl();
-			// The web key travels only through this terminal output — it is never
-			// written to disk or served over HTTP, so no HTTP-reachable party can
-			// mint web-API access. It rotates on every service start.
-			const keyedUrl = `${url}/?k=${service.webKey}`;
 			console.log(`Memory Master service running at ${url}`);
-			console.log(`Web UI (includes this session's access key): ${keyedUrl}`);
-			console.log("  The ?k= key authorizes web API calls and changes on every restart.");
+			console.log(`Web UI: ${url}`);
 			if (!(await settings.getLibraryRoot())) {
 				console.log(
 					`No memory library selected yet — open the Web UI link to choose one (default: ${defaultLibraryRoot()}).`,
@@ -6266,7 +6261,7 @@ program
 			}
 			if (options.open !== false) {
 				const { $ } = await import("bun");
-				await $`open ${keyedUrl}`.quiet().catch(() => {});
+				await $`open ${url}`.quiet().catch(() => {});
 			}
 
 			let shuttingDown = false;

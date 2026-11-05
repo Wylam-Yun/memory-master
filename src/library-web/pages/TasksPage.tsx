@@ -3,6 +3,7 @@ import { api, ApiError, type LibraryProject, type ProjectMeta, type Task } from 
 import { PageHeader, useProject } from "../components/AppShell.tsx";
 import { clearDraft, getDraft, setDraft } from "../components/drafts.ts";
 import { EmptyNote, ErrorNote, LoadingNote } from "../components/StatusMessage.tsx";
+import { useImeGuard } from "../useImeGuard.ts";
 import { isDoneStatus, isP0Task } from "../utils.ts";
 
 const SEL_WHICH = "sel:task";
@@ -23,6 +24,7 @@ function TasksInner({ project }: { project: LibraryProject }) {
 	const [adding, setAdding] = useState(false);
 	const [addOpen, setAddOpen] = useState(false);
 	const [addError, setAddError] = useState<unknown>(null);
+	const ime = useImeGuard();
 
 	const load = useCallback(async () => {
 		const [m, ts] = await Promise.all([api.getProject(projectId), api.listTasks(projectId)]);
@@ -214,8 +216,10 @@ function TasksInner({ project }: { project: LibraryProject }) {
 							className="h-10 min-w-0 flex-1 rounded-lg border border-[#8A9099]/50 bg-white px-3 text-[15px] leading-6 text-[#202124] focus:border-[#3B57D0] focus:outline-none"
 							placeholder="新任务名称"
 							value={newTitle}
+							{...ime.compositionProps}
 							onChange={(e) => setNewTitle(e.target.value)}
 							onKeyDown={(e) => {
+								if (ime.inComposition(e)) return;
 								if (e.key === "Enter") void addTask();
 								if (e.key === "Escape") setAddOpen(false);
 							}}

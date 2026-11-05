@@ -1,4 +1,3 @@
-import { randomBytes, timingSafeEqual } from "node:crypto";
 import { unlink } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -32,7 +31,6 @@ import {
 	type LibraryClientId,
 	LibraryError,
 	type LibraryProject,
-	unauthorizedError,
 	versionConflictError,
 } from "./types.ts";
 
@@ -95,8 +93,7 @@ function optionalString(value: unknown): string | undefined {
  * so closing the page changes nothing; stopping the process ends every client
  * access. Serves three route families:
  *   - the library web UI (SPA bundle)
- *   - /api/* for the web UI itself — gated by `webKey`, a per-process session
- *     credential delivered out-of-band (the `?k=` URL `memaster serve` prints).
+ *   - /api/* for the web UI itself — loopback-only, no credential.
  *     It is never written to disk or served over HTTP, so an agent on the same
  *     machine has no way to obtain it through the service itself — revoking a
  *     client therefore closes every Memory Master interface to it, not only
@@ -108,8 +105,7 @@ function optionalString(value: unknown): string | undefined {
 export class LibraryService {
 	readonly settings: AppSettingsStore;
 	readonly holds: TestHolds;
-	/** Per-process web session key; regenerated every service start, never persisted. */
-	readonly webKey = `mm_web_${randomBytes(16).toString("hex")}`;
+
 	private server: Server<unknown> | null = null;
 	private readonly stores = new Map<string, ProjectStore>();
 	private stopping = false;
@@ -683,6 +679,13 @@ export class LibraryService {
 			...(typeof body.current === "string" ? { current: body.current } : {}),
 			...(typeof body.features === "string" ? { features: body.features } : {}),
 		};
+		if (Object.keys(update).length === 0) {
+			throw new LibraryError(
+				LIBRARY_ERROR_CODES.VALIDATION,
+				"Nothing to update — send at least one of: description, goal, current, features.",
+				400,
+			);
+		}
 		const baseVersion = typeof body.baseVersion === "string" ? body.baseVersion : undefined;
 		return json(await this.writeOverview(identity, projectId, update, baseVersion));
 	}
@@ -736,8 +739,16 @@ export class LibraryService {
 		identity: { token: string; id: LibraryClientId } | null,
 	): Promise<Response> {
 		const body = await parseBody(req);
+		const input = this.taskInputFrom(body);
+		if (Object.keys(input).length === 0) {
+			throw new LibraryError(
+				LIBRARY_ERROR_CODES.VALIDATION,
+				"Nothing to update — send at least one of: title, status, description, priority.",
+				400,
+			);
+		}
 		const baseVersion = typeof body.baseVersion === "string" ? body.baseVersion : undefined;
-		return json(await this.writeTask(identity, projectId, taskId, this.taskInputFrom(body), baseVersion));
+		return json(await this.writeTask(identity, projectId, taskId, input, baseVersion));
 	}
 
 	private async handleListClients(): Promise<Response> {
@@ -994,7 +1005,11 @@ export class LibraryService {
 	 * Same write unit as every mutation: project write lock → stop check →
 	 * record write → history append → rollback on history failure.
 	 */
-	private async handleUploadResource(req: Request, projectId: string): Promise<Response> {
+	private async handleUploadResource(
+		req: Request,
+		projectId: string,
+		identity: { token: string; id: LibraryClientId } | null,
+	): Promise<Response> {
 		const project = await this.projectFor(projectId);
 		const store = this.storeFor(project);
 		const body = await parseBody(req);
@@ -1012,6 +1027,7 @@ export class LibraryService {
 		return await store.withWriteLock(async () => {
 			await this.holds.waitIfAny();
 			this.assertRunning();
+			if (identity !== null) await this.settings.assertAuthorized(identity.token);
 			// A same-name upload still has prior state to roll back to — snapshot
 			// the existing bytes before saveResource overwrites them.
 			const targetPath = join(resourcesDir(project.dir), safe);
@@ -1022,7 +1038,7 @@ export class LibraryService {
 				this.holds.throwIfHistoryFailpoint();
 				await appendHistory(project.dir, {
 					ts: new Date().toISOString(),
-					actor: { type: "user" },
+					actor: this.actorOf(identity),
 					target: { type: "resource", id: info.name, title: info.name },
 					action: "create",
 					changes: diffFields({}, { name: info.name, size: String(info.size) }),
@@ -1112,29 +1128,11 @@ export class LibraryService {
 		}
 	}
 
-	/**
-	 * Web-route gate: the session key must arrive as `Authorization: Bearer`.
-	 * The key only ever travels user→browser (printed URL or pasted), so nothing
-	 * reachable purely over HTTP can mint itself a usable credential.
-	 */
-	private requireWebKey(req: Request): void {
-		const header = req.headers.get("authorization") ?? "";
-		const key = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
-		const a = Buffer.from(key);
-		const b = Buffer.from(this.webKey);
-		if (a.length !== b.length || !timingSafeEqual(a, b)) {
-			throw unauthorizedError(
-				"Missing or invalid web access key. Open the keyed URL printed by `memaster serve` (…/?k=…), or paste the key on the entry screen.",
-			);
-		}
-	}
-
 	private async withRoute(req: Request, handler: () => Promise<Response>): Promise<Response> {
 		try {
 			if (!isLoopbackHost(req)) {
 				throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Forbidden host.", 403);
 			}
-			this.requireWebKey(req);
 			return await handler();
 		} catch (error) {
 			return errorResponse(error);
@@ -1243,7 +1241,7 @@ export class LibraryService {
 					GET: async (req: Request & { params: { id: string } }) =>
 						this.withRoute(req, () => this.handleListResources(req.params.id)),
 					POST: async (req: Request & { params: { id: string } }) =>
-						this.withRoute(req, () => this.handleUploadResource(req, req.params.id)),
+						this.withRoute(req, () => this.handleUploadResource(req, req.params.id, null)),
 				},
 				"/api/projects/:id/resources/:name": {
 					GET: async (req: Request & { params: { id: string; name: string } }) =>
@@ -1318,6 +1316,8 @@ export class LibraryService {
 				"/api/agent/projects/:id/resources": {
 					GET: async (req: Request & { params: { id: string } }) =>
 						this.withAgentRoute(req, () => this.handleListResources(req.params.id)),
+					POST: async (req: Request & { params: { id: string } }) =>
+						this.withAgentRoute(req, (identity) => this.handleUploadResource(req, req.params.id, identity)),
 				},
 				"/api/agent/projects/:id/resources/:name": {
 					GET: async (req: Request & { params: { id: string; name: string } }) =>

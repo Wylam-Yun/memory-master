@@ -27,9 +27,8 @@ describe("library V1.1: content & write capabilities", () => {
 		opts: { method?: string; token?: string | null; body?: unknown } = {},
 	): Promise<Response> => {
 		const headers: Record<string, string> = {};
-		// Web routes expect the service's per-start session key; agent routes get
-		// an explicit client token. `token: null` sends no credential at all.
-		const token = opts.token === undefined ? service.webKey : opts.token;
+		// Web routes need no credential; agent routes get an explicit client token.
+		const token = opts.token ?? null;
 		if (token) headers.authorization = `Bearer ${token}`;
 		if (opts.body !== undefined) headers["content-type"] = "application/json";
 		return await fetch(`${base}${path}`, {
@@ -339,6 +338,113 @@ describe("library V1.1: content & write capabilities", () => {
 		expect((await json(await req(`/api/projects/${project.id}/overview`))).features).toBe("MCP 写入的功能");
 	});
 
+	test("a data-enveloped write lands, unknown args fail loudly, and field-less PUTs return 400", async () => {
+		await setupLibrary();
+		const project = await createProject("订单系统");
+		const token = await enableClient("codex");
+		const path = join(project.dir, "memaster", "overview.md");
+
+		// The exact shape a real agent once produced — payload nested in `data`
+		// as a JSON string. It must write, not silently no-op.
+		const bridge = new LibraryBridge({ serviceUrl: base, token });
+		await bridge.callTool("project_open", { name: "订单系统" });
+		const read = JSON.parse((await bridge.callTool("overview_read", {})).content[0]?.text ?? "{}");
+		const wrote = await bridge.callTool("overview_write", {
+			base_version: read.version,
+			data: JSON.stringify({ current: "信封里的进展" }),
+		});
+		expect(wrote.isError).toBeUndefined();
+		expect(await Bun.file(path).text()).toContain("信封里的进展");
+		const written = JSON.parse((await bridge.callTool("overview_read", {})).content[0]?.text ?? "{}");
+		expect(written.current).toBe("信封里的进展");
+		expect(written.version).not.toBe(read.version);
+
+		// `data` as an object works too; top-level fields win over the envelope.
+		const again = await bridge.callTool("overview_write", {
+			base_version: written.version,
+			current: "顶层优先",
+			data: { current: "信封里" },
+		});
+		expect(again.isError).toBeUndefined();
+		expect(await Bun.file(path).text()).toContain("顶层优先");
+
+		// An argument the tool doesn't know must error, never drop silently.
+		const bogus = await bridge.callTool("overview_write", {
+			base_version: written.version,
+			goal_new: "编造的字段",
+		});
+		expect(bogus.isError).toBe(true);
+		expect(bogus.content[0]?.text).toContain("Unknown argument");
+
+		// Service-level backstop: a PUT with no writable field is a 400, not a
+		// fake success — on both web and agent routes.
+		expect(
+			(
+				await req(`/api/projects/${project.id}/overview`, {
+					method: "PUT",
+					body: { baseVersion: written.version },
+				})
+			).status,
+		).toBe(400);
+		expect(
+			(
+				await req(`/api/agent/projects/${project.id}/overview`, {
+					method: "PUT",
+					token,
+					body: { baseVersion: written.version },
+				})
+			).status,
+		).toBe(400);
+		const created = await json(
+			await req(`/api/projects/${project.id}/tasks`, { method: "POST", body: { title: "t" } }),
+		);
+		expect(
+			(
+				await req(`/api/agent/projects/${project.id}/tasks/${created.id}`, {
+					method: "PUT",
+					token,
+					body: { baseVersion: created.version },
+				})
+			).status,
+		).toBe(400);
+	});
+
+	test("agents publish 资料 files through resource_write — disk, history, and revocation are all real", async () => {
+		await setupLibrary();
+		const project = await createProject("订单系统");
+		const token = await enableClient("codex");
+		const targetPath = join(project.dir, "资料", "meeting-notes.md");
+
+		const bridge = new LibraryBridge({ serviceUrl: base, token });
+		await bridge.callTool("project_open", { name: "订单系统" });
+		const wrote = await bridge.callTool("resource_write", {
+			name: "meeting-notes.md",
+			content: "# 会议纪要\n\n第一条结论",
+		});
+		expect(wrote.isError).toBeUndefined();
+
+		// External end state: the file exists in 资料/ and the web read route
+		// serves it back byte-identical.
+		expect(await Bun.file(targetPath).text()).toContain("会议纪要");
+		const webRead = await json(await req(`/api/projects/${project.id}/resources/meeting-notes.md`));
+		expect(webRead.text).toContain("第一条结论");
+
+		// The changelog attributes the upload to the agent, not the user.
+		const entries = await historyOf(project.id);
+		const resourceEntry = entries.find((e) => e.target.type === "resource" && e.target.id === "meeting-notes.md");
+		expect(resourceEntry?.actor).toEqual({ type: "agent", client: "codex" });
+
+		// A revoked client loses the write path and the file stays untouched.
+		await req("/api/clients/codex", { method: "PUT", body: { enabled: false } });
+		const denied = await req(`/api/agent/projects/${project.id}/resources`, {
+			method: "POST",
+			token,
+			body: { name: "evil.md", base64: Buffer.from("x").toString("base64") },
+		});
+		expect(denied.status).toBe(403);
+		expect(await Bun.file(join(project.dir, "资料", "evil.md")).exists()).toBe(false);
+	});
+
 	test("a pre-features overview file reads empty and stays unexpanded on unrelated updates", async () => {
 		await setupLibrary();
 		const project = await createProject("旧项目");
@@ -549,8 +655,8 @@ describe("library V1.1: content & write capabilities", () => {
 		expect(bin.text).toBeUndefined();
 		expect((await req(`/api/projects/${project.id}/resources/missing.txt`)).status).toBe(404);
 
-		// An agent credential is not a web key — this route never borrows it.
-		expect((await req(`/api/projects/${project.id}/resources/spec.md`, { token })).status).toBe(401);
+		// Web routes carry no credential check — an agent token sent here is ignored.
+		expect((await req(`/api/projects/${project.id}/resources/spec.md`, { token })).status).toBe(200);
 		// Revoking the agent closes its route but not the web's.
 		await req("/api/clients/codex", { method: "PUT", body: { enabled: false } });
 		expect((await req(`/api/agent/projects/${project.id}/resources/spec.md`, { token })).status).toBe(403);

@@ -19,9 +19,8 @@ describe("library service", () => {
 		opts: { method?: string; token?: string | null; body?: unknown } = {},
 	): Promise<Response> => {
 		const headers: Record<string, string> = {};
-		// Web routes expect the service's per-start session key; agent routes get
-		// an explicit client token. `token: null` sends no credential at all.
-		const token = opts.token === undefined ? service.webKey : opts.token;
+		// Web routes need no credential; agent routes get an explicit client token.
+		const token = opts.token ?? null;
 		if (token) headers.authorization = `Bearer ${token}`;
 		if (opts.body !== undefined) headers["content-type"] = "application/json";
 		return await fetch(`${base}${path}`, {
@@ -228,34 +227,34 @@ describe("library service", () => {
 		expect(evil.status).toBe(400);
 	});
 
-	test("web API requires the session key — credentials never served over HTTP", async () => {
+	test("web API serves loopback without any credential and rejects foreign Hosts", async () => {
 		await setupLibrary();
 		const project = await createProject("订单系统");
 		const agentToken = await enableClient("codex");
 
-		// No credential at all → 401 on every web route family.
-		expect((await req("/api/projects", { token: null })).status).toBe(401);
-		expect((await req("/api/library", { token: null })).status).toBe(401);
-		expect((await req(`/api/projects/${project.id}/tasks`, { token: null })).status).toBe(401);
+		// No credential at all → 200 on every web route family.
+		expect((await req("/api/projects", { token: null })).status).toBe(200);
+		expect((await req("/api/library", { token: null })).status).toBe(200);
+		expect((await req(`/api/projects/${project.id}/tasks`, { token: null })).status).toBe(200);
 
-		// An agent token is not a web key — live or revoked, it opens nothing here.
-		expect((await req("/api/projects", { token: agentToken })).status).toBe(401);
-		const deniedWrite = await req(`/api/projects/${project.id}/tasks`, {
-			method: "POST",
-			token: agentToken,
-			body: { title: "agent token 直写 web 通道" },
+		// A non-loopback Host header is refused outright.
+		const foreign = await fetch(`${base}/api/projects`, {
+			headers: { host: "evil.example" },
 		});
-		expect(deniedWrite.status).toBe(401);
-		expect((await readdir(join(project.dir, "memaster", "tasks"))).length).toBe(0);
+		expect(foreign.status).toBe(403);
 
-		// Revoking the client changes nothing for the human's session key.
+		// An agent token on a web route is simply ignored — nothing to check.
+		expect((await req("/api/projects", { token: agentToken })).status).toBe(200);
+
+		// Revoking the client changes nothing for the human's web session.
 		await req("/api/clients/codex", { method: "PUT", body: { enabled: false } });
 		expect((await req("/api/agent/ping", { token: agentToken })).status).toBe(403);
 		const webWrite = await req(`/api/projects/${project.id}/tasks`, {
 			method: "POST",
-			body: { title: "密钥持有者仍可写" },
+			body: { title: "网页直接创建" },
 		});
 		expect(webWrite.status).toBe(201);
+		expect((await readdir(join(project.dir, "memaster", "tasks"))).length).toBe(1);
 	});
 
 	test("web writes are unaffected by client revocation", async () => {

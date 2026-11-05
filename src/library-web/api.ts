@@ -1,41 +1,4 @@
-/** Thin fetch helpers for the library web API (session-key authorized). */
-
-/**
- * The web session key arrives out-of-band: `memaster serve` prints a `?k=` URL,
- * the user opens it (or pastes the key on the entry screen). We keep it in
- * sessionStorage only — never localStorage, never written anywhere an agent
- * process could read it as a file.
- */
-const KEY_STORAGE = "mm-web-key";
-
-let webKey = (() => {
-	const url = new URL(window.location.href);
-	const fromUrl = url.searchParams.get("k");
-	if (fromUrl) {
-		sessionStorage.setItem(KEY_STORAGE, fromUrl);
-		url.searchParams.delete("k");
-		window.history.replaceState(null, "", url);
-	}
-	return sessionStorage.getItem(KEY_STORAGE) ?? "";
-})();
-
-export function hasWebKey(): boolean {
-	return webKey.length > 0;
-}
-
-export function setWebKey(raw: string): void {
-	const input = raw.trim();
-	// Accept a pasted full URL as well as the bare key.
-	const viaUrl = input.includes("://") ? new URL(input).searchParams.get("k") : null;
-	webKey = viaUrl ?? input;
-	sessionStorage.setItem(KEY_STORAGE, webKey);
-}
-
-/** Called whenever the service answers 401 — App uses it to re-show the key screen. */
-let onUnauthorized: (() => void) | null = null;
-export function setOnUnauthorized(handler: (() => void) | null): void {
-	onUnauthorized = handler;
-}
+/** Thin fetch helpers for the library web API (loopback-only, no credential). */
 
 export interface LibraryProject {
 	id: string;
@@ -154,7 +117,7 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
-	const headers: Record<string, string> = { authorization: `Bearer ${webKey}` };
+	const headers: Record<string, string> = {};
 	if (init?.body !== undefined) headers["content-type"] = "application/json";
 	const res = await fetch(path, {
 		method: init?.method ?? "GET",
@@ -168,7 +131,6 @@ async function request<T>(path: string, init?: { method?: string; body?: unknown
 		version?: string;
 	};
 	if (!res.ok) {
-		if (res.status === 401) onUnauthorized?.();
 		throw new ApiError(
 			data.error ?? `Request failed (${res.status})`,
 			res.status,

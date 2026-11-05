@@ -25,7 +25,7 @@ export default function Modal({
 		const previouslyFocused = (dialog?.ownerDocument.activeElement ?? document.activeElement) as HTMLElement | null;
 		const doc = dialog?.ownerDocument ?? document;
 		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
+			if (e.key === "Escape" && !e.isComposing) {
 				e.preventDefault();
 				e.stopPropagation();
 				onClose();

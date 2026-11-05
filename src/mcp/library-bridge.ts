@@ -83,6 +83,34 @@ export class LibraryBridge {
 		return this.selectedProject;
 	}
 
+	/**
+	 * Agents sometimes wrap the payload in a `data` field (object or JSON string).
+	 * Unwrap it — then refuse anything unrecognized. Silently dropping unknown
+	 * arguments once produced "successful" writes that changed nothing.
+	 */
+	private writeArgs(args: Record<string, unknown>, allowed: readonly string[]): Record<string, unknown> {
+		let data: unknown = args.data;
+		if (typeof data === "string") {
+			try {
+				data = JSON.parse(data);
+			} catch {
+				data = undefined;
+			}
+		}
+		if (args.data !== undefined && (data === null || typeof data !== "object" || Array.isArray(data))) {
+			throw new Error("`data` must be an object or a JSON object string.");
+		}
+		const merged: Record<string, unknown> =
+			data !== undefined ? { ...(data as Record<string, unknown>), ...args } : { ...args };
+		delete merged.data;
+		for (const key of Object.keys(merged)) {
+			if (!allowed.includes(key)) {
+				throw new Error(`Unknown argument "${key}" — pass write fields at the top level, not inside a wrapper.`);
+			}
+		}
+		return merged;
+	}
+
 	/** Updates are optimistic-concurrency writes: the caller must prove which version it saw. */
 	private requireBaseVersion(args: Record<string, unknown>): string {
 		const version = typeof args.base_version === "string" ? args.base_version.trim() : "";
@@ -112,10 +140,11 @@ export class LibraryBridge {
 				case "overview_read":
 					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/overview`));
 				case "overview_write": {
-					const baseVersion = this.requireBaseVersion(args);
+					const fields = this.writeArgs(args, ["base_version", "description", "goal", "current", "features"]);
+					const baseVersion = this.requireBaseVersion(fields);
 					const body: Record<string, unknown> = { baseVersion };
 					for (const key of ["description", "goal", "current", "features"] as const) {
-						if (args[key] !== undefined) body[key] = args[key];
+						if (fields[key] !== undefined) body[key] = fields[key];
 					}
 					return ok(
 						await this.api(`/api/agent/projects/${this.requireProject().id}/overview`, {
@@ -127,16 +156,17 @@ export class LibraryBridge {
 				case "architecture_read":
 					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/architecture`));
 				case "architecture_write": {
-					const baseVersion = this.requireBaseVersion(args);
+					const fields = this.writeArgs(args, ["base_version", "content"]);
+					const baseVersion = this.requireBaseVersion(fields);
 					// content is required — a missing value must fail loudly rather
 					// than silently clear the record.
-					if (typeof args.content !== "string") {
+					if (typeof fields.content !== "string") {
 						throw new Error("content is required — pass the full architecture Markdown document.");
 					}
 					return ok(
 						await this.api(`/api/agent/projects/${this.requireProject().id}/architecture`, {
 							method: "PUT",
-							body: { content: args.content, baseVersion },
+							body: { content: fields.content, baseVersion },
 						}),
 					);
 				}
@@ -150,26 +180,36 @@ export class LibraryBridge {
 							`/api/agent/projects/${this.requireProject().id}/tasks/${encodeURIComponent(String(args.task_id ?? ""))}`,
 						),
 					);
-				case "task_create":
+				case "task_create": {
+					const fields = this.writeArgs(args, ["title", "status", "description", "priority"]);
 					return ok(
 						await this.api(`/api/agent/projects/${this.requireProject().id}/tasks`, {
 							method: "POST",
 							body: {
-								title: args.title,
-								status: args.status,
-								description: args.description,
-								priority: args.priority,
+								title: fields.title,
+								status: fields.status,
+								description: fields.description,
+								priority: fields.priority,
 							},
 						}),
 					);
+				}
 				case "task_update": {
-					const body: Record<string, unknown> = { baseVersion: this.requireBaseVersion(args) };
+					const fields = this.writeArgs(args, [
+						"task_id",
+						"base_version",
+						"title",
+						"status",
+						"description",
+						"priority",
+					]);
+					const body: Record<string, unknown> = { baseVersion: this.requireBaseVersion(fields) };
 					for (const key of ["title", "status", "description", "priority"] as const) {
-						if (args[key] !== undefined) body[key] = args[key];
+						if (fields[key] !== undefined) body[key] = fields[key];
 					}
 					return ok(
 						await this.api(
-							`/api/agent/projects/${this.requireProject().id}/tasks/${encodeURIComponent(String(args.task_id ?? ""))}`,
+							`/api/agent/projects/${this.requireProject().id}/tasks/${encodeURIComponent(String(fields.task_id ?? ""))}`,
 							{ method: "PUT", body },
 						),
 					);
@@ -217,6 +257,20 @@ export class LibraryBridge {
 							`/api/agent/projects/${this.requireProject().id}/resources/${encodeURIComponent(String(args.name ?? ""))}`,
 						),
 					);
+				case "resource_write": {
+					const fields = this.writeArgs(args, ["name", "content", "encoding"]);
+					if (typeof fields.content !== "string") {
+						throw new Error("content is required — pass the file content as text (default) or base64.");
+					}
+					const base64 =
+						fields.encoding === "base64" ? fields.content : Buffer.from(fields.content, "utf8").toString("base64");
+					return ok(
+						await this.api(`/api/agent/projects/${this.requireProject().id}/resources`, {
+							method: "POST",
+							body: { name: fields.name, base64 },
+						}),
+					);
+				}
 				default:
 					return fail(`Unknown tool: ${name}`);
 			}
@@ -397,6 +451,20 @@ export class LibraryBridge {
 				name: "resource_list",
 				description: "List the selected project's uploaded resources (项目资料) — names and sizes.",
 				inputSchema: { type: "object" as const, properties: {} },
+			},
+			{
+				name: "resource_write",
+				description:
+					'Add or replace a file in the selected project\'s 资料 (resources) by name — agents can publish documents the user then opens in the web UI. Text is written as UTF-8; pass encoding "base64" for binary. A same-name file is overwritten.',
+				inputSchema: {
+					type: "object" as const,
+					properties: {
+						name: str("File name, e.g. architecture-overview.md"),
+						content: str('File content — UTF-8 text by default, or base64 when encoding is "base64"'),
+						encoding: str('"text" (default) or "base64"'),
+					},
+					required: ["name", "content"],
+				},
 			},
 			{
 				name: "resource_read",
