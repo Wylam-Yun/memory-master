@@ -77,11 +77,14 @@ Memaster itself. The full task ledger lives in this repo's [memaster folder](mem
 `memaster serve` starts the local service (default port 6420) and opens the library web UI:
 
 * **Choose a memory library** on first launch (default `~/Documents/MemoryMaster`); each project is its own directory with a `memaster/` store and a `资料/` folder.
-* **Create and manage projects** from the web UI — overview sections (what it is / goal / current progress) and tasks.
+* **Create and manage projects** from the five-page web workspace: overview (introduction, current progress, goals, features and usage), tasks, architecture, resources, and history.
 * **Authorize agent clients** in `/settings`: Codex and Claude Code have independent switches and credentials, off by default. Revoking takes effect immediately, including writes already in flight.
 * **Connect an agent**: `memaster connect codex` (or `claude-code`) prints a ready-to-paste `mcpServers` config; the agent talks to the service through `memaster bridge` and can open projects by name from any directory.
 * **One-click client setup**: enabling a client in `/settings` installs its MCP config, a short instruction block, and the collaboration skill into its real config files — existing user config is preserved and re-enabling is idempotent. A client only gains project access after its bridge actually pings the service (`configured` → `connected`, shown per client in the UI).
-* **Pending questions (待决定事项)**: agents raise decisions that need the user (`question_ask`); the web page shows them and the user can answer there — or answer in the dialog and the agent records it. Both paths converge on the same record and history timeline.
+* **Project architecture**: read the relationship diagram, visible responsibilities, and main workflow. Composition tables are displayed once as readable explanations; click a diagram node to locate its explanation. Optional sources and P0 task links expand under “补充信息”. Read and edit preview use the same layout. See the [user guide](docs/USER-GUIDE.md).
+* **Dynamic project overview**: maintain a precise latest progress brief, one-sentence goals, completed/adjusted goal archives, and key-result stage reports with actual completion dates. Humans manage them in the overview; agents use `goal_*` and `progress_*` MCP tools. Shared versions, duplicate prevention, confirmation and automatic history apply to both. Legacy goal text stays available. See the [user guide](docs/USER-GUIDE.md).
+* **Consistent light workspace**: project content and previews use the page's light palette even when the operating system prefers dark mode.
+* **Collaborate in your agent chat**: decisions are discussed in Codex or Claude Code; project progress and tasks retain confirmed results. Test-session notes belong in progress/tasks, rather than architecture.
 * **Project resources (项目资料)**: upload files into a project's `资料/` directory from the web UI; connected agents list and read them via `resource_list` / `resource_read`. Disabled clients lose even list access.
 * **Versions & history**: every record carries a content-hash version — updates must send `baseVersion` back, conflicts return the latest value. A per-project changelog (`memaster/changelog.jsonl`) attributes each write to the user or a specific agent, and record + history commit atomically.
 

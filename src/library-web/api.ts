@@ -1,3 +1,6 @@
+import type { Goal, Progress, TrackingPage } from "../library/tracking.ts";
+
+export type { Goal, Progress, TrackingPage };
 /** Thin fetch helpers for the library web API (loopback-only, no credential). */
 
 export interface LibraryProject {
@@ -8,6 +11,9 @@ export interface LibraryProject {
 }
 
 export interface ProjectOverview {
+	goals?: Goal[];
+	currentUpdatedAt?: string | null;
+	archiveCounts?: { completed: number; adjusted: number; progress: number };
 	description: string;
 	goal: string;
 	current: string;
@@ -33,7 +39,7 @@ export interface HistoryEntry {
 	ts: string;
 	actor: { type: "user" } | { type: "agent"; client: string };
 	target: {
-		type: "project" | "task" | "overview" | "question" | "resource" | "architecture";
+		type: "project" | "task" | "overview" | "question" | "resource" | "architecture" | "goal" | "progress";
 		id?: string;
 		title?: string;
 	};
@@ -158,6 +164,24 @@ export const api = {
 	getOverview: (id: string) => request<ProjectOverview>(`/api/projects/${id}/overview`),
 	putOverview: (id: string, update: Partial<Omit<ProjectOverview, "version">>, baseVersion: string) =>
 		request<ProjectOverview>(`/api/projects/${id}/overview`, { method: "PUT", body: { ...update, baseVersion } }),
+
+	listGoals: (id: string, status = "active", offset = 0) =>
+		request<TrackingPage<Goal>>(`/api/projects/${id}/goals?status=${status}&offset=${offset}&limit=20`),
+	listProgress: (id: string, offset = 0) =>
+		request<TrackingPage<Progress>>(`/api/projects/${id}/progress?offset=${offset}&limit=20`),
+	getGoal: (id: string, recordId: string) =>
+		request<Goal & { version: string }>(`/api/projects/${id}/goals/${encodeURIComponent(recordId)}`),
+	getProgress: (id: string, recordId: string) =>
+		request<Progress & { version: string }>(`/api/projects/${id}/progress/${encodeURIComponent(recordId)}`),
+	createGoal: (id: string, body: Record<string, unknown>) =>
+		request<Goal>(`/api/projects/${id}/goals`, { method: "POST", body }),
+	updateGoal: (id: string, recordId: string, body: Record<string, unknown>) =>
+		request<Goal>(`/api/projects/${id}/goals/${encodeURIComponent(recordId)}`, { method: "PUT", body }),
+	recordProgress: (id: string, body: Record<string, unknown>) =>
+		request<Progress>(`/api/projects/${id}/progress`, { method: "POST", body }),
+	updateProgress: (id: string, recordId: string, body: Record<string, unknown>) =>
+		request<Progress>(`/api/projects/${id}/progress/${encodeURIComponent(recordId)}`, { method: "PUT", body }),
+
 	listTasks: (id: string) => request<Task[]>(`/api/projects/${id}/tasks`),
 	createTask: (id: string, title: string) =>
 		request<Task>(`/api/projects/${id}/tasks`, { method: "POST", body: { title } }),

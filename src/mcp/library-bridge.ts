@@ -153,6 +153,67 @@ export class LibraryBridge {
 						}),
 					);
 				}
+
+				case "goal_list":
+				case "progress_list": {
+					const fields = this.writeArgs(args, ["status", "offset", "limit"]);
+					const params = new URLSearchParams();
+					for (const [key, value] of Object.entries(fields)) params.set(key, String(value));
+					return ok(
+						await this.api(
+							`/api/agent/projects/${this.requireProject().id}/${name === "goal_list" ? "goals" : "progress"}?${params}`,
+						),
+					);
+				}
+				case "goal_create":
+				case "goal_update":
+				case "progress_record":
+				case "progress_update": {
+					const goal = name.startsWith("goal_");
+					const update = name.endsWith("_update");
+					const allowed =
+						name === "goal_create"
+							? ["key", "title", "requires_confirmation"]
+							: name === "goal_update"
+								? ["goal_id", "status", "confirmed", "occurred_at", "replacement_title", "current", "progress"]
+								: name === "progress_record"
+									? ["key", "title", "summary", "completed_at", "goal_id"]
+									: ["progress_id", "title", "summary", "completed_at"];
+					const fields = this.writeArgs(args, ["base_version", ...allowed]);
+					const body: Record<string, unknown> = { baseVersion: this.requireBaseVersion(fields) };
+					const mapping: Record<string, string> = {
+						requires_confirmation: "requiresConfirmation",
+						occurred_at: "occurredAt",
+						replacement_title: "replacementTitle",
+						completed_at: "completedAt",
+						goal_id: "goalId",
+					};
+					for (const [key, value] of Object.entries(fields)) {
+						if (key === "base_version" || key === "progress_id" || (goal && key === "goal_id")) continue;
+						if (key === "progress") {
+							if (!value || typeof value !== "object" || Array.isArray(value))
+								throw new Error("progress must be an object.");
+							const nested = this.writeArgs(value as Record<string, unknown>, [
+								"key",
+								"title",
+								"summary",
+								"completed_at",
+							]);
+							body.progress = Object.fromEntries(
+								Object.entries(nested).map(([k, v]) => [k === "completed_at" ? "completedAt" : k, v]),
+							);
+						} else body[mapping[key] ?? key] = value;
+					}
+					const id = update ? String(fields[goal ? "goal_id" : "progress_id"] ?? "") : "";
+					if (update && !id) throw new Error("The record ID is required.");
+					return ok(
+						await this.api(
+							`/api/agent/projects/${this.requireProject().id}/${goal ? "goals" : "progress"}${update ? `/${encodeURIComponent(id)}` : ""}`,
+							{ method: update ? "PUT" : "POST", body },
+						),
+					);
+				}
+
 				case "architecture_read":
 					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/architecture`));
 				case "architecture_write": {
@@ -281,6 +342,17 @@ export class LibraryBridge {
 
 	listTools() {
 		const str = (description: string) => ({ type: "string" as const, description });
+		const date = {
+			type: ["string", "null"],
+			description:
+				"Actual YYYY-MM-DD or ISO completion date; omit for now, null only for genuinely unknown historical dates. Never invent dates.",
+		};
+		const progressProperties = {
+			key: str("Stable key for this result; reuse the same key on retry"),
+			title: str("One-line result title"),
+			summary: str("Precise result and its verified scope, more detailed than the title"),
+			completed_at: date,
+		};
 		return [
 			{
 				name: "project_list",
@@ -304,7 +376,8 @@ export class LibraryBridge {
 			},
 			{
 				name: "overview_read",
-				description: "Read the selected project's overview (what it is, goal, current progress).",
+				description:
+					"Read introduction, legacy goal text, current precise brief, features, active structured goals, archive counts and shared version. Read archived goals/progress with goal_list/progress_list.",
 				inputSchema: { type: "object" as const, properties: {} },
 			},
 			{
@@ -316,13 +389,105 @@ export class LibraryBridge {
 					properties: {
 						base_version: str("The `version` value returned by your last overview_read (required)"),
 						description: str("What the project is"),
-						goal: str("Project goal"),
-						current: str("Current progress"),
+						goal: str("Legacy goal text only; once structured goals exist use goal_create / goal_update"),
+						current: str(
+							"Replace the latest precise brief, more detailed than a goal; include results, remaining/unverified scope and next step. Never append a chat diary.",
+						),
 						features: str("可用能力或交付内容及其使用方法"),
 					},
 					required: ["base_version"],
 				},
 			},
+
+			{
+				name: "goal_list",
+				description:
+					"List current or archived goals; status active/completed/adjusted/all. Returns items,total,version. Archived goals retain original text and dates.",
+				inputSchema: {
+					type: "object" as const,
+					properties: {
+						status: str("active (default), completed, adjusted, all"),
+						offset: { type: "integer", minimum: 0 },
+						limit: { type: "integer", minimum: 1, maximum: 100 },
+					},
+				},
+			},
+			{
+				name: "goal_create",
+				description:
+					"Create a one-sentence goal. Read first and reuse a stable key to avoid duplicates. Flag subjective outcomes requires_confirmation=true. Requires the shared overview version.",
+				inputSchema: {
+					type: "object" as const,
+					properties: {
+						base_version: str("Version from overview_read or goal_list"),
+						key: str("Stable goal creation key; reuse on retry"),
+						title: str("One-sentence desired result"),
+						requires_confirmation: { type: "boolean", description: "User approval is needed to decide completion" },
+					},
+					required: ["base_version", "key", "title"],
+				},
+			},
+			{
+				name: "goal_update",
+				description:
+					"Complete or adjust a goal, preserving its text and date in archives. For subjective goals ask the user in this chat before confirmed=true. May atomically include detailed current progress and one key-result progress object; don't create a result for every chat/save. Adjusting can create a replacement goal.",
+				inputSchema: {
+					type: "object" as const,
+					properties: {
+						base_version: str("Shared overview version from the latest read"),
+						goal_id: str("Goal ID"),
+						status: { type: "string", enum: ["completed", "adjusted"] },
+						confirmed: { type: "boolean", description: "True only after user confirmation in this chat" },
+						occurred_at: date,
+						replacement_title: str("New goal when direction changes; old goal stays archived"),
+						current: str(
+							"Replacement latest brief, more detailed than a goal: actual results, work in progress, remaining/unverified scope, next step",
+						),
+						progress: { type: "object", properties: progressProperties, required: ["key", "title", "summary"] },
+					},
+					required: ["base_version", "goal_id", "status"],
+				},
+			},
+			{
+				name: "progress_list",
+				description:
+					"Read key-result stage records, newest first, 20 per page. These are completed outcomes, not raw edit history.",
+				inputSchema: {
+					type: "object" as const,
+					properties: { offset: { type: "integer", minimum: 0 }, limit: { type: "integer", minimum: 1, maximum: 100 } },
+				},
+			},
+			{
+				name: "progress_record",
+				description:
+					"Record a meaningful completed outcome, not each tool call, chat or save. Read first; reuse a stable key and an existing result instead of duplicating another agent's report. Summary must describe precise achieved results and scope.",
+				inputSchema: {
+					type: "object" as const,
+					properties: {
+						base_version: str("Shared overview version from overview_read or progress_list"),
+						...progressProperties,
+						goal_id: str("Optional goal in this project"),
+					},
+					required: ["base_version", "key", "title", "summary"],
+				},
+			},
+			{
+				name: "progress_update",
+				description:
+					"Correct an existing stage result's title, summary or actual completion date without creating another report.",
+				inputSchema: {
+					type: "object" as const,
+					properties: {
+						base_version: str("Shared overview version from the latest read"),
+						progress_id: str("Progress record ID"),
+						title: progressProperties.title,
+						summary: progressProperties.summary,
+						completed_at: date,
+					},
+					required: ["base_version", "progress_id"],
+				},
+			},
+
 			{
 				name: "architecture_read",
 				description:

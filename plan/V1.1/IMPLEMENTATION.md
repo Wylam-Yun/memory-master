@@ -142,7 +142,7 @@ export async function readArchitecture(projectDir: string): Promise<string> {
   - 通过 `Outlet context={{project}}` 向页面传项目；`useParams` 取 id；项目不存在 → 「项目不存在」+ 返回列表。
 - `components/Markdown.tsx`
   - `MDEditor.Markdown` 封装：复制 `MermaidMarkdown.tsx` 的 `treatHtmlAsText`（去掉 TaskIdIndex plugin 与 context 依赖，保留 `keepHashLinksInCurrentRoute`），effect 里调 `renderMermaidIn`（从 `../../web/utils/mermaid.ts` import——注意是两级 `../`，该文件无 web 业务依赖）。
-- `components/drafts.ts`：`Map<string,string>` 模块级草稿存取（key=`${projectId}:${which}`）+ `getDraft/setDraft/clearDraft`。概览、架构编辑草稿跨页保留；另存选中态（`sel:task:{id}`、`sel:node:{id}`）使切页返回时恢复展开的任务描述/选中的结构节点（SPEC 验收条目）。
+- `components/drafts.ts`：`Map<string,string>` 模块级草稿存取（key=`${projectId}:${which}`）+ `getDraft/setDraft/clearDraft`。概览、架构编辑草稿跨页保留；另存任务选中态使切页返回时恢复展开的任务描述；架构职责默认可读，节点定位短暂突出，不保存节点展开态。
 - `components/StatusMessage.tsx`：统一的错误/重试/空态小件（就地错误红字+重试按钮；成功短暂提示）。
 - `pages/OverviewPage.tsx`
   - 读态：四区按 **简介→当前进展→目标→功能与用法**，区标题 20px，正文用 `Markdown` 渲染；空区显示「未填写」+「编辑」链接；页头右上「编辑」；底部一条「查看项目架构 →」文字链接。
@@ -158,7 +158,7 @@ export async function readArchitecture(projectDir: string): Promise<string> {
 - `pages/ArchitecturePage.tsx`
   - GET：空 → 「尚未整理项目架构」+「编辑」入口（手输 Markdown 也可建）+ 一句「也可以在聊天里让 Agent 整理」。
   - 读态：页头「编辑」「放大」；正文 `Markdown` 全量渲染（含 mermaid）。
-  - 组成节点交互：解析 markdown 中第一个表头含「名称」「说明」的表格为组成表（容错：找不到则此交互区不渲染）；图下方渲染组成列表行（id 隐藏，显示名称）；点击某行 → 行下原位展开：说明、来源（空不显示）、关联任务（P0 的链接到 `/projects/:id/tasks`）；mermaid SVG 内节点点击事件代理尝试匹配节点 id→组成 id（best-effort，成功同样选中该行）。
+  - 组成呈现：`splitCompositionDocument` 解析第一张含「名称」「说明」的组成表，`ArchitectureDocument` 在原位置替换为「各部分做什么」；名称与职责默认可读，来源与P0关联任务在「补充信息」中展开。其它正文与表格保留，无组成表时完整渲染原文。阅读和编辑预览共用组件；图节点按稳定ID定位说明并短暂突出约1.8秒，不切换职责可见性。
   - 「放大」→ 全屏 modal 展示 SVG（可关）。
   - 编辑态：整篇 textarea + 下方实时 `Markdown` 预览 + 保存/取消；草稿同 Overview 机制；冲突面板同 Overview。
 - `pages/ResourcesPage.tsx`

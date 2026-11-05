@@ -111,15 +111,27 @@ function isTableDelimiterRow(line: string): boolean {
  * 合返回 []，调用方据此不渲染交互区。围栏代码块里的表格不参与解析。
  */
 export function parseCompositionTable(markdown: string): CompositionRow[] {
+	return splitCompositionDocument(markdown).rows;
+}
+
+/** Replace the composition table in place, without duplicating or dropping surrounding content. */
+export function splitCompositionDocument(markdown: string): {
+	before: string;
+	rows: CompositionRow[];
+	after: string;
+} {
 	const lines = markdown.split("\n");
-	let inFence = false;
+	let fence: { char: string; length: number } | null = null;
 	for (let i = 0; i < lines.length; i++) {
 		const trimmed = (lines[i] ?? "").trim();
-		if (/^(```|~~~)/.test(trimmed)) {
-			inFence = !inFence;
+		const marker = /^(`{3,}|~{3,})(.*)$/.exec(trimmed);
+		if (marker?.[1]) {
+			const run = marker[1];
+			if (!fence) fence = { char: run.charAt(0), length: run.length };
+			else if (run[0] === fence.char && run.length >= fence.length && !marker[2]?.trim()) fence = null;
 			continue;
 		}
-		if (inFence || !trimmed.startsWith("|") || !trimmed.endsWith("|")) continue;
+		if (fence || !trimmed.startsWith("|") || !trimmed.endsWith("|")) continue;
 		const headers = splitTableRow(trimmed);
 		const nameIdx = headers.findIndex((h) => h.includes("名称"));
 		const descIdx = headers.findIndex((h) => h.includes("说明"));
@@ -131,7 +143,8 @@ export function parseCompositionTable(markdown: string): CompositionRow[] {
 		const taskIdx = headers.findIndex((h) => h.includes("任务"));
 
 		const rows: CompositionRow[] = [];
-		for (let j = i + 2; j < lines.length; j++) {
+		let j = i + 2;
+		for (; j < lines.length; j++) {
 			const rowLine = (lines[j] ?? "").trim();
 			if (!rowLine.startsWith("|") || !rowLine.endsWith("|")) break;
 			const cells = splitTableRow(rowLine);
@@ -147,9 +160,15 @@ export function parseCompositionTable(markdown: string): CompositionRow[] {
 					.filter(Boolean),
 			});
 		}
-		return rows;
+		if (rows.length === 0) continue;
+		// Only consume a known, immediately adjacent heading. Preserve custom prose and headings.
+		const before = lines
+			.slice(0, i)
+			.join("\n")
+			.replace(/(?:^|\n)#{1,6}[ \t]+(?:组成说明|各部分做什么|模块说明)[ \t]*(?:\r?\n[ \t]*)*$/, "\n");
+		return { before, rows, after: lines.slice(j).join("\n") };
 	}
-	return [];
+	return { before: markdown, rows: [], after: "" };
 }
 
 /**

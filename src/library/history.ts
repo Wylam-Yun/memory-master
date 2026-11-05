@@ -18,7 +18,7 @@ export const CHANGELOG_FILE_NAME = "changelog.jsonl";
 export type Actor = { type: "user" } | { type: "agent"; client: string };
 
 export interface HistoryTarget {
-	type: "project" | "task" | "overview" | "question" | "resource" | "architecture";
+	type: "project" | "task" | "overview" | "question" | "resource" | "architecture" | "goal" | "progress";
 	/** Task, project, or question ID; undefined for the overview/architecture records. */
 	id?: string;
 	/** Display title at the time of the change, when known. */

@@ -10,19 +10,14 @@ import { instructionBlock, SKILL_FILES, SKILL_MD } from "./agent-content.ts";
 import { architectureFilePath } from "./architecture.ts";
 import { installClient } from "./client-setup.ts";
 import { type Actor, appendHistory, contentVersion, diffFields, type HistoryEntry, readHistory } from "./history.ts";
-import {
-	initialOverviewContent,
-	overviewFilePath,
-	parseOverviewContent,
-	readOverview,
-	writeOverview,
-} from "./overview.ts";
+import { applyOverviewUpdate, initialOverviewContent, overviewFilePath, parseOverviewContent } from "./overview.ts";
 import { ProjectStore, type TaskWriteInput } from "./project-store.ts";
 import { answerQuestion, createQuestion, getQuestion, listQuestions, type ProjectQuestion } from "./questions.ts";
 import { createProject, getProjectById, listProjects, resolveProject } from "./registry.ts";
 import { assertSafeResourceName, listResources, readResource, resourcesDir, saveResource } from "./resources.ts";
 import { AppSettingsStore } from "./settings.ts";
 import { TestHolds } from "./test-holds.ts";
+import { checkFields, mutateTracking, readTracking, trackingPage, trackingSummary, writeTracking } from "./tracking.ts";
 import {
 	isLibraryClientId,
 	LIBRARY_CLIENT_IDS,
@@ -203,7 +198,8 @@ export class LibraryService {
 		// One read feeds both the returned content and its version — two reads
 		// could race a writer and hand back a mismatched pair.
 		const bytes = (await file.exists()) ? await file.bytes() : new Uint8Array();
-		return { ...parseOverviewContent(new TextDecoder().decode(bytes)), version: contentVersion(bytes) };
+		const source = new TextDecoder().decode(bytes);
+		return { ...parseOverviewContent(source), ...trackingSummary(source), version: contentVersion(bytes) };
 	}
 
 	private async writeTask(
@@ -383,90 +379,170 @@ export class LibraryService {
 		});
 	}
 
+	private async mutateOverview(
+		identity: { token: string; id: LibraryClientId } | null,
+		projectId: string,
+		baseVersion: string | undefined,
+		change: (source: string) => {
+			source: string;
+			result?: object;
+			target: HistoryEntry["target"];
+			changes: HistoryEntry["changes"];
+			action: "create" | "update";
+		},
+	): Promise<unknown> {
+		if (!baseVersion)
+			throw new LibraryError(
+				LIBRARY_ERROR_CODES.VALIDATION,
+				"baseVersion is required — read overview or the list first.",
+				400,
+			);
+		const project = await this.projectFor(projectId);
+		const store = this.storeFor(project);
+		const path = overviewFilePath(project.dir);
+		const gate = async () => {
+			await this.holds.waitIfAny();
+			this.assertRunning();
+			if (identity) await this.settings.assertAuthorized(identity.token);
+		};
+		return store.withWriteLock(async () => {
+			const existed = await Bun.file(path).exists();
+			if (!existed) {
+				if (baseVersion !== contentVersion(""))
+					throw versionConflictError(
+						{ ...parseOverviewContent(""), ...trackingSummary(""), version: contentVersion("") },
+						contentVersion(""),
+					);
+				await gate();
+				await Bun.write(path, "");
+			}
+			try {
+				return await store.filesystem.withTaskLock({ id: "overview", filePath: path }, async () => {
+					const beforeBytes = await Bun.file(path).bytes();
+					const source = new TextDecoder().decode(beforeBytes);
+					const version = contentVersion(beforeBytes);
+					if (version !== baseVersion)
+						throw versionConflictError(
+							{ ...parseOverviewContent(source), ...trackingSummary(source), version },
+							version,
+						);
+					await gate();
+					const next = change(existed ? source : initialOverviewContent(project.name));
+					const afterVersion = contentVersion(next.source);
+					if (afterVersion !== version) {
+						try {
+							await Bun.write(path, next.source);
+							this.holds.throwIfHistoryFailpoint();
+							await appendHistory(project.dir, {
+								ts: new Date().toISOString(),
+								actor: this.actorOf(identity),
+								target: next.target,
+								action: next.action,
+								changes: next.changes,
+								version: afterVersion,
+							});
+						} catch (error) {
+							await Bun.write(path, beforeBytes);
+							throw error;
+						}
+					}
+					return {
+						...(next.result ?? { ...parseOverviewContent(next.source), ...trackingSummary(next.source) }),
+						version: afterVersion,
+					};
+				});
+			} catch (error) {
+				if (!existed && (await Bun.file(path).exists()) && (await Bun.file(path).size) === 0) await unlink(path);
+				throw error;
+			}
+		});
+	}
+
 	private async writeOverview(
 		identity: { token: string; id: LibraryClientId } | null,
 		projectId: string,
 		update: { description?: string; goal?: string; current?: string; features?: string },
 		baseVersion: string | undefined,
 	): Promise<unknown> {
-		if (baseVersion === undefined) {
-			throw new LibraryError(
-				LIBRARY_ERROR_CODES.VALIDATION,
-				"baseVersion is required for updates — read the record first and send back its version.",
-				400,
-			);
-		}
-		const project = await this.projectFor(projectId);
-		const store = this.storeFor(project);
-		for (const [key, value] of Object.entries(update)) {
-			if (typeof value === "string" && SECTION_MARKER_LINE.test(value)) {
+		for (const [key, value] of Object.entries(update))
+			if (typeof value === "string" && SECTION_MARKER_LINE.test(value))
 				throw new LibraryError(
 					LIBRARY_ERROR_CODES.VALIDATION,
 					`Overview field "${key}" contains a reserved section marker line.`,
 					400,
 				);
-			}
-		}
-		const actor = this.actorOf(identity);
-		const token = identity?.token ?? null;
-		const path = overviewFilePath(project.dir);
-
-		return await store.withWriteLock(async () => {
-			// The lock mechanism stats the target file — recreate a missing overview
-			// first (hand-made project dirs may not have one yet).
-			if (!(await Bun.file(path).exists())) {
-				await Bun.write(path, initialOverviewContent(project.name));
-			}
-			const beforeBytes = await Bun.file(path).bytes();
-			const before = await readOverview(project.dir);
-			return await store.filesystem.withTaskLock({ id: "overview", filePath: path }, async () => {
-				const lockBytes = await Bun.file(path).bytes();
-				if (contentVersion(lockBytes) !== baseVersion) {
-					throw versionConflictError(
-						{ ...(await readOverview(project.dir)), version: contentVersion(lockBytes) },
-						contentVersion(lockBytes),
-					);
-				}
-				await this.holds.waitIfAny();
-				this.assertRunning();
-				if (token !== null) await this.settings.assertAuthorized(token);
-				const after = await writeOverview(project.dir, update);
-				const afterBytes = await Bun.file(path).bytes();
-				const afterVersion = contentVersion(afterBytes);
-				if (afterVersion === contentVersion(beforeBytes)) {
-					return { ...after, version: afterVersion };
-				}
-				const changes = diffFields(
-					{
-						description: before.description,
-						goal: before.goal,
-						current: before.current,
-						features: before.features,
-					},
-					{
-						description: after.description,
-						goal: after.goal,
-						current: after.current,
-						features: after.features,
-					},
+		return this.mutateOverview(identity, projectId, baseVersion, (source) => {
+			const before = parseOverviewContent(source);
+			const data = readTracking(source);
+			if (data.goals.length && update.goal !== undefined && update.goal !== before.goal)
+				throw new LibraryError(
+					LIBRARY_ERROR_CODES.VALIDATION,
+					"目标已独立管理，请使用goal_create或goal_update；旧目标原文将保留。",
+					400,
 				);
-				try {
-					this.holds.throwIfHistoryFailpoint();
-					await appendHistory(project.dir, {
-						ts: new Date().toISOString(),
-						actor,
-						target: { type: "overview" },
-						action: "update",
-						changes,
-						version: afterVersion,
-					});
-				} catch (error) {
-					await Bun.write(path, beforeBytes);
-					throw error;
-				}
-				return { ...after, version: afterVersion };
-			});
+			let next = applyOverviewUpdate(source, update);
+			const after = parseOverviewContent(next);
+			if (after.current !== before.current) {
+				data.currentUpdatedAt = new Date().toISOString();
+				next = writeTracking(next, data);
+			}
+			return {
+				source: next,
+				target: { type: "overview" },
+				changes: diffFields({ ...before }, { ...after }),
+				action: "update",
+			};
 		});
+	}
+
+	private async handleTrackingRead(req: Request, projectId: string, kind: "goals" | "progress"): Promise<Response> {
+		const project = await this.projectFor(projectId);
+		const file = Bun.file(overviewFilePath(project.dir));
+		const bytes = (await file.exists()) ? await file.bytes() : new Uint8Array();
+		return json(
+			trackingPage(new TextDecoder().decode(bytes), kind, new URL(req.url).searchParams, contentVersion(bytes)),
+		);
+	}
+
+	private async handleTrackingRecord(projectId: string, kind: "goals" | "progress", id: string): Promise<Response> {
+		const project = await this.projectFor(projectId);
+		const file = Bun.file(overviewFilePath(project.dir));
+		const bytes = (await file.exists()) ? await file.bytes() : new Uint8Array();
+		const data = readTracking(new TextDecoder().decode(bytes));
+		const record = data[kind].find((item) => item.id === id);
+		if (!record) throw new LibraryError(LIBRARY_ERROR_CODES.PROJECT_NOT_FOUND, "当前项目中没有这条记录。", 404);
+		return json({ ...record, version: contentVersion(bytes) });
+	}
+
+	private async handleTrackingWrite(
+		req: Request,
+		projectId: string,
+		kind: "goals" | "progress",
+		id: string | null,
+		identity: { token: string; id: LibraryClientId } | null,
+	): Promise<Response> {
+		const body = await parseBody(req);
+		const { baseVersion, ...input } = body;
+		return json(
+			await this.mutateOverview(
+				identity,
+				projectId,
+				typeof baseVersion === "string" ? baseVersion : undefined,
+				(source) => {
+					const next = mutateTracking(readTracking(source), kind, id, input, identity !== null);
+					let updated = source;
+					if (input.current !== undefined) {
+						const before = parseOverviewContent(source).current;
+						updated = applyOverviewUpdate(source, { current: input.current as string });
+						if (parseOverviewContent(updated).current !== before) {
+							next.data.currentUpdatedAt = new Date().toISOString();
+							next.changes.current = { from: before, to: parseOverviewContent(updated).current };
+						}
+					}
+					return { ...next, source: writeTracking(updated, next.data), result: next.record };
+				},
+			),
+		);
 	}
 
 	/**
@@ -673,6 +749,7 @@ export class LibraryService {
 		identity: { token: string; id: LibraryClientId } | null,
 	): Promise<Response> {
 		const body = await parseBody(req);
+		checkFields(body, ["baseVersion", "description", "goal", "current", "features"]);
 		const update = {
 			...(typeof body.description === "string" ? { description: body.description } : {}),
 			...(typeof body.goal === "string" ? { goal: body.goal } : {}),
@@ -1209,6 +1286,66 @@ export class LibraryService {
 					PUT: async (req: Request & { params: { id: string } }) =>
 						this.withRoute(req, () => this.handlePutArchitecture(req, req.params.id, null)),
 				},
+				"/api/projects/:id/goals": {
+					GET: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handleTrackingRead(req, req.params.id, "goals")),
+					POST: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handleTrackingWrite(req, req.params.id, "goals", null, null)),
+				},
+				"/api/projects/:id/goals/:goalId": {
+					GET: async (req: Request & { params: { id: string; goalId: string } }) =>
+						this.withRoute(req, () => this.handleTrackingRecord(req.params.id, "goals", req.params.goalId)),
+					PUT: async (req: Request & { params: { id: string; goalId: string } }) =>
+						this.withRoute(req, () => this.handleTrackingWrite(req, req.params.id, "goals", req.params.goalId, null)),
+				},
+				"/api/agent/projects/:id/goals": {
+					GET: async (req: Request & { params: { id: string } }) =>
+						this.withAgentRoute(req, () => this.handleTrackingRead(req, req.params.id, "goals")),
+					POST: async (req: Request & { params: { id: string } }) =>
+						this.withAgentRoute(req, (identity) =>
+							this.handleTrackingWrite(req, req.params.id, "goals", null, identity),
+						),
+				},
+				"/api/agent/projects/:id/goals/:goalId": {
+					GET: async (req: Request & { params: { id: string; goalId: string } }) =>
+						this.withAgentRoute(req, () => this.handleTrackingRecord(req.params.id, "goals", req.params.goalId)),
+					PUT: async (req: Request & { params: { id: string; goalId: string } }) =>
+						this.withAgentRoute(req, (identity) =>
+							this.handleTrackingWrite(req, req.params.id, "goals", req.params.goalId, identity),
+						),
+				},
+
+				"/api/projects/:id/progress": {
+					GET: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handleTrackingRead(req, req.params.id, "progress")),
+					POST: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handleTrackingWrite(req, req.params.id, "progress", null, null)),
+				},
+				"/api/projects/:id/progress/:progressId": {
+					GET: async (req: Request & { params: { id: string; progressId: string } }) =>
+						this.withRoute(req, () => this.handleTrackingRecord(req.params.id, "progress", req.params.progressId)),
+					PUT: async (req: Request & { params: { id: string; progressId: string } }) =>
+						this.withRoute(req, () =>
+							this.handleTrackingWrite(req, req.params.id, "progress", req.params.progressId, null),
+						),
+				},
+				"/api/agent/projects/:id/progress": {
+					GET: async (req: Request & { params: { id: string } }) =>
+						this.withAgentRoute(req, () => this.handleTrackingRead(req, req.params.id, "progress")),
+					POST: async (req: Request & { params: { id: string } }) =>
+						this.withAgentRoute(req, (identity) =>
+							this.handleTrackingWrite(req, req.params.id, "progress", null, identity),
+						),
+				},
+				"/api/agent/projects/:id/progress/:progressId": {
+					GET: async (req: Request & { params: { id: string; progressId: string } }) =>
+						this.withAgentRoute(req, () => this.handleTrackingRecord(req.params.id, "progress", req.params.progressId)),
+					PUT: async (req: Request & { params: { id: string; progressId: string } }) =>
+						this.withAgentRoute(req, (identity) =>
+							this.handleTrackingWrite(req, req.params.id, "progress", req.params.progressId, identity),
+						),
+				},
+
 				"/api/projects/:id/tasks": {
 					GET: async (req: Request & { params: { id: string } }) =>
 						this.withRoute(req, () => this.handleListTasks(req.params.id, req)),

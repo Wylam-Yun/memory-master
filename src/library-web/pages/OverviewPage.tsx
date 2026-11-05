@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ApiError, api, type ProjectOverview } from "../api.ts";
 import { GrowingTextarea, PageHeader, useProject } from "../components/AppShell.tsx";
 import { clearDraft, getDraft, setDraft } from "../components/drafts.ts";
+import { Goals, StageProgress, dateLabel } from "../components/GoalProgress.tsx";
 import Markdown from "../components/Markdown.tsx";
 import { ErrorNote, LoadingNote, SuccessNote } from "../components/StatusMessage.tsx";
 
@@ -64,6 +65,15 @@ function OverviewInner({ project }: { project: { id: string } }) {
 		setLoadError(null);
 		return fresh;
 	}, [projectId]);
+
+	const refreshTracking = useCallback(async () => {
+		try {
+			await load();
+		} catch (error) {
+			setLoadError(error);
+			throw error;
+		}
+	}, [load]);
 
 	useEffect(() => {
 		load()
@@ -134,7 +144,8 @@ function OverviewInner({ project }: { project: { id: string } }) {
 		setSaving(true);
 		setSaveError(null);
 		try {
-			applySaved(await api.putOverview(projectId, fields, baseVersion));
+			const { goal: _legacyGoal, ...editable } = fields;
+			applySaved(await api.putOverview(projectId, editable, baseVersion));
 		} catch (e) {
 			if (e instanceof ApiError && e.code === "VERSION_CONFLICT" && e.current) {
 				setNewer(e.current as ProjectOverview);
@@ -196,6 +207,7 @@ function OverviewInner({ project }: { project: { id: string } }) {
 	return (
 		<div className="max-w-[820px]">
 			<PageHeader title="概览" actions={headerActions} />
+			{loadError ? <ErrorNote error={loadError} onRetry={() => load().catch(setLoadError)} className="mb-4" /> : null}
 
 			{savedTick && !editing ? <SuccessNote>已保存</SuccessNote> : null}
 
@@ -217,7 +229,7 @@ function OverviewInner({ project }: { project: { id: string } }) {
 								另一方已保存了新版本。以下是当前最新内容，你可以用自己的修改覆盖，或放弃本次修改。
 							</p>
 							<dl className="space-y-3">
-								{SECTIONS.map(({ key, label }) => (
+								{SECTIONS.filter(({ key }) => key !== "goal").map(({ key, label }) => (
 									<div key={key}>
 										<dt className="text-[14px] font-medium leading-[22px] text-[#555B65]">{label}</dt>
 										<dd className="whitespace-pre-wrap text-[15px] leading-6 text-[#202124]">
@@ -254,7 +266,7 @@ function OverviewInner({ project }: { project: { id: string } }) {
 						</section>
 					) : null}
 
-					{SECTIONS.map(({ key, label }) => (
+					{SECTIONS.filter(({ key }) => key !== "goal").map(({ key, label }) => (
 						<section key={key} className="mb-8">
 							<h2 className="mb-3 text-[20px] font-semibold leading-7">{label}</h2>
 							<GrowingTextarea value={editing.fields[key]} onChange={(v) => changeField(key, v)} aria-label={label} />
@@ -284,10 +296,17 @@ function OverviewInner({ project }: { project: { id: string } }) {
 			) : (
 				<>
 					{SECTIONS.map(({ key, label }) => {
+						if (key === "goal")
+							return <Goals key={key} projectId={projectId} overview={overview} onChanged={refreshTracking} />;
 						const body = overview[key];
 						return (
 							<section key={key} className="mb-8">
-								<h2 className="mb-3 text-[20px] font-semibold leading-7">{label}</h2>
+								<div className="mb-3 flex flex-wrap items-baseline gap-3">
+									<h2 className="text-[20px] font-semibold leading-7">{label}</h2>
+									{key === "current" && overview.currentUpdatedAt ? (
+										<span className="text-[14px] text-[#555B65]">更新于 {dateLabel(overview.currentUpdatedAt)}</span>
+									) : null}
+								</div>
 								{body.trim() ? (
 									<div className="text-[16px] leading-7">
 										<Markdown source={body} />
@@ -300,13 +319,13 @@ function OverviewInner({ project }: { project: { id: string } }) {
 										</button>
 									</p>
 								)}
+								{key === "current" ? (
+									<StageProgress projectId={projectId} overview={overview} onChanged={refreshTracking} />
+								) : null}
 							</section>
 						);
 					})}
-					<Link
-						to={`/projects/${projectId}/architecture`}
-						className="text-[15px] font-medium leading-6 text-[#3B57D0]"
-					>
+					<Link to={`/projects/${projectId}/architecture`} className="text-[15px] font-medium leading-6 text-[#3B57D0]">
 						查看项目架构 →
 					</Link>
 				</>

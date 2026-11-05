@@ -18,6 +18,18 @@ const FIELD_LABELS: Record<string, string> = {
 	size: "大小",
 	priority: "优先级",
 	content: "内容",
+	completedAt: "完成日期",
+	adjustedAt: "调整日期",
+	summary: "成果说明",
+	progress: "阶段成果",
+	replacement: "替代目标",
+	requiresConfirmation: "完成需确认",
+	updatedAt: "更新时间",
+	createdAt: "记录时间",
+	id: "记录ID",
+	key: "记录标识",
+	goalId: "关联目标",
+	replacementId: "替代目标",
 };
 
 function actorLabel(actor: HistoryEntry["actor"]): string {
@@ -27,6 +39,8 @@ function actorLabel(actor: HistoryEntry["actor"]): string {
 
 function targetLabel(entry: HistoryEntry): string {
 	if (entry.target.type === "project") return "项目";
+	if (entry.target.type === "goal") return "目标";
+	if (entry.target.type === "progress") return "阶段进展";
 	if (entry.target.type === "overview") return "概览";
 	if (entry.target.type === "architecture") return "项目架构";
 	if (entry.target.type === "question") return `事项 ${entry.target.id ?? ""}`.trimEnd();

@@ -6,6 +6,7 @@ import {
 	isDoneStatus,
 	isP0Task,
 	parseCompositionTable,
+	splitCompositionDocument,
 } from "../library-web/utils.ts";
 
 /** V1.1 五页前端的纯函数契约：P0 判定、历史按日分组、组成表解析。 */
@@ -142,5 +143,31 @@ describe("extractMermaidNodeId", () => {
 	});
 	test("不匹配返回 null", () => {
 		expect(extractMermaidNodeId("some-other-id")).toBeNull();
+	});
+});
+
+describe("splitCompositionDocument", () => {
+	test("替换相邻组成标题与表格，前后正文和其它表格保持原位", () => {
+		const md =
+			"前言\n\n## 组成说明\n\n| 名称 | 说明 |\n| --- | --- |\n| 甲 | 职责甲 |\n\n## 主要流程\n\n| 顺序 | 操作 |\n| --- | --- |\n| 1 | 开始 |\n";
+		const result = splitCompositionDocument(md);
+		expect(result.before.trim()).toBe("前言");
+		expect(result.after).toContain("## 主要流程");
+		expect(result.after).toContain("| 顺序 | 操作 |");
+		expect(result.rows[0]?.description).toBe("职责甲");
+	});
+	test("不删除自定义标题或组成标题之后的必要说明", () => {
+		const prefix = "## 特殊职责\n\n这段说明必须保留。\n\n";
+		const result = splitCompositionDocument(`${prefix}| 名称 | 说明 |\n| --- | --- |\n| 甲 | 职责甲 |`);
+		expect(result.before).toBe(prefix.slice(0, -1));
+	});
+	test("没有可用表体时原文保留，不吞掉表头或空标题", () => {
+		const md = "## 组成说明\n\n| 名称 | 说明 |\n| --- | --- |\n\n后文";
+		expect(splitCompositionDocument(md)).toEqual({ before: md, rows: [], after: "" });
+	});
+	test("较长围栏内的短围栏不会把代码示例误识别为真实组成表", () => {
+		const md =
+			"````markdown\n```mermaid\nflowchart LR\n```\n| 名称 | 说明 |\n| --- | --- |\n| 示例 | 不是项目事实 |\n````\n\n正文";
+		expect(splitCompositionDocument(md)).toEqual({ before: md, rows: [], after: "" });
 	});
 });

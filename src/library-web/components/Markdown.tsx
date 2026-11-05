@@ -30,6 +30,9 @@ function keepHashLinksInCurrentRoute(url: string, key: string): string {
 }
 
 const REMARK_PLUGINS = [treatHtmlAsText];
+// The library workspace has a fixed light palette. Do not let the preview's
+// independent prefers-color-scheme rules paint dark rectangles inside it.
+const CONTENT_STYLE = { backgroundColor: "transparent", color: "inherit" };
 
 /**
  * 项目内容受控渲染器：Markdown + Mermaid（securityLevel strict，HTML 全部
@@ -53,8 +56,13 @@ export default function Markdown({ source }: { source: string }) {
 	}, [source]);
 
 	return (
-		<div ref={ref} className="wmde-markdown">
-			<MDEditor.Markdown source={source} urlTransform={keepHashLinksInCurrentRoute} remarkPlugins={REMARK_PLUGINS} />
+		<div ref={ref} className="wmde-markdown" data-color-mode="light" style={CONTENT_STYLE}>
+			<MDEditor.Markdown
+				source={source}
+				style={CONTENT_STYLE}
+				urlTransform={keepHashLinksInCurrentRoute}
+				remarkPlugins={REMARK_PLUGINS}
+			/>
 		</div>
 	);
 }
