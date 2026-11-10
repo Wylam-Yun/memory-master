@@ -1,6 +1,6 @@
 import { unlink } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { Server } from "bun";
 import type { TaskWriteHooks } from "../core/memaster.ts";
 import libraryIndexHtml from "../library-web/index.html";
@@ -21,10 +21,11 @@ import { ProjectStore, type TaskWriteInput } from "./project-store.ts";
 import { answerQuestion, createQuestion, getQuestion, listQuestions, type ProjectQuestion } from "./questions.ts";
 import { createProject, getProjectById, listProjects, resolveProject } from "./registry.ts";
 import { assertSafeResourceName, listResources, readResource, resourcesDir, saveResource } from "./resources.ts";
-import { AppSettingsStore } from "./settings.ts";
+import { AppSettingsStore, type ProjectAgentPatch, projectAgentAccess } from "./settings.ts";
 import { TestHolds } from "./test-holds.ts";
 import { checkFields, mutateTracking, readTracking, trackingPage, trackingSummary, writeTracking } from "./tracking.ts";
 import {
+	type ClientSlot,
 	isLibraryClientId,
 	LIBRARY_CLIENT_IDS,
 	LIBRARY_CLIENT_LABELS,
@@ -32,11 +33,28 @@ import {
 	type LibraryClientId,
 	LibraryError,
 	type LibraryProject,
+	type LibrarySettings,
 	type ProjectOverview,
+	projectNotFoundError,
 	versionConflictError,
 } from "./types.ts";
 
 const SERVICE_HOST = "127.0.0.1";
+type AgentIdentity = { token: string; id: LibraryClientId };
+type ProjectRef = string | LibraryProject;
+type ProjectRequest = Request & { params: { id: string } };
+
+function assertProjectAccess(settings: LibrarySettings, id: LibraryClientId, project: LibraryProject, write: boolean) {
+	const access = projectAgentAccess(settings, project, id);
+	if (settings.libraryRoot !== dirname(project.dir) || !access.canRead) throw projectNotFoundError(project.id);
+	if (write && !access.canWrite) {
+		throw new LibraryError(
+			LIBRARY_ERROR_CODES.WRITE_DISABLED,
+			"This Agent can read this project but cannot modify it. The user can change this in Project Settings.",
+			403,
+		);
+	}
+}
 
 /** The service answers loopback hosts only; anything else is treated as a rebinding attempt. */
 function isLoopbackHost(req: Request): boolean {
@@ -126,8 +144,8 @@ export class LibraryService {
 	}
 
 	/** The configured library root, or a 409-style error when the user has not chosen one yet. */
-	private async requireLibraryRoot(): Promise<string> {
-		const root = await this.settings.getLibraryRoot();
+	private async requireLibraryRoot(settings?: LibrarySettings): Promise<string> {
+		const root = settings ? settings.libraryRoot : await this.settings.getLibraryRoot();
 		if (!root) {
 			throw new LibraryError(
 				LIBRARY_ERROR_CODES.LIBRARY_NOT_SET,
@@ -138,8 +156,10 @@ export class LibraryService {
 		return root;
 	}
 
-	private async projectFor(id: string): Promise<LibraryProject> {
-		return await getProjectById(await this.requireLibraryRoot(), id);
+	private async projectFor(project: ProjectRef, settings?: LibrarySettings): Promise<LibraryProject> {
+		return typeof project === "string"
+			? await getProjectById(await this.requireLibraryRoot(settings), project)
+			: project;
 	}
 
 	private storeFor(project: LibraryProject): ProjectStore {
@@ -153,11 +173,12 @@ export class LibraryService {
 
 	// --- Authorization --------------------------------------------------------
 
-	/** Bearer credential → client slot; throws 401 unknown / 403 disabled. */
-	private async requireClient(req: Request): Promise<LibraryClientId> {
-		const header = req.headers.get("authorization") ?? "";
-		const token = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
-		return await this.settings.assertAuthorized(token || null);
+	private async assertAgentMayWrite(identity: AgentIdentity | null, project: LibraryProject): Promise<void> {
+		this.assertRunning();
+		if (identity) {
+			const { id, settings } = await this.settings.authorizedSettings(identity.token);
+			assertProjectAccess(settings, id, project, true);
+		}
 	}
 
 	// --- Write paths ------------------------------------------------------------
@@ -173,15 +194,19 @@ export class LibraryService {
 		return identity ? { type: "agent", client: identity.id } : { type: "user" };
 	}
 
-	private writeHooks(clientToken: string | null, versionCheck?: () => Promise<void>): TaskWriteHooks {
+	private writeHooks(
+		identity: AgentIdentity | null,
+		project: LibraryProject,
+		prepare?: () => Promise<void>,
+	): TaskWriteHooks {
 		return {
 			preWrite: async () => {
 				await this.holds.waitIfAny();
-				if (this.stopping) {
-					throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "The Memory Master service is stopping.", 503);
+				await this.assertAgentMayWrite(identity, project);
+				if (prepare) {
+					await prepare();
+					await this.assertAgentMayWrite(identity, project);
 				}
-				if (clientToken !== null) await this.settings.assertAuthorized(clientToken);
-				if (versionCheck) await versionCheck();
 			},
 		};
 	}
@@ -207,13 +232,13 @@ export class LibraryService {
 	}
 
 	private async writeTask(
-		identity: { token: string; id: LibraryClientId } | null,
-		projectId: string,
+		identity: AgentIdentity | null,
+		projectRef: ProjectRef,
 		taskId: string | null,
 		input: TaskWriteInput,
 		baseVersion: string | undefined,
 	): Promise<Task & { version?: string }> {
-		const store = this.storeFor(await this.projectFor(projectId));
+		const store = this.storeFor(await this.projectFor(projectRef));
 		// Validate up front for a 400 (Core would otherwise throw a plain 500 error).
 		const status = input.status !== undefined ? await store.assertValidStatus(input.status) : undefined;
 		const priority = input.priority !== undefined ? await store.assertValidPriority(input.priority) : undefined;
@@ -230,22 +255,20 @@ export class LibraryService {
 			);
 		}
 		const actor = this.actorOf(identity);
-		const token = identity?.token ?? null;
 
 		return await store.withWriteLock(async () => {
 			if (!taskId) {
 				if (!input.title?.trim()) {
 					throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Task title is required.", 400);
 				}
-				const hooks = this.writeHooks(token);
+				const hooks = this.writeHooks(identity, store.project);
 				// Creates normalize priority inside createTaskFromInput — BEFORE
 				// preWrite runs — so the P0/P1 config vocabulary has to exist by
 				// call time. The migration still waits for the same gates the
 				// write itself waits for: a parked-then-revoked write leaves
 				// config.yml untouched too.
 				await this.holds.waitIfAny();
-				this.assertRunning();
-				if (token !== null) await this.settings.assertAuthorized(token);
+				await this.assertAgentMayWrite(identity, store.project);
 				await store.ensureTaskPriorities();
 				const { task, filePath } = await store.core.createTaskFromInput(
 					{
@@ -308,7 +331,7 @@ export class LibraryService {
 			// A priority write needs the P0/P1 vocabulary in config before Core
 			// normalizes it — migrated inside preWrite, after the authorization
 			// re-check, so a revoked client cannot even mutate config.yml.
-			const hooks = this.writeHooks(token, async () => {
+			const hooks = this.writeHooks(identity, store.project, async () => {
 				await recheckVersion();
 				if (priority !== undefined) await store.ensureTaskPriorities();
 			});
@@ -384,8 +407,8 @@ export class LibraryService {
 	}
 
 	private async mutateOverview(
-		identity: { token: string; id: LibraryClientId } | null,
-		projectId: string,
+		identity: AgentIdentity | null,
+		projectRef: ProjectRef,
 		baseVersion: string | undefined,
 		change: (source: string) => {
 			source: string;
@@ -401,13 +424,12 @@ export class LibraryService {
 				"baseVersion is required — read overview or the list first.",
 				400,
 			);
-		const project = await this.projectFor(projectId);
+		const project = await this.projectFor(projectRef);
 		const store = this.storeFor(project);
 		const path = overviewFilePath(project.dir);
 		const gate = async () => {
 			await this.holds.waitIfAny();
-			this.assertRunning();
-			if (identity) await this.settings.assertAuthorized(identity.token);
+			await this.assertAgentMayWrite(identity, project);
 		};
 		return store.withWriteLock(async () => {
 			const existed = await Bun.file(path).exists();
@@ -463,8 +485,8 @@ export class LibraryService {
 	}
 
 	private async writeOverview(
-		identity: { token: string; id: LibraryClientId } | null,
-		projectId: string,
+		identity: AgentIdentity | null,
+		projectRef: ProjectRef,
 		update: Partial<ProjectOverview>,
 		baseVersion: string | undefined,
 	): Promise<unknown> {
@@ -475,7 +497,7 @@ export class LibraryService {
 					`Overview field "${key}" contains a reserved section marker line.`,
 					400,
 				);
-		return this.mutateOverview(identity, projectId, baseVersion, (source) => {
+		return this.mutateOverview(identity, projectRef, baseVersion, (source) => {
 			const before = parseOverviewContent(source);
 			const data = readTracking(source);
 			if (data.goals.length && update.goal !== undefined && update.goal !== before.goal)
@@ -499,8 +521,12 @@ export class LibraryService {
 		});
 	}
 
-	private async handleTrackingRead(req: Request, projectId: string, kind: "goals" | "progress"): Promise<Response> {
-		const project = await this.projectFor(projectId);
+	private async handleTrackingRead(
+		req: Request,
+		projectRef: ProjectRef,
+		kind: "goals" | "progress",
+	): Promise<Response> {
+		const project = await this.projectFor(projectRef);
 		const file = Bun.file(overviewFilePath(project.dir));
 		const bytes = (await file.exists()) ? await file.bytes() : new Uint8Array();
 		return json(
@@ -508,8 +534,12 @@ export class LibraryService {
 		);
 	}
 
-	private async handleTrackingRecord(projectId: string, kind: "goals" | "progress", id: string): Promise<Response> {
-		const project = await this.projectFor(projectId);
+	private async handleTrackingRecord(
+		projectRef: ProjectRef,
+		kind: "goals" | "progress",
+		id: string,
+	): Promise<Response> {
+		const project = await this.projectFor(projectRef);
 		const file = Bun.file(overviewFilePath(project.dir));
 		const bytes = (await file.exists()) ? await file.bytes() : new Uint8Array();
 		const data = readTracking(new TextDecoder().decode(bytes));
@@ -520,17 +550,17 @@ export class LibraryService {
 
 	private async handleTrackingWrite(
 		req: Request,
-		projectId: string,
+		projectRef: ProjectRef,
 		kind: "goals" | "progress",
 		id: string | null,
-		identity: { token: string; id: LibraryClientId } | null,
+		identity: AgentIdentity | null,
 	): Promise<Response> {
 		const body = await parseBody(req);
 		const { baseVersion, ...input } = body;
 		return json(
 			await this.mutateOverview(
 				identity,
-				projectId,
+				projectRef,
 				typeof baseVersion === "string" ? baseVersion : undefined,
 				(source) => {
 					const next = mutateTracking(readTracking(source), kind, id, input, identity !== null);
@@ -558,8 +588,8 @@ export class LibraryService {
 	 * failed first write rolls back to "never created".
 	 */
 	private async writeArchitecture(
-		identity: { token: string; id: LibraryClientId } | null,
-		projectId: string,
+		identity: AgentIdentity | null,
+		projectRef: ProjectRef,
 		content: string | undefined,
 		baseVersion: string | undefined,
 	): Promise<{ content: string; version: string }> {
@@ -573,10 +603,9 @@ export class LibraryService {
 		if (typeof content !== "string") {
 			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "content is required and must be a string.", 400);
 		}
-		const project = await this.projectFor(projectId);
+		const project = await this.projectFor(projectRef);
 		const store = this.storeFor(project);
 		const actor = this.actorOf(identity);
-		const token = identity?.token ?? null;
 		const path = architectureFilePath(project.dir);
 
 		return await store.withWriteLock(async () => {
@@ -593,6 +622,7 @@ export class LibraryService {
 				return { content: "", version: emptyVersion };
 			}
 			if (!existed) {
+				await this.assertAgentMayWrite(identity, project);
 				// The lock mechanism stats the target file, so a first write needs
 				// a placeholder to realpath — same trick as the overview.
 				await Bun.write(path, "");
@@ -611,8 +641,12 @@ export class LibraryService {
 					);
 				}
 				await this.holds.waitIfAny();
-				this.assertRunning();
-				if (token !== null) await this.settings.assertAuthorized(token);
+				try {
+					await this.assertAgentMayWrite(identity, project);
+				} catch (error) {
+					if (!existed && lockBytes.length === 0) await unlink(path).catch(() => {});
+					throw error;
+				}
 				await Bun.write(path, content);
 				const afterBytes = await Bun.file(path).bytes();
 				const afterVersion = contentVersion(afterBytes);
@@ -712,18 +746,18 @@ export class LibraryService {
 		return json(project, 201);
 	}
 
-	private async handleGetProject(projectId: string): Promise<Response> {
-		const project = await this.projectFor(projectId);
+	private async handleGetProject(projectRef: ProjectRef): Promise<Response> {
+		const project = await this.projectFor(projectRef);
 		return json({ ...project, ...(await this.storeFor(project).projectMeta()) });
 	}
 
-	private async handleGetOverview(projectId: string): Promise<Response> {
-		const project = await this.projectFor(projectId);
+	private async handleGetOverview(projectRef: ProjectRef): Promise<Response> {
+		const project = await this.projectFor(projectRef);
 		return json(await this.overviewWithVersion(project.dir));
 	}
 
-	private async handleGetArchitecture(projectId: string): Promise<Response> {
-		const project = await this.projectFor(projectId);
+	private async handleGetArchitecture(projectRef: ProjectRef): Promise<Response> {
+		const project = await this.projectFor(projectRef);
 		const file = Bun.file(architectureFilePath(project.dir));
 		// One read feeds both content and the version checked on write — a
 		// missing file reads as the empty record versioned by its empty bytes.
@@ -733,14 +767,14 @@ export class LibraryService {
 
 	private async handlePutArchitecture(
 		req: Request,
-		projectId: string,
-		identity: { token: string; id: LibraryClientId } | null,
+		projectRef: ProjectRef,
+		identity: AgentIdentity | null,
 	): Promise<Response> {
 		const body = await parseBody(req);
 		return json(
 			await this.writeArchitecture(
 				identity,
-				projectId,
+				projectRef,
 				typeof body.content === "string" ? body.content : undefined,
 				typeof body.baseVersion === "string" ? body.baseVersion : undefined,
 			),
@@ -749,8 +783,8 @@ export class LibraryService {
 
 	private async handlePutOverview(
 		req: Request,
-		projectId: string,
-		identity: { token: string; id: LibraryClientId } | null,
+		projectRef: ProjectRef,
+		identity: AgentIdentity | null,
 	): Promise<Response> {
 		const body = await parseBody(req);
 		checkFields(body, ["baseVersion", "description", "goal", "current", "features", "agreements", "criticalPaths"]);
@@ -774,25 +808,25 @@ export class LibraryService {
 			);
 		}
 		const baseVersion = typeof body.baseVersion === "string" ? body.baseVersion : undefined;
-		return json(await this.writeOverview(identity, projectId, update, baseVersion));
+		return json(await this.writeOverview(identity, projectRef, update, baseVersion));
 	}
 
-	private async handleListTasks(projectId: string, req: Request): Promise<Response> {
-		const store = this.storeFor(await this.projectFor(projectId));
+	private async handleListTasks(projectRef: ProjectRef, req: Request): Promise<Response> {
+		const store = this.storeFor(await this.projectFor(projectRef));
 		const status = new URL(req.url).searchParams.get("status") ?? undefined;
 		const tasks = await store.listTasks(status);
 		return json(await Promise.all(tasks.map((task) => this.taskWithVersion(store, task))));
 	}
 
-	private async handleGetTask(projectId: string, taskId: string): Promise<Response> {
-		const store = this.storeFor(await this.projectFor(projectId));
+	private async handleGetTask(projectRef: ProjectRef, taskId: string): Promise<Response> {
+		const store = this.storeFor(await this.projectFor(projectRef));
 		const task = await store.getTask(taskId);
 		if (!task) throw new LibraryError(LIBRARY_ERROR_CODES.PROJECT_NOT_FOUND, `Task "${taskId}" not found.`, 404);
 		return json(await this.taskWithVersion(store, task));
 	}
 
-	private async handleListHistory(projectId: string, req: Request): Promise<Response> {
-		const project = await this.projectFor(projectId);
+	private async handleListHistory(projectRef: ProjectRef, req: Request): Promise<Response> {
+		const project = await this.projectFor(projectRef);
 		const params = new URL(req.url).searchParams;
 		const since = params.get("since") ?? undefined;
 		const until = params.get("until") ?? undefined;
@@ -810,20 +844,20 @@ export class LibraryService {
 
 	private async handleCreateTask(
 		req: Request,
-		projectId: string,
-		identity: { token: string; id: LibraryClientId } | null,
+		projectRef: ProjectRef,
+		identity: AgentIdentity | null,
 	): Promise<Response> {
 		return json(
-			await this.writeTask(identity, projectId, null, this.taskInputFrom(await parseBody(req)), undefined),
+			await this.writeTask(identity, projectRef, null, this.taskInputFrom(await parseBody(req)), undefined),
 			201,
 		);
 	}
 
 	private async handleUpdateTask(
 		req: Request,
-		projectId: string,
+		projectRef: ProjectRef,
 		taskId: string,
-		identity: { token: string; id: LibraryClientId } | null,
+		identity: AgentIdentity | null,
 	): Promise<Response> {
 		const body = await parseBody(req);
 		const input = this.taskInputFrom(body);
@@ -835,54 +869,47 @@ export class LibraryService {
 			);
 		}
 		const baseVersion = typeof body.baseVersion === "string" ? body.baseVersion : undefined;
-		return json(await this.writeTask(identity, projectId, taskId, input, baseVersion));
+		return json(await this.writeTask(identity, projectRef, taskId, input, baseVersion));
+	}
+
+	private clientInfo(id: LibraryClientId, slot: ClientSlot) {
+		return {
+			id,
+			label: LIBRARY_CLIENT_LABELS[id],
+			enabled: slot.enabled,
+			allowWrite: slot.allowWrite,
+			connection: slot.connection,
+			installError: slot.installError,
+			lastSeenAt: slot.lastSeenAt,
+		};
 	}
 
 	private async handleListClients(): Promise<Response> {
-		const settings = await this.settings.getSettings();
+		const settings = await this.settings.getCurrentSettings();
 		return json(
-			LIBRARY_CLIENT_IDS.map((id) => {
-				const slot = settings.clients[id];
-				return {
-					id,
-					label: LIBRARY_CLIENT_LABELS[id],
-					enabled: slot.enabled,
-					detected: clientDetected(id),
-					token: slot.token,
-					connection: slot.connection,
-					installError: slot.installError,
-					lastSeenAt: slot.lastSeenAt,
-				};
-			}),
+			LIBRARY_CLIENT_IDS.map((id) => ({
+				...this.clientInfo(id, settings.clients[id]),
+				detected: clientDetected(id),
+				token: settings.clients[id].token,
+			})),
 		);
 	}
 
-	/**
-	 * The one-click setup flow (Phase 4). Enabling a client does more than flip
-	 * the switch: a credential is minted, then MCP config + instruction block +
-	 * skill are installed into the client's real config files. Success marks the
-	 * slot `configured` — it becomes `connected` only when the client's bridge
-	 * actually pings the service. Failure is recorded for the retry affordance.
-	 */
-	private async handlePutClient(req: Request, id: string): Promise<Response> {
+	private requireClientId(id: string): LibraryClientId {
 		if (!isLibraryClientId(id)) {
 			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, `Unknown client "${id}".`, 404);
 		}
+		return id;
+	}
+
+	private async handlePutClient(req: Request, id: LibraryClientId): Promise<Response> {
 		const body = await parseBody(req);
 		if (typeof body.enabled !== "boolean") {
 			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "enabled must be a boolean.", 400);
 		}
 		if (!body.enabled) {
 			const slot = await this.settings.setClientEnabled(id, false);
-			return json({
-				id,
-				label: LIBRARY_CLIENT_LABELS[id],
-				enabled: slot.enabled,
-				token: slot.token,
-				connection: slot.connection,
-				installError: slot.installError,
-				lastSeenAt: slot.lastSeenAt,
-			});
+			return json({ ...this.clientInfo(id, slot), token: slot.token });
 		}
 		const { token, generation } = await this.settings.ensureToken(id);
 		const install = await installClient(id, { serviceUrl: this.baseUrl(), token });
@@ -890,13 +917,8 @@ export class LibraryService {
 			const slot = await this.settings.markInstallFailed(id, install.error ?? "Unknown setup failure.", generation);
 			return json(
 				{
-					id,
-					label: LIBRARY_CLIENT_LABELS[id],
-					enabled: slot.enabled,
+					...this.clientInfo(id, slot),
 					token: slot.token,
-					connection: slot.connection,
-					installError: slot.installError,
-					lastSeenAt: slot.lastSeenAt,
 					installed: install.installed,
 					error: slot.installError,
 					code: "SETUP_FAILED",
@@ -905,16 +927,41 @@ export class LibraryService {
 			);
 		}
 		const slot = await this.settings.markConfigured(id, generation);
-		return json({
-			id,
-			label: LIBRARY_CLIENT_LABELS[id],
-			enabled: slot.enabled,
-			token: slot.token,
-			connection: slot.connection,
-			installError: slot.installError,
-			lastSeenAt: slot.lastSeenAt,
-			installed: install.installed,
-		});
+		return json({ ...this.clientInfo(id, slot), token: slot.token, installed: install.installed });
+	}
+
+	private async handlePutClientWriteAccess(req: Request, id: LibraryClientId): Promise<Response> {
+		const body = await parseBody(req);
+		checkFields(body, ["allowWrite"]);
+		if (typeof body.allowWrite !== "boolean") {
+			throw new LibraryError("VALIDATION", "allowWrite must be a boolean.", 400);
+		}
+		return json(this.clientInfo(id, await this.settings.setClientDefaultWrite(id, body.allowWrite)));
+	}
+
+	private async handleListProjectAgentAccess(projectId: string): Promise<Response> {
+		const settings = await this.settings.getCurrentSettings();
+		const project = await this.projectFor(projectId, settings);
+		return json(LIBRARY_CLIENT_IDS.map((id) => projectAgentAccess(settings, project, id)));
+	}
+
+	private async handlePutProjectAgentAccess(req: Request, projectId: string, id: LibraryClientId): Promise<Response> {
+		const project = await this.projectFor(projectId);
+		const body = await parseBody(req);
+		checkFields(body, ["allowConnection", "allowWrite"]);
+		const patch: ProjectAgentPatch = {};
+		for (const field of ["allowConnection", "allowWrite"] as const) {
+			if (!Object.hasOwn(body, field)) continue;
+			const value = body[field];
+			if (value !== null && typeof value !== "boolean") {
+				throw new LibraryError("VALIDATION", `${field} must be a boolean or null to inherit.`, 400);
+			}
+			patch[field] = value;
+		}
+		if (!Object.keys(patch).length) {
+			throw new LibraryError("VALIDATION", "Provide at least one permission to change.", 400);
+		}
+		return json(await this.settings.updateProjectAgentAccess(project, id, patch));
 	}
 
 	// --- Question (待决定事项) write unit --------------------------------------
@@ -929,25 +976,23 @@ export class LibraryService {
 	}
 
 	private async writeQuestion(
-		identity: { token: string; id: LibraryClientId } | null,
-		projectId: string,
+		identity: AgentIdentity | null,
+		projectRef: ProjectRef,
 		input: { title?: string; task?: string; detail?: string },
 	): Promise<ProjectQuestion & { version?: string }> {
 		if (!input.title?.trim()) {
 			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Question title is required.", 400);
 		}
-		const project = await this.projectFor(projectId);
+		const project = await this.projectFor(projectRef);
 		const store = this.storeFor(project);
 		const actor = this.actorOf(identity);
-		const token = identity?.token ?? null;
 		const askedBy = actor.type === "user" ? "user" : actor.client;
 
 		return await store.withWriteLock(async () => {
 			// Authorization/stop re-checks fire BEFORE the record lands — a vetoed
 			// create must leave nothing on disk (same contract as tasks/preWrite).
 			await this.holds.waitIfAny();
-			this.assertRunning();
-			if (token !== null) await this.settings.assertAuthorized(token);
+			await this.assertAgentMayWrite(identity, project);
 			const question = await createQuestion(
 				project.dir,
 				input as { title: string; task?: string; detail?: string },
@@ -979,18 +1024,17 @@ export class LibraryService {
 	}
 
 	private async writeQuestionAnswer(
-		identity: { token: string; id: LibraryClientId } | null,
-		projectId: string,
+		identity: AgentIdentity | null,
+		projectRef: ProjectRef,
 		questionId: string,
 		answer: string | undefined,
 	): Promise<ProjectQuestion & { version?: string }> {
 		if (!answer?.trim()) {
 			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "answer is required.", 400);
 		}
-		const project = await this.projectFor(projectId);
+		const project = await this.projectFor(projectRef);
 		const store = this.storeFor(project);
 		const actor = this.actorOf(identity);
-		const token = identity?.token ?? null;
 
 		return await store.withWriteLock(async () => {
 			const before = await getQuestion(project.dir, questionId);
@@ -1004,8 +1048,7 @@ export class LibraryService {
 				throw versionConflictError({ ...before, version: currentVersion }, currentVersion);
 			}
 			await this.holds.waitIfAny();
-			this.assertRunning();
-			if (token !== null) await this.settings.assertAuthorized(token);
+			await this.assertAgentMayWrite(identity, project);
 			const after = await answerQuestion(before, answer.trim(), actor);
 			const version = contentVersion(await Bun.file(after.filePath as string).bytes());
 			try {
@@ -1031,16 +1074,16 @@ export class LibraryService {
 		});
 	}
 
-	private async handleListQuestions(projectId: string, req: Request): Promise<Response> {
-		const project = await this.projectFor(projectId);
+	private async handleListQuestions(projectRef: ProjectRef, req: Request): Promise<Response> {
+		const project = await this.projectFor(projectRef);
 		const raw = new URL(req.url).searchParams.get("status");
 		const status = raw?.toLowerCase() === "open" ? "Open" : raw?.toLowerCase() === "answered" ? "Answered" : undefined;
 		const questions = await listQuestions(project.dir, status);
 		return json(await Promise.all(questions.map((q) => this.questionWithVersion(q))));
 	}
 
-	private async handleGetQuestion(projectId: string, questionId: string): Promise<Response> {
-		const project = await this.projectFor(projectId);
+	private async handleGetQuestion(projectRef: ProjectRef, questionId: string): Promise<Response> {
+		const project = await this.projectFor(projectRef);
 		const question = await getQuestion(project.dir, questionId);
 		if (!question) {
 			throw new LibraryError(LIBRARY_ERROR_CODES.PROJECT_NOT_FOUND, `Question "${questionId}" not found.`, 404);
@@ -1050,12 +1093,12 @@ export class LibraryService {
 
 	private async handleCreateQuestion(
 		req: Request,
-		projectId: string,
-		identity: { token: string; id: LibraryClientId } | null,
+		projectRef: ProjectRef,
+		identity: AgentIdentity | null,
 	): Promise<Response> {
 		const body = await parseBody(req);
 		return json(
-			await this.writeQuestion(identity, projectId, {
+			await this.writeQuestion(identity, projectRef, {
 				...(typeof body.title === "string" ? { title: body.title } : {}),
 				...(typeof body.task === "string" ? { task: body.task } : {}),
 				...(typeof body.detail === "string" ? { detail: body.detail } : {}),
@@ -1066,15 +1109,15 @@ export class LibraryService {
 
 	private async handleAnswerQuestion(
 		req: Request,
-		projectId: string,
+		projectRef: ProjectRef,
 		questionId: string,
-		identity: { token: string; id: LibraryClientId } | null,
+		identity: AgentIdentity | null,
 	): Promise<Response> {
 		const body = await parseBody(req);
 		return json(
 			await this.writeQuestionAnswer(
 				identity,
-				projectId,
+				projectRef,
 				questionId,
 				typeof body.answer === "string" ? body.answer : undefined,
 			),
@@ -1083,8 +1126,8 @@ export class LibraryService {
 
 	// --- Resource (项目资料) handlers ------------------------------------------
 
-	private async handleListResources(projectId: string): Promise<Response> {
-		const project = await this.projectFor(projectId);
+	private async handleListResources(projectRef: ProjectRef): Promise<Response> {
+		const project = await this.projectFor(projectRef);
 		return json(await listResources(project.dir));
 	}
 
@@ -1095,10 +1138,10 @@ export class LibraryService {
 	 */
 	private async handleUploadResource(
 		req: Request,
-		projectId: string,
-		identity: { token: string; id: LibraryClientId } | null,
+		projectRef: ProjectRef,
+		identity: AgentIdentity | null,
 	): Promise<Response> {
-		const project = await this.projectFor(projectId);
+		const project = await this.projectFor(projectRef);
 		const store = this.storeFor(project);
 		const body = await parseBody(req);
 		const name = typeof body.name === "string" ? body.name : "";
@@ -1114,13 +1157,13 @@ export class LibraryService {
 		const safe = assertSafeResourceName(name);
 		return await store.withWriteLock(async () => {
 			await this.holds.waitIfAny();
-			this.assertRunning();
-			if (identity !== null) await this.settings.assertAuthorized(identity.token);
+			await this.assertAgentMayWrite(identity, project);
 			// A same-name upload still has prior state to roll back to — snapshot
 			// the existing bytes before saveResource overwrites them.
 			const targetPath = join(resourcesDir(project.dir), safe);
 			const existed = await Bun.file(targetPath).exists();
 			const beforeBytes = existed ? await Bun.file(targetPath).bytes() : null;
+			await this.assertAgentMayWrite(identity, project);
 			const info = await saveResource(project.dir, safe, bytes);
 			try {
 				this.holds.throwIfHistoryFailpoint();
@@ -1142,8 +1185,8 @@ export class LibraryService {
 		});
 	}
 
-	private async handleGetResource(projectId: string, name: string): Promise<Response> {
-		const project = await this.projectFor(projectId);
+	private async handleGetResource(projectRef: ProjectRef, name: string): Promise<Response> {
+		const project = await this.projectFor(projectRef);
 		// Bun decodes :param segments already — decoding again would corrupt
 		// names that legitimately contain '%' (e.g. "50%.md").
 		return json(await readResource(project.dir, name));
@@ -1176,17 +1219,26 @@ export class LibraryService {
 		return json({ ok: true, client, libraryRootSet: (await this.settings.getLibraryRoot()) !== null });
 	}
 
-	private async handleAgentListProjects(req: Request): Promise<Response> {
-		await this.requireClient(req);
-		return json(await listProjects(await this.requireLibraryRoot()));
+	private async handleAgentListProjects(id: LibraryClientId, settings: LibrarySettings): Promise<Response> {
+		const projects = await listProjects(await this.requireLibraryRoot(settings));
+		return json(projects.filter((project) => projectAgentAccess(settings, project, id).canRead));
 	}
 
-	private async handleAgentResolveProject(req: Request): Promise<Response> {
-		await this.requireClient(req);
+	private async handleAgentResolveProject(
+		req: Request,
+		id: LibraryClientId,
+		settings: LibrarySettings,
+	): Promise<Response> {
 		const body = await parseBody(req);
 		const name = optionalString(body.name);
 		if (!name) throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Project name is required.", 400);
-		return json(await resolveProject(await this.requireLibraryRoot(), name));
+		return json(
+			await resolveProject(
+				await this.requireLibraryRoot(settings),
+				name,
+				(project) => projectAgentAccess(settings, project, id).canRead,
+			),
+		);
 	}
 
 	/** Probe wrapper: host check only — the handler itself applies the probe gate. */
@@ -1203,17 +1255,29 @@ export class LibraryService {
 
 	private async withAgentRoute(
 		req: Request,
-		handler: (identity: { token: string; id: LibraryClientId }) => Promise<Response>,
+		handler: (identity: AgentIdentity, settings: LibrarySettings) => Promise<Response>,
 	): Promise<Response> {
 		try {
 			if (!isLoopbackHost(req)) {
 				throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Forbidden host.", 403);
 			}
-			const clientId = await this.requireClient(req);
-			return await handler({ token: this.bearerToken(req), id: clientId });
+			const token = this.bearerToken(req);
+			const { id, settings } = await this.settings.authorizedSettings(token);
+			return await handler({ token, id }, settings);
 		} catch (error) {
 			return errorResponse(error);
 		}
+	}
+
+	private withAgentProjectRoute(
+		req: ProjectRequest,
+		handler: (identity: AgentIdentity, project: LibraryProject) => Promise<Response>,
+	): Promise<Response> {
+		return this.withAgentRoute(req, async (identity, settings) => {
+			const project = await this.projectFor(req.params.id, settings);
+			assertProjectAccess(settings, identity.id, project, req.method !== "GET");
+			return await handler(identity, project);
+		});
 	}
 
 	private async withRoute(req: Request, handler: () => Promise<Response>): Promise<Response> {
@@ -1311,18 +1375,20 @@ export class LibraryService {
 				},
 				"/api/agent/projects/:id/goals": {
 					GET: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, () => this.handleTrackingRead(req, req.params.id, "goals")),
+						this.withAgentProjectRoute(req, (_identity, project) => this.handleTrackingRead(req, project, "goals")),
 					POST: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, (identity) =>
-							this.handleTrackingWrite(req, req.params.id, "goals", null, identity),
+						this.withAgentProjectRoute(req, (identity, project) =>
+							this.handleTrackingWrite(req, project, "goals", null, identity),
 						),
 				},
 				"/api/agent/projects/:id/goals/:goalId": {
 					GET: async (req: Request & { params: { id: string; goalId: string } }) =>
-						this.withAgentRoute(req, () => this.handleTrackingRecord(req.params.id, "goals", req.params.goalId)),
+						this.withAgentProjectRoute(req, (_identity, project) =>
+							this.handleTrackingRecord(project, "goals", req.params.goalId),
+						),
 					PUT: async (req: Request & { params: { id: string; goalId: string } }) =>
-						this.withAgentRoute(req, (identity) =>
-							this.handleTrackingWrite(req, req.params.id, "goals", req.params.goalId, identity),
+						this.withAgentProjectRoute(req, (identity, project) =>
+							this.handleTrackingWrite(req, project, "goals", req.params.goalId, identity),
 						),
 				},
 
@@ -1342,18 +1408,20 @@ export class LibraryService {
 				},
 				"/api/agent/projects/:id/progress": {
 					GET: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, () => this.handleTrackingRead(req, req.params.id, "progress")),
+						this.withAgentProjectRoute(req, (_identity, project) => this.handleTrackingRead(req, project, "progress")),
 					POST: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, (identity) =>
-							this.handleTrackingWrite(req, req.params.id, "progress", null, identity),
+						this.withAgentProjectRoute(req, (identity, project) =>
+							this.handleTrackingWrite(req, project, "progress", null, identity),
 						),
 				},
 				"/api/agent/projects/:id/progress/:progressId": {
 					GET: async (req: Request & { params: { id: string; progressId: string } }) =>
-						this.withAgentRoute(req, () => this.handleTrackingRecord(req.params.id, "progress", req.params.progressId)),
+						this.withAgentProjectRoute(req, (_identity, project) =>
+							this.handleTrackingRecord(project, "progress", req.params.progressId),
+						),
 					PUT: async (req: Request & { params: { id: string; progressId: string } }) =>
-						this.withAgentRoute(req, (identity) =>
-							this.handleTrackingWrite(req, req.params.id, "progress", req.params.progressId, identity),
+						this.withAgentProjectRoute(req, (identity, project) =>
+							this.handleTrackingWrite(req, project, "progress", req.params.progressId, identity),
 						),
 				},
 
@@ -1398,78 +1466,97 @@ export class LibraryService {
 				"/api/clients": { GET: async (req: Request) => this.withRoute(req, () => this.handleListClients()) },
 				"/api/clients/:id": {
 					PUT: async (req: Request & { params: { id: string } }) =>
-						this.withRoute(req, () => this.handlePutClient(req, req.params.id)),
+						this.withRoute(req, () => this.handlePutClient(req, this.requireClientId(req.params.id))),
+				},
+
+				"/api/clients/:id/write-access": {
+					PUT: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handlePutClientWriteAccess(req, this.requireClientId(req.params.id))),
+				},
+				"/api/projects/:id/agent-access": {
+					GET: async (req: ProjectRequest) =>
+						this.withRoute(req, () => this.handleListProjectAgentAccess(req.params.id)),
+				},
+				"/api/projects/:id/agent-access/:clientId": {
+					PUT: async (req: Request & { params: { id: string; clientId: string } }) =>
+						this.withRoute(req, () =>
+							this.handlePutProjectAgentAccess(req, req.params.id, this.requireClientId(req.params.clientId)),
+						),
 				},
 
 				"/api/agent/ping": {
 					GET: async (req: Request) => this.withProbeRoute(req, () => this.handleAgentPing(req)),
 				},
 				"/api/agent/projects": {
-					GET: async (req: Request) => this.withAgentRoute(req, () => this.handleAgentListProjects(req)),
+					GET: async (req: Request) =>
+						this.withAgentRoute(req, ({ id }, settings) => this.handleAgentListProjects(id, settings)),
 				},
 				"/api/agent/projects/resolve": {
-					POST: async (req: Request) => this.withAgentRoute(req, () => this.handleAgentResolveProject(req)),
+					POST: async (req: Request) =>
+						this.withAgentRoute(req, ({ id }, settings) => this.handleAgentResolveProject(req, id, settings)),
 				},
 				"/api/agent/projects/:id": {
 					GET: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, () => this.handleGetProject(req.params.id)),
+						this.withAgentProjectRoute(req, (_identity, project) => this.handleGetProject(project)),
 				},
 				"/api/agent/projects/:id/architecture": {
 					GET: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, () => this.handleGetArchitecture(req.params.id)),
+						this.withAgentProjectRoute(req, (_identity, project) => this.handleGetArchitecture(project)),
 					PUT: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, (identity) => this.handlePutArchitecture(req, req.params.id, identity)),
+						this.withAgentProjectRoute(req, (identity, project) => this.handlePutArchitecture(req, project, identity)),
 				},
 				"/api/agent/projects/:id/overview": {
 					GET: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, () => this.handleGetOverview(req.params.id)),
+						this.withAgentProjectRoute(req, (_identity, project) => this.handleGetOverview(project)),
 					PUT: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, (identity) => this.handlePutOverview(req, req.params.id, identity)),
+						this.withAgentProjectRoute(req, (identity, project) => this.handlePutOverview(req, project, identity)),
 				},
 				"/api/agent/projects/:id/tasks": {
 					GET: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, () => this.handleListTasks(req.params.id, req)),
+						this.withAgentProjectRoute(req, (_identity, project) => this.handleListTasks(project, req)),
 					POST: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, (identity) => this.handleCreateTask(req, req.params.id, identity)),
+						this.withAgentProjectRoute(req, (identity, project) => this.handleCreateTask(req, project, identity)),
 				},
 				"/api/agent/projects/:id/tasks/:taskId": {
 					GET: async (req: Request & { params: { id: string; taskId: string } }) =>
-						this.withAgentRoute(req, () => this.handleGetTask(req.params.id, req.params.taskId)),
+						this.withAgentProjectRoute(req, (_identity, project) => this.handleGetTask(project, req.params.taskId)),
 					PUT: async (req: Request & { params: { id: string; taskId: string } }) =>
-						this.withAgentRoute(req, (identity) =>
-							this.handleUpdateTask(req, req.params.id, req.params.taskId, identity),
+						this.withAgentProjectRoute(req, (identity, project) =>
+							this.handleUpdateTask(req, project, req.params.taskId, identity),
 						),
 				},
 				"/api/agent/projects/:id/history": {
 					GET: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, () => this.handleListHistory(req.params.id, req)),
+						this.withAgentProjectRoute(req, (_identity, project) => this.handleListHistory(project, req)),
 				},
 				"/api/agent/instructions": {
 					GET: async (req: Request) => this.withAgentRoute(req, () => this.handleAgentInstructions()),
 				},
 				"/api/agent/projects/:id/questions": {
 					GET: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, () => this.handleListQuestions(req.params.id, req)),
+						this.withAgentProjectRoute(req, (_identity, project) => this.handleListQuestions(project, req)),
 					POST: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, (identity) => this.handleCreateQuestion(req, req.params.id, identity)),
+						this.withAgentProjectRoute(req, (identity, project) => this.handleCreateQuestion(req, project, identity)),
 				},
 				"/api/agent/projects/:id/questions/:questionId": {
 					GET: async (req: Request & { params: { id: string; questionId: string } }) =>
-						this.withAgentRoute(req, () => this.handleGetQuestion(req.params.id, req.params.questionId)),
+						this.withAgentProjectRoute(req, (_identity, project) =>
+							this.handleGetQuestion(project, req.params.questionId),
+						),
 					PUT: async (req: Request & { params: { id: string; questionId: string } }) =>
-						this.withAgentRoute(req, (identity) =>
-							this.handleAnswerQuestion(req, req.params.id, req.params.questionId, identity),
+						this.withAgentProjectRoute(req, (identity, project) =>
+							this.handleAnswerQuestion(req, project, req.params.questionId, identity),
 						),
 				},
 				"/api/agent/projects/:id/resources": {
 					GET: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, () => this.handleListResources(req.params.id)),
+						this.withAgentProjectRoute(req, (_identity, project) => this.handleListResources(project)),
 					POST: async (req: Request & { params: { id: string } }) =>
-						this.withAgentRoute(req, (identity) => this.handleUploadResource(req, req.params.id, identity)),
+						this.withAgentProjectRoute(req, (identity, project) => this.handleUploadResource(req, project, identity)),
 				},
 				"/api/agent/projects/:id/resources/:name": {
 					GET: async (req: Request & { params: { id: string; name: string } }) =>
-						this.withAgentRoute(req, () => this.handleGetResource(req.params.id, req.params.name)),
+						this.withAgentProjectRoute(req, (_identity, project) => this.handleGetResource(project, req.params.name)),
 				},
 
 				"/api/test/holds": {

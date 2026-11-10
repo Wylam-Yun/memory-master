@@ -534,3 +534,98 @@ test("仅有旧式目标时，原文在历史目标内默认收起", async () =>
 	await expand("历史目标");
 	expect((await expand("原有目标")).textContent).toContain(goal);
 });
+
+test("homepage and project settings open separate pages and save permissions through the service", async () => {
+	const setup = new AppSettingsStore(home);
+	const { token } = await setup.setClientEnabled("codex", true);
+	if (!token) throw new Error("Expected a Codex fixture credential");
+	const agentFetch = (path: string, body?: { title: string }) =>
+		nativeFetch(base + "/api/agent" + path, {
+			method: body ? "POST" : "GET",
+			headers: { authorization: "Bearer " + token, ...(body && { "content-type": "application/json" }) },
+			body: body ? JSON.stringify(body) : undefined,
+		});
+	expect((await agentFetch("/ping")).status).toBe(200);
+
+	const findLink = (label: string, scope: ParentNode = container) =>
+		Array.from(scope.querySelectorAll<HTMLAnchorElement>("a")).find((a) => a.textContent?.trim() === label);
+	const waitFor = async <T,>(read: () => T | undefined) => {
+		for (let i = 0; i < 60; i++) {
+			const result = read();
+			if (result !== undefined) return result;
+			await flush();
+		}
+		throw new Error("Expected control did not appear");
+	};
+	const getSwitch = (label: string) =>
+		waitFor(
+			() =>
+				container.querySelector<HTMLButtonElement>('button[role="switch"][aria-label="' + label + '"]') ?? undefined,
+		);
+	const toggle = async (label: string, checked: boolean) => {
+		const button = await getSwitch(label);
+		expect(button.disabled).toBe(false);
+		await act(async () => button.click());
+		await waitFor(() => {
+			const current = container.querySelector<HTMLButtonElement>('button[role="switch"][aria-label="' + label + '"]');
+			return current?.getAttribute("aria-checked") === String(checked) && !current.disabled ? true : undefined;
+		});
+	};
+	const taskPath = "/projects/" + project.id + "/tasks";
+	dom.window.history.replaceState({}, "", "/");
+	await act(async () => root.render(<App />));
+	const globalLink = await waitFor(() => findLink("全局设置"));
+	expect(globalLink.getAttribute("href")).toBe("/settings");
+	await act(async () => globalLink.click());
+	expect(dom.window.location.pathname).toBe("/settings");
+	expect(container.querySelector("h1")?.textContent).toBe("全局设置");
+	expect((await getSwitch("Codex 默认允许修改")).getAttribute("aria-checked")).toBe("false");
+	await toggle("Codex 默认允许修改", true);
+	expect((await agentFetch(taskPath, { title: "全局允许修改" })).status).toBe(201);
+	await toggle("Codex 默认允许修改", false);
+	expect((await agentFetch(taskPath, { title: "全局只读" })).status).toBe(403);
+
+	const back = await waitFor(() => findLink("← 所有项目"));
+	await act(async () => back.click());
+	const projectLink = await waitFor(() =>
+		Array.from(container.querySelectorAll<HTMLAnchorElement>("a")).find(
+			(a) => a.getAttribute("href") === "/projects/" + project.id,
+		),
+	);
+	await act(async () => projectLink.click());
+	const desktopLink = await waitFor(() => findLink("项目设置", container.querySelector("aside")!));
+	const projectSettingsPath = "/projects/" + project.id + "/settings";
+	expect(desktopLink.getAttribute("href")).toBe(projectSettingsPath);
+	const mobileMenu = await waitFor(
+		() => container.querySelector<HTMLButtonElement>('header button[aria-haspopup="menu"]') ?? undefined,
+	);
+	await act(async () => mobileMenu.click());
+	const mobileLink = await waitFor(() => findLink("项目设置", container.querySelector("header")!));
+	expect(mobileLink.getAttribute("href")).toBe(projectSettingsPath);
+	await act(async () => mobileLink.click());
+	expect(dom.window.location.pathname).toBe(projectSettingsPath);
+	expect(container.querySelector("h1")?.textContent).toBe("项目设置");
+	expect((await getSwitch("Claude Code 允许连接")).disabled).toBe(true);
+	expect((await getSwitch("Codex 允许修改")).getAttribute("aria-checked")).toBe("false");
+
+	await toggle("Codex 允许修改", true);
+	expect((await agentFetch(taskPath, { title: "只给本项目开启修改" })).status).toBe(201);
+	await toggle("Codex 允许连接", false);
+	expect((await agentFetch(taskPath)).status).toBe(404);
+	expect((await getSwitch("Codex 允许修改")).disabled).toBe(true);
+
+	const restore = await waitFor(
+		() => container.querySelector<HTMLButtonElement>('[aria-label="Codex 恢复继承"]') ?? undefined,
+	);
+	await act(async () => restore.click());
+	await waitFor(() => (container.querySelector('[aria-label="Codex 恢复继承"]') === null ? true : undefined));
+	expect((await getSwitch("Codex 允许连接")).getAttribute("aria-checked")).toBe("true");
+	expect((await getSwitch("Codex 允许修改")).getAttribute("aria-checked")).toBe("false");
+	expect((await agentFetch(taskPath, { title: "恢复只读" })).status).toBe(403);
+
+	const tasks = await api("tasks");
+	expect(tasks.status).toBe(200);
+	expect((await tasks.json()).map((t: { title: string }) => t.title).sort()).toEqual(
+		["全局允许修改", "只给本项目开启修改"].sort(),
+	);
+});

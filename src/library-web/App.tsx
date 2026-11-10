@@ -7,6 +7,7 @@ import ArchitecturePage from "./pages/ArchitecturePage.tsx";
 import HistoryPage from "./pages/HistoryPage.tsx";
 import ProjectHomePage from "./pages/ProjectHomePage.tsx";
 import { OVERVIEW_PAGES } from "./overview-pages.ts";
+import ProjectSettingsPage from "./pages/ProjectSettingsPage.tsx";
 import ProjectsPage from "./pages/ProjectsPage.tsx";
 import ResourcesPage from "./pages/ResourcesPage.tsx";
 import ResourceViewPage from "./pages/ResourceViewPage.tsx";
@@ -127,6 +128,7 @@ export default function App() {
 						<Route key={page.field} path={page.path} element={<ProjectHomePage section={page.field} />} />
 					))}
 					<Route path="tasks" element={<TasksPage />} />
+					<Route path="settings" element={<ProjectSettingsPage />} />
 					<Route path="architecture" element={<ArchitecturePage />} />
 					<Route path="resources" element={<ResourcesPage />} />
 					<Route path="resources/:name" element={<ResourceViewPage />} />

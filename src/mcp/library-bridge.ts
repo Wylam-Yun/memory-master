@@ -140,8 +140,11 @@ export class LibraryBridge {
 					this.selectedProject = project;
 					return ok({ opened: project });
 				}
-				case "project_current":
-					return ok(this.selectedProject ? { project: this.selectedProject } : { project: null });
+				case "project_current": {
+					const project = this.selectedProject;
+					if (project) await this.api(`/api/agent/projects/${encodeURIComponent(project.id)}`);
+					return ok({ project });
+				}
 				case "overview_read":
 					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/overview`));
 				case "overview_write": {

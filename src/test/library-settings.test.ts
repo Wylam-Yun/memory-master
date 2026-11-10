@@ -25,6 +25,7 @@ describe("AppSettingsStore", () => {
 		for (const id of LIBRARY_CLIENT_IDS) {
 			expect(settings.clients[id]).toEqual({
 				enabled: false,
+				allowWrite: false,
 				token: null,
 				connection: "none",
 				installError: null,
@@ -65,6 +66,7 @@ describe("AppSettingsStore", () => {
 		const restarted = new AppSettingsStore(home);
 		expect(await restarted.getClient("claude-code")).toEqual({
 			enabled: true,
+			allowWrite: false,
 			token,
 			connection: "configured",
 			installError: null,
@@ -73,6 +75,7 @@ describe("AppSettingsStore", () => {
 		});
 		expect(await restarted.getClient("codex")).toEqual({
 			enabled: false,
+			allowWrite: false,
 			token: null,
 			connection: "none",
 			installError: null,

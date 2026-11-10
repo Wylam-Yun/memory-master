@@ -99,6 +99,7 @@ test("两种MCP客户端分别写入与接手，约定在新连接和重启后�
 	const bridges: LibraryBridge[] = [];
 	for (const id of ["codex", "claude-code"] as const) {
 		await settings.setClientEnabled(id, true);
+		await settings.setClientDefaultWrite(id, true);
 		const slot = await settings.ensureToken(id);
 		await settings.markConnected(id);
 		const bridge = new LibraryBridge({ serviceUrl: base, token: slot.token });
@@ -147,6 +148,7 @@ test("关键路径在网页、Agent、磁盘与历史一致，旧记录和过期
 	expect((await update({ criticalPaths: local })).status).toBe(200);
 	const codex = "codex";
 	await settings.setClientEnabled(codex, true);
+	await settings.setClientDefaultWrite(codex, true);
 	const slot = await settings.ensureToken(codex);
 	await settings.markConnected(codex);
 	const bridge = new LibraryBridge({ serviceUrl: base, token: slot.token });
@@ -195,6 +197,7 @@ test("冲突、撤权与历史失败均保持已保存约定和自动历史", as
 	expect(await disk()).toBe(bytes);
 	expect(await history()).toBe(log);
 	await settings.setClientEnabled("codex", true);
+	await settings.setClientDefaultWrite("codex", true);
 	const token = (await settings.ensureToken("codex")).token;
 	await settings.markConnected("codex");
 	const hold = holds.create("revoke");

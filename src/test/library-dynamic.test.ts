@@ -173,6 +173,7 @@ test("两种Agent共享目标，主观确认、未知字段和撤权逐项生效
 	const tokens: Record<string, string> = {};
 	for (const id of ["codex", "claude-code"] as const) {
 		await settings.setClientEnabled(id, true);
+		await settings.setClientDefaultWrite(id, true);
 		const slot = await settings.ensureToken(id);
 		await settings.markConnected(id);
 		tokens[id] = slot.token;

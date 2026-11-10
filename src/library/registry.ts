@@ -111,10 +111,14 @@ export async function listProjects(libraryRoot: string): Promise<LibraryProject[
  * candidate list instead of guessing (409), so the caller must reopen with an
  * exact reference or ID. Zero candidates → not found.
  */
-export async function resolveProject(libraryRoot: string, reference: string): Promise<LibraryProject> {
+export async function resolveProject(
+	libraryRoot: string,
+	reference: string,
+	visible: (project: LibraryProject) => boolean = () => true,
+): Promise<LibraryProject> {
 	const query = reference.trim();
 	if (!query) throw projectNotFoundError(reference);
-	const projects = await listProjects(libraryRoot);
+	const projects = (await listProjects(libraryRoot)).filter(visible);
 
 	const exact = projects.filter((p) => p.id === query || p.name === query || basename(p.dir) === query);
 	if (exact.length === 1) return exact[0]!;

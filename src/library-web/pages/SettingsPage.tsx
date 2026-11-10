@@ -1,47 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type ClientSlotInfo } from "../api.ts";
+import PermissionSwitch from "../components/PermissionSwitch.tsx";
 import { PageHeader } from "../components/AppShell.tsx";
 import { ErrorNote, SuccessNote } from "../components/StatusMessage.tsx";
 
 const CONNECTION_TEXT: Record<ClientSlotInfo["connection"], { text: string; cls: string }> = {
 	none: { text: "未配置", cls: "text-[#555B65]" },
 	configured: { text: "已配置，等待接入", cls: "text-[#88550D]" },
-	connected: { text: "允许访问 · 已接入", cls: "text-[#216C45]" },
+	connected: { text: "已接入", cls: "text-[#216C45]" },
 };
-
-/** 授权开关（role=switch）——只控制允许访问，配置/接入状态在旁边单独展示。 */
-function Switch({
-	checked,
-	disabled,
-	label,
-	onChange,
-}: {
-	checked: boolean;
-	disabled?: boolean;
-	label: string;
-	onChange: (next: boolean) => void;
-}) {
-	return (
-		<button
-			type="button"
-			role="switch"
-			aria-checked={checked}
-			aria-label={label}
-			disabled={disabled}
-			className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
-				checked ? "bg-[#3B57D0]" : "bg-[#8A9099]/50"
-			}`}
-			onClick={() => onChange(!checked)}
-		>
-			<span
-				className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
-					checked ? "translate-x-[22px]" : "translate-x-0.5"
-				}`}
-			/>
-		</button>
-	);
-}
 
 export default function SettingsPage({ libraryRoot, reload }: { libraryRoot: string; reload: () => void }) {
 	const [root, setRoot] = useState(libraryRoot);
@@ -73,15 +41,36 @@ export default function SettingsPage({ libraryRoot, reload }: { libraryRoot: str
 			setClients((list) => list.map((c) => (c.id === client.id ? { ...c, ...updated } : c)));
 			setNotice(
 				enabled
-					? `${client.label} 已启用并完成配置 —— 打开 ${client.label} 后其 Memory Master 桥会自动接入`
+					? `${client.label} 已允许连接。打开 ${client.label} 的新会话即可接入。`
 					: `${client.label} 已停用 —— 即刻起其请求全部拒绝`,
 			);
-			await api.listClients().then(setClients).catch(() => {});
+			await api
+				.listClients()
+				.then(setClients)
+				.catch(() => {});
 		} catch (e) {
 			// A failed enable arrives as a 502 body — refresh the slot so its
 			// installError/retry state shows.
 			setError(e);
-			await api.listClients().then(setClients).catch(() => {});
+			await api
+				.listClients()
+				.then(setClients)
+				.catch(() => {});
+		} finally {
+			setBusy(null);
+		}
+	};
+
+	const changeDefaultWrite = async (client: ClientSlotInfo, allowWrite: boolean) => {
+		setError(null);
+		setNotice("");
+		setBusy(client.id);
+		try {
+			const updated = await api.setClientDefaultWrite(client.id, allowWrite);
+			setClients((list) => list.map((c) => (c.id === client.id ? { ...c, allowWrite: updated.allowWrite } : c)));
+			setNotice(allowWrite ? `${client.label} 默认可以修改项目` : `${client.label} 默认只能读取项目`);
+		} catch (e) {
+			setError(e);
 		} finally {
 			setBusy(null);
 		}
@@ -96,11 +85,12 @@ export default function SettingsPage({ libraryRoot, reload }: { libraryRoot: str
 					</Link>
 				</p>
 				<PageHeader
-					title="设置"
+					title="全局设置"
 					actions={
 						<button
 							type="button"
 							className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124]"
+							disabled={busy !== null}
 							onClick={() => api.listClients().then(setClients).catch(setError)}
 						>
 							刷新状态
@@ -117,7 +107,8 @@ export default function SettingsPage({ libraryRoot, reload }: { libraryRoot: str
 				<section className="mb-10">
 					<h2 className="mb-1 text-[20px] font-semibold leading-7">Agent连接</h2>
 					<p className="mb-4 max-w-[720px] text-[15px] leading-6 text-[#555B65]">
-						启用会自动把 MCP 配置、协作指令和 Skill 写入该客户端的配置文件，并允许它读写记忆库；关闭后服务拒绝其读写。连接状态独立于开关：客户端真正接入服务后才能读写项目。
+						允许连接后，Agent
+						可以读取对它开放的项目。关闭连接后，所有项目都不再对它开放。项目设置可以单独关闭连接，也可以调整该项目是否允许修改。
 					</p>
 					<ul>
 						{clients.map((c) => {
@@ -129,17 +120,14 @@ export default function SettingsPage({ libraryRoot, reload }: { libraryRoot: str
 											<p className="text-[16px] font-medium leading-6">
 												{c.label}
 												{c.enabled ? (
-													<span className={`ml-3 text-[14px] font-normal leading-[22px] ${conn.cls}`}>
-														{conn.text}
-													</span>
+													<span className={`ml-3 text-[14px] font-normal leading-[22px] ${conn.cls}`}>{conn.text}</span>
 												) : (
 													<span className="ml-3 text-[14px] font-normal leading-[22px] text-[#555B65]">已停用</span>
 												)}
 											</p>
 											{c.enabled && c.connection === "configured" ? (
 												<p className="mt-1 text-[14px] leading-[22px] text-[#555B65]">
-													配置文件已写入。打开 {c.label}（新会话）后它会自动接入；若一直停留在此状态，检查该客户端的
-													MCP 服务列表里 memory-master 是否报错。
+													打开 {c.label} 的新会话即可接入。
 												</p>
 											) : null}
 											{!c.detected ? (
@@ -149,23 +137,32 @@ export default function SettingsPage({ libraryRoot, reload }: { libraryRoot: str
 											) : null}
 											{c.installError ? (
 												<div className="mt-2">
-													<ErrorNote
-														error={`自动配置未完成：${c.installError}`}
-														onRetry={() => void toggle(c, true)}
-													/>
+													<ErrorNote error={`自动配置未完成：${c.installError}`} onRetry={() => void toggle(c, true)} />
 												</div>
 											) : null}
 										</div>
-										<Switch
-											checked={c.enabled}
-											disabled={busy === c.id}
-											label={`${c.label} 允许访问`}
-											onChange={(next) => void toggle(c, next)}
-										/>
+										<div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+											<div className="flex items-center gap-2 text-[15px]">
+												<span>允许连接</span>
+												<PermissionSwitch
+													checked={c.enabled}
+													disabled={busy !== null}
+													label={`${c.label} 允许连接`}
+													onChange={(next) => void toggle(c, next)}
+												/>
+											</div>
+											<div className="flex items-center gap-2 text-[15px]">
+												<span>默认允许修改</span>
+												<PermissionSwitch
+													checked={c.allowWrite}
+													disabled={busy !== null || !c.enabled}
+													label={`${c.label} 默认允许修改`}
+													onChange={(next) => void changeDefaultWrite(c, next)}
+												/>
+											</div>
+										</div>
 									</div>
-									{busy === c.id ? (
-										<p className="mt-1 text-[14px] leading-[22px] text-[#555B65]">配置中…</p>
-									) : null}
+									{busy === c.id ? <p className="mt-1 text-[14px] leading-[22px] text-[#555B65]">保存中…</p> : null}
 								</li>
 							);
 						})}
@@ -218,9 +215,7 @@ export default function SettingsPage({ libraryRoot, reload }: { libraryRoot: str
 										</p>
 									) : null}
 									{c.installError ? (
-										<p className="mt-1 break-all font-mono text-[13px] leading-5 text-[#B42318]">
-											{c.installError}
-										</p>
+										<p className="mt-1 break-all font-mono text-[13px] leading-5 text-[#B42318]">{c.installError}</p>
 									) : null}
 									{c.installed && c.installed.length > 0 ? (
 										<p className="mt-1 font-mono text-[13px] leading-5 text-[#555B65]">

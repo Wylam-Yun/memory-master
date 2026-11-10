@@ -60,6 +60,9 @@ describe("library history & versioning", () => {
 	const enableClient = async (id: "codex" | "claude-code"): Promise<string> => {
 		const res = await req(`/api/clients/${id}`, { method: "PUT", body: { enabled: true } });
 		const token = (await json(res)).token;
+		expect((await req(`/api/clients/${id}/write-access`, { method: "PUT", body: { allowWrite: true } })).status).toBe(
+			200,
+		);
 		const ping = await req("/api/agent/ping", { token });
 		expect(ping.status).toBe(200);
 		return token;

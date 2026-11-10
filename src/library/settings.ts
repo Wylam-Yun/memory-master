@@ -1,14 +1,18 @@
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import {
 	accessDisabledError,
 	type ClientSlot,
 	connectionPendingError,
 	LIBRARY_CLIENT_IDS,
+	LIBRARY_CLIENT_LABELS,
 	type LibraryClientId,
 	LibraryError,
+	type LibraryProject,
 	type LibrarySettings,
+	type ProjectAgentAccess,
+	type ProjectAgentOverride,
 	unauthorizedError,
 } from "./types.ts";
 
@@ -23,6 +27,33 @@ const TOKEN_PREFIXES: Record<LibraryClientId, string> = {
 	hermes: "mm_hermes",
 	dsh: "mm_dsh",
 };
+
+const accessFields = ["allowConnection", "allowWrite"] as const;
+export type ProjectAgentPatch = Partial<Record<(typeof accessFields)[number], boolean | null>>;
+
+// The library namespace separates copies of a project and legacy dirname IDs.
+function projectAccessKey(project: LibraryProject): string {
+	return JSON.stringify([dirname(project.dir), project.id]);
+}
+
+export function projectAgentAccess(
+	settings: LibrarySettings,
+	project: LibraryProject,
+	id: LibraryClientId,
+): ProjectAgentAccess {
+	const slot = settings.clients[id];
+	const override = settings.projectAccess[projectAccessKey(project)]?.[id] ?? {};
+	const canRead = slot.enabled && (override.allowConnection ?? true);
+	return {
+		id,
+		label: LIBRARY_CLIENT_LABELS[id],
+		globallyEnabled: slot.enabled,
+		defaultAllowWrite: slot.allowWrite,
+		override,
+		canRead,
+		canWrite: canRead && (override.allowWrite ?? slot.allowWrite),
+	};
+}
 
 /**
  * Application-level settings store.
@@ -56,9 +87,16 @@ export class AppSettingsStore {
 	static defaultSettings(): LibrarySettings {
 		const clients = {} as Record<LibraryClientId, ClientSlot>;
 		for (const id of LIBRARY_CLIENT_IDS) {
-			clients[id] = { enabled: false, token: null, connection: "none", installError: null, lastSeenAt: null };
+			clients[id] = {
+				enabled: false,
+				allowWrite: false,
+				token: null,
+				connection: "none",
+				installError: null,
+				lastSeenAt: null,
+			};
 		}
-		return { version: SETTINGS_VERSION, libraryRoot: null, port: DEFAULT_SERVICE_PORT, clients };
+		return { version: SETTINGS_VERSION, libraryRoot: null, port: DEFAULT_SERVICE_PORT, clients, projectAccess: {} };
 	}
 
 	private static generateToken(clientId: LibraryClientId): string {
@@ -108,9 +146,11 @@ export class AppSettingsStore {
 			for (const id of LIBRARY_CLIENT_IDS) {
 				const slot = (clients as Record<string, unknown>)[id];
 				if (typeof slot === "object" && slot !== null) {
-					const { enabled, token, connection, installError, lastSeenAt } = slot as Record<string, unknown>;
+					const { enabled, allowWrite, token, connection, installError, lastSeenAt } = slot as Record<string, unknown>;
 					settings.clients[id] = {
 						enabled: enabled === true,
+						// Preserve already-enabled clients on upgrade; new clients default to read-only.
+						allowWrite: typeof allowWrite === "boolean" ? allowWrite : enabled === true,
 						token: typeof token === "string" ? token : null,
 						connection: connection === "configured" || connection === "connected" ? connection : "none",
 						installError: typeof installError === "string" ? installError : null,
@@ -121,6 +161,23 @@ export class AppSettingsStore {
 								: 0,
 					};
 				}
+			}
+		}
+		if (typeof data.projectAccess === "object" && data.projectAccess !== null && !Array.isArray(data.projectAccess)) {
+			for (const [key, rawProject] of Object.entries(data.projectAccess)) {
+				if (!key.startsWith("[") || typeof rawProject !== "object" || rawProject === null) continue;
+				const overrides: LibrarySettings["projectAccess"][string] = {};
+				for (const id of LIBRARY_CLIENT_IDS) {
+					const rawOverride = (rawProject as Record<string, unknown>)[id];
+					if (typeof rawOverride !== "object" || rawOverride === null) continue;
+					const override: ProjectAgentOverride = {};
+					for (const field of accessFields) {
+						const value = (rawOverride as Record<string, unknown>)[field];
+						if (typeof value === "boolean") override[field] = value;
+					}
+					if (Object.keys(override).length) overrides[id] = override;
+				}
+				if (Object.keys(overrides).length) settings.projectAccess[key] = overrides;
 			}
 		}
 		return settings;
@@ -176,6 +233,37 @@ export class AppSettingsStore {
 		});
 		this.queue = run.catch(() => {});
 		return run;
+	}
+
+	async getCurrentSettings(): Promise<LibrarySettings> {
+		await this.refreshIfChanged();
+		return await this.getSettings();
+	}
+
+	async setClientDefaultWrite(id: LibraryClientId, allowWrite: boolean): Promise<ClientSlot> {
+		return await this.mutate((draft) => {
+			const slot = draft.clients[id];
+			slot.allowWrite = allowWrite;
+			return { ...slot };
+		});
+	}
+
+	async updateProjectAgentAccess(project: LibraryProject, id: LibraryClientId, patch: ProjectAgentPatch) {
+		return await this.mutate((draft) => {
+			const key = projectAccessKey(project);
+			const overrides = draft.projectAccess[key] ?? {};
+			const override = { ...overrides[id] };
+			for (const field of accessFields) {
+				const value = patch[field];
+				if (value === null) delete override[field];
+				else if (value !== undefined) override[field] = value;
+			}
+			if (Object.keys(override).length) overrides[id] = override;
+			else delete overrides[id];
+			if (Object.keys(overrides).length) draft.projectAccess[key] = overrides;
+			else delete draft.projectAccess[key];
+			return projectAgentAccess(draft, project, id);
+		});
 	}
 
 	async setLibraryRoot(libraryRoot: string): Promise<void> {
@@ -330,10 +418,16 @@ export class AppSettingsStore {
 	 * returned cannot be outrun by a parked write.
 	 */
 	async assertAuthorized(token: string | null | undefined): Promise<LibraryClientId> {
-		await this.refreshIfChanged();
-		const clientId = await this.resolveEnabled(token);
-		const slot = await this.getClient(clientId);
-		if (slot.connection !== "connected") throw connectionPendingError(clientId);
-		return clientId;
+		return (await this.authorizedSettings(token)).id;
+	}
+
+	async authorizedSettings(token: string | null | undefined) {
+		const settings = await this.getCurrentSettings();
+		const id = token ? LIBRARY_CLIENT_IDS.find((client) => settings.clients[client].token === token) : undefined;
+		if (!id) throw unauthorizedError();
+		const slot = settings.clients[id];
+		if (!slot.enabled) throw accessDisabledError(id);
+		if (slot.connection !== "connected") throw connectionPendingError(id);
+		return { id, settings };
 	}
 }

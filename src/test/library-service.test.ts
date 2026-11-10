@@ -67,6 +67,9 @@ describe("library service", () => {
 		const res = await req(`/api/clients/${id}`, { method: "PUT", body: { enabled: true } });
 		expect(res.status).toBe(200);
 		const token = (await json(res)).token;
+		expect((await req(`/api/clients/${id}/write-access`, { method: "PUT", body: { allowWrite: true } })).status).toBe(
+			200,
+		);
 		const ping = await req("/api/agent/ping", { token });
 		expect(ping.status).toBe(200);
 		return token;

@@ -145,7 +145,7 @@ function ProjectNav({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 /**
- * 项目外壳：≥960px 常驻侧栏（项目切换器 + 项目入口 + 所有项目/设置），窄屏收
+ * 项目外壳：≥960px 常驻侧栏（项目切换器 + 项目入口 + 所有项目/项目设置），窄屏收
  * 为顶栏「项目导航 ▾」菜单。项目经 Outlet context 传给各页面。
  */
 export default function AppShell({ projects }: { projects: LibraryProject[] }) {
@@ -217,9 +217,9 @@ export default function AppShell({ projects }: { projects: LibraryProject[] }) {
 						<Link to="/" className={navLinkClass({ isActive: false })}>
 							所有项目
 						</Link>
-						<Link to="/settings" className={navLinkClass({ isActive: false })}>
-							设置
-						</Link>
+						<NavLink to="settings" className={navLinkClass}>
+							项目设置
+						</NavLink>
 					</div>
 				</aside>
 
@@ -239,11 +239,11 @@ export default function AppShell({ projects }: { projects: LibraryProject[] }) {
 										所有项目
 									</Link>
 									<Link
-										to="/settings"
+										to="settings"
 										className="block px-3 py-2 text-[15px] leading-6 text-[#202124] hover:bg-[#EEF2FF]/60"
 										onClick={close}
 									>
-										设置
+										项目设置
 									</Link>
 								</>
 							)}
