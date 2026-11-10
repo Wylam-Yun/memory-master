@@ -39,3 +39,20 @@
 ## 交接
 
 分支为 feat/project-agent-permissions，工作区为本机 /Users/wylam/Documents/workspace/memory-master-agent-permissions。实现、验证和文档已完成，下一步可审阅分支并决定合入安排。正式项目的共享任务为 TASK-13。完成时本机 6421 服务不可达，project_open 返回 Cannot reach the Memory Master service，共享任务状态与最新简报尚待服务恢复后同步。临时浏览器与测试服务已关闭。
+
+## 补充全量验证
+
+对提交 ad108d5a 执行完整 bun test --timeout=10000。346 个文件共 3853 项，3836 通过，13 跳过，4 失败，19495 条断言，用时 663.09 秒，进程退出码 1。全仓库测试未通过。
+
+| 失败用例 | 分支复核 | 原 main 复核 |
+| --- | --- | --- |
+| cli-launcher.test.ts，browser cleanup after group SIGTERM | 再次出现 fixture binary 启动超时 | 相同超时 |
+| cli-launcher.test.ts，second Ctrl+C during mcp cleanup | 单独重跑通过 | 单独运行通过 |
+| cli-doc-archive.test.ts，interactive archived line | 再次出现文字空格缺失 | 相同断言失败 |
+| git.test.ts，timed-out process group | 再次出现 child.pid 未生成 | 相同文件缺失 |
+
+上述测试及对应旧启动器、终端和 Git 实现与原 main 无差异。第二项仅在全集出现，超时根因尚未确认。不能把单独重跑通过记为全集通过。
+
+另以独立编译产物启动实际服务及 stdio MCP 子进程，逐项检查默认只读拒绝、单个项目授权后创建任务且文件落盘、项目关闭连接后列表隐藏、已选中项目拒绝继续读取、恢复继承后重新只读，全部通过。类型检查与编译 smoke checks 重跑通过。Biome 全项目检查退出码 0，保留 21 条现有警告。
+
+本机验证日志保存在 /tmp/mm-agent-permissions-full-tests.log、/tmp/mm-agent-permissions-failure-recheck.log、/tmp/mm-agent-permissions-main-comparison.log 与 /tmp/mm-agent-permissions-biome.log。完整测试结果保留为失败，当前功能的 128 项相关测试通过。
