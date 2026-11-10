@@ -78,6 +78,7 @@ export interface LibraryProject {
 export interface ProjectOverview {
 	/** Long-lived confirmed project decisions and constraints. */
 	agreements: string;
+	criticalPaths: string;
 	description: string;
 	goal: string;
 	current: string;

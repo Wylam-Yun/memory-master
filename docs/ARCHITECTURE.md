@@ -1,6 +1,6 @@
 # 项目架构页的内容呈现
 
-本说明覆盖五页项目空间中的架构阅读与编辑预览，不是整个旧 CLI 的架构清单。
+本说明覆盖项目空间中的架构阅读、编辑预览和概览数据流。
 
 ## 数据流
 
@@ -46,7 +46,7 @@ overview.md新增按需创建的AGREEMENTS标记节，对应agreements正文。�
 
 agreements通过既有overview_read/write和Web概览API维护，共享overview的内容哈希版本、写锁、撤权复核、失败回滚和自动历史。新增字段已同步后端类型、解析、写入允许列表、MCP schema、Web API及历史标签。current更新不触碰agreements；旧客户端省略新字段时保持原文。
 
-概览内使用四个独立路由：项目根地址完整阅读description，progress阅读current与目标/历史，features阅读功能与用法，agreements完整阅读项目约定。overview-pages.ts提供统一字段、路径和名称，App注册路由，AppShell让这些子页保持概览选中。单页编辑只提交当前字段，冲突比较和覆盖也只影响本页。旧overview多字段草稿拆到overview:字段名，保留各自旧baseVersion；缺失字段不猜内容，取消或保存一页不清其他页草稿。
+项目根地址读取综合概览。详情路由包括 intro、progress、features、agreements 和 critical-paths。overview-pages.ts提供统一字段、路径和名称，App注册路由，AppShell让这些子页保持概览选中。单页编辑只提交当前字段，冲突比较和覆盖也只影响本页。旧overview多字段草稿拆到overview:字段名，保留各自旧baseVersion；缺失字段不猜内容，取消或保存一页不清其他页草稿。
 
 CONTENT-STANDARD的“接手与交接”描述停点、下一步、长期决定与已回答问题的保护、相关文件和可用Skill、过期状态核对及脱敏；SKILL.md通过明确指针要求接手时读取。接手信息分别来自概览、约定与任务，不产生平行的长期进度文件。上游规则固定到提交版本，UPSTREAM记录适配边界，UPSTREAM-LICENSE保留两位作者完整MIT许可。
 
@@ -54,9 +54,9 @@ library-agreements.test.ts覆盖实际HTTP/MCP与磁盘，分别断言旧文无�
 
 ## 概览阅读隔离
 
-四页共用原有概览API与内容版本，读取仍是一份权威记录，当前页面只挂载本页正文。简介全文保留，不添加摘要字段或改变MCP。进展与目标页沿用Goals/StageProgress，阶段记录外层按需分页，内层单条details打开后才挂载summary正文与修正按钮，避免一次展开所有成果长文。导航随窄屏换行，正文保持正常字号与单列宽度。
+综合概览和详情共用概览 API 与内容版本。副标题、功能预览、最近完成均从已有正文或阶段成果派生。任务详情通过 tasks 的 task 查询参数定位；进展历史使用 history 的 field=current 筛选，包含与其他字段一起保存的进展变更。进展与目标页沿用Goals/StageProgress，阶段记录外层按需分页，内层单条details打开后才挂载summary正文与修正按钮，避免一次展开所有成果长文。导航随窄屏换行，正文保持正常字号与单列宽度。
 
-实际App连接临时HTTP服务的测试覆盖默认完整简介、四个URL与一级导航、直达刷新、单字段磁盘终态、跨页草稿和冲突保护；原有目标、日期、分页与历史测试继续执行。
+criticalPaths 使用可选 CRITICAL_PATHS 正文节和现有的 Web/MCP 概览读写接口。空节首次读取不迁移，旧客户端省略字段时保留原文。类型检查、预留标记校验、共享版本和自动历史走同一条服务链路。
 
 ## 内容命名与概览页头
 
@@ -68,6 +68,6 @@ OverviewPage的导航与操作合并为header，选中导航承担可见页面�
 
 overview-content.ts使用现有mdast-util-from-markdown解析真实顶层标题。功能目录取主要章节，单个文档总标题保留在正文；目录ID按标题与出现次序确定，重复标题不会碰撞，代码块标题不成为入口。Markdown的可选headingAnchors通过rehype按源行号设置真实标题ID，原文整体渲染，因此引用定义、列表、HTML文本化和strict Mermaid保持原链路。
 
-当前进展只识别project-content.ts的CURRENT_PROGRESS_HEADINGS四个标题，按源顺序显示实际内容，保留前言、未知补充和引用定义。有内容才展示，无标题旧文完整阅读，不提取推测摘要。OverviewContent区分简介文章、进展分段、带目录用法和约定列表；目标与当前进展先呈现，阶段历史后置。数据仍来自相同overview字段，不迁移、不新增副本。
+当前进展只识别project-content.ts的CURRENT_PROGRESS_HEADINGS标题，按源顺序显示实际内容，保留前言、未知补充和引用定义。有内容才展示，无标题旧文完整阅读，不提取推测摘要。OverviewContent区分简介文章、进展分段、带目录用法和约定列表；目标与当前进展先呈现，阶段历史后置。数据仍来自相同overview字段，不迁移、不新增副本。
 
 实际App与HTTP服务测试核对目录链接对应真实DOM标题、点击后的URL、少量内容无目录、正文及引用完整、HTML安全、四段与旧文兼容、保存与磁盘终态。

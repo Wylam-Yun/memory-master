@@ -318,13 +318,15 @@ function ProgressResult({
 				{open ? (
 					<div className="space-y-3 py-3 text-[16px] leading-7">
 						<Markdown source={record.summary} />
-						<button
-							type="button"
-							className="min-h-10 text-[15px] font-medium text-[#3B57D0]"
-							onClick={() => onEdit?.(record, version)}
-						>
-							修正记录
-						</button>
+						{onEdit ? (
+							<button
+								type="button"
+								className="min-h-10 text-[15px] font-medium text-[#3B57D0]"
+								onClick={() => onEdit?.(record, version)}
+							>
+								修正记录
+							</button>
+						) : null}
 					</div>
 				) : null}
 			</details>
@@ -340,6 +342,7 @@ function Archive({
 	onEdit,
 	onGoalEdit,
 	onChanged,
+	label: customLabel,
 }: {
 	projectId: string;
 	kind: "completed" | "adjusted" | "progress";
@@ -348,6 +351,7 @@ function Archive({
 	onEdit?: (r: Progress, version: string) => void;
 	onGoalEdit?: (r: Goal, version: string) => void;
 	onChanged: () => Promise<void>;
+	label?: string;
 }) {
 	const [open, setOpen] = useState(false),
 		[rows, setRows] = useState<(Goal | Progress)[]>([]),
@@ -357,7 +361,8 @@ function Archive({
 	const epoch = useRef(0),
 		inFlight = useRef(false);
 	const label =
-		kind === "progress" ? PROJECT_CONTENT_NAMES.progress : kind === "completed" ? "已完成目标" : "已调整的目标";
+		customLabel ??
+		(kind === "progress" ? PROJECT_CONTENT_NAMES.progress : kind === "completed" ? "已完成目标" : "已调整的目标");
 	const load = useCallback(
 		async (offset: number, generation = epoch.current) => {
 			if (inFlight.current) return;
@@ -393,12 +398,12 @@ function Archive({
 		setRows([]);
 		setError(null);
 		setLoading(false);
-		if (open) void load(0);
+		if (open && count) void load(0);
 		return () => {
 			epoch.current++;
 		};
-	}, [open, load]);
-	if (!count) return null;
+	}, [open, load, count]);
+	if (!count && !customLabel) return null;
 	return (
 		<details className="my-5" onToggle={(e) => setOpen(e.currentTarget.open)}>
 			<summary className="w-fit cursor-pointer py-2 text-[16px] font-medium">
@@ -406,6 +411,7 @@ function Archive({
 			</summary>
 			{open ? (
 				<div className="mt-3 space-y-5 pl-2">
+					{count === 0 ? <p className="text-[15px] text-[#555B65]">暂无阶段成果。</p> : null}
 					{rows.map((r) =>
 						"summary" in r ? (
 							<ProgressResult key={r.id} record={r} version={version} onEdit={onEdit} />
@@ -418,19 +424,21 @@ function Archive({
 										{dateLabel(kind === "adjusted" && "adjustedAt" in r ? r.adjustedAt : r.completedAt)}
 									</span>
 								</div>
-								<button
-									type="button"
-									className="text-[15px] font-medium text-[#3B57D0]"
-									onClick={() => onGoalEdit?.(r, version)}
-								>
-									修正日期
-								</button>
+								{onGoalEdit ? (
+									<button
+										type="button"
+										className="text-[15px] font-medium text-[#3B57D0]"
+										onClick={() => onGoalEdit?.(r, version)}
+									>
+										修正日期
+									</button>
+								) : null}
 							</article>
 						),
 					)}
 					{loading ? <LoadingNote /> : null}
 					<ErrorNote error={error} onRetry={() => void load(rows.length)} />
-					{!loading && !error && rows.length < total ? (
+					{count > 0 && !loading && !error && rows.length < total ? (
 						<button type="button" className={button} onClick={() => void load(rows.length)}>
 							显示更多
 						</button>
@@ -444,53 +452,84 @@ export function Goals({
 	projectId,
 	overview,
 	onChanged,
+	summary = false,
 }: {
 	projectId: string;
 	overview: ProjectOverview;
 	onChanged: () => Promise<void>;
+	summary?: boolean;
 }) {
 	const [editor, setEditor] = useEditor(projectId, "dynamic:goals");
 	const goals = overview.goals ?? [],
 		counts = overview.archiveCounts ?? { completed: 0, adjusted: 0, progress: 0 };
 	const legacy = overview.goal.trim() && !overview.goal.startsWith("待补充") ? overview.goal : "";
+	const editArchivedGoal = summary
+		? undefined
+		: (g: Goal, version: string) => setEditor(freshEditor("complete", version, g));
+	const archives = (
+		<>
+			<Archive
+				projectId={projectId}
+				kind="completed"
+				count={counts.completed}
+				version={overview.version}
+				onChanged={onChanged}
+				onGoalEdit={editArchivedGoal}
+			/>
+			<Archive
+				projectId={projectId}
+				kind="adjusted"
+				count={counts.adjusted}
+				version={overview.version}
+				onChanged={onChanged}
+				onGoalEdit={summary ? undefined : (g, version) => setEditor(freshEditor("adjust", version, g))}
+			/>
+		</>
+	);
 	return (
-		<section className="mb-8">
+		<section className={summary ? "min-w-0" : "mb-8"}>
 			<div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-				<h2 className="text-[20px] font-semibold leading-7">{PROJECT_CONTENT_NAMES.goal}</h2>
-				<button
-					type="button"
-					className={button}
-					onClick={() => setEditor(freshEditor("create-goal", overview.version))}
-				>
-					添加目标
-				</button>
+				<h2 className="text-[20px] font-semibold leading-7">{summary ? "当前目标" : PROJECT_CONTENT_NAMES.goal}</h2>
+				{!summary ? (
+					<button
+						type="button"
+						className={button}
+						onClick={() => setEditor(freshEditor("create-goal", overview.version))}
+					>
+						添加目标
+					</button>
+				) : null}
 			</div>
 			{goals.length ? (
 				<ul className="space-y-4">
 					{goals.map((g) => (
 						<li key={g.id} className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
 							<p className="min-w-0 flex-1 text-[16px] leading-7">{g.title}</p>
-							<button
-								type="button"
-								className="text-[15px] font-medium text-[#3B57D0]"
-								onClick={() => setEditor(freshEditor("complete", overview.version, g))}
-							>
-								完成
-							</button>
-							<button
-								type="button"
-								className="text-[15px] text-[#555B65]"
-								onClick={() => setEditor({ ...freshEditor("adjust", overview.version, g), title: "" })}
-							>
-								调整
-							</button>
+							{!summary ? (
+								<>
+									<button
+										type="button"
+										className="text-[15px] font-medium text-[#3B57D0]"
+										onClick={() => setEditor(freshEditor("complete", overview.version, g))}
+									>
+										完成
+									</button>
+									<button
+										type="button"
+										className="text-[15px] text-[#555B65]"
+										onClick={() => setEditor({ ...freshEditor("adjust", overview.version, g), title: "" })}
+									>
+										调整
+									</button>
+								</>
+							) : null}
 						</li>
 					))}
 				</ul>
 			) : !legacy ? (
 				<p className="text-[15px] text-[#555B65]">暂无正在推进的目标</p>
 			) : null}
-			{editor ? (
+			{!summary && editor ? (
 				<RecordEditor key={editor.key} projectId={projectId} editor={editor} onChange={setEditor} onSaved={onChanged} />
 			) : null}
 			{legacy ? (
@@ -499,22 +538,16 @@ export function Goals({
 					<Markdown source={legacy} />
 				</details>
 			) : null}
-			<Archive
-				projectId={projectId}
-				kind="completed"
-				count={counts.completed}
-				version={overview.version}
-				onChanged={onChanged}
-				onGoalEdit={(g, v) => setEditor(freshEditor("complete", v, g))}
-			/>
-			<Archive
-				projectId={projectId}
-				kind="adjusted"
-				count={counts.adjusted}
-				version={overview.version}
-				onChanged={onChanged}
-				onGoalEdit={(g, v) => setEditor(freshEditor("adjust", v, g))}
-			/>
+			{summary ? (
+				counts.completed + counts.adjusted > 0 ? (
+					<details className="mt-3">
+						<summary className="w-fit cursor-pointer py-2 text-[15px] text-[#555B65]">历史目标</summary>
+						{archives}
+					</details>
+				) : null
+			) : (
+				archives
+			)}
 		</section>
 	);
 }
@@ -522,24 +555,28 @@ export function StageProgress({
 	projectId,
 	overview,
 	onChanged,
+	summary = false,
 }: {
 	projectId: string;
 	overview: ProjectOverview;
 	onChanged: () => Promise<void>;
+	summary?: boolean;
 }) {
 	const [editor, setEditor] = useEditor(projectId, "dynamic:progress");
 	return (
 		<div>
-			<div className="mt-4">
-				<button
-					type="button"
-					className="min-h-10 text-[15px] font-medium text-[#3B57D0]"
-					onClick={() => setEditor(freshEditor("record", overview.version))}
-				>
-					记录阶段成果
-				</button>
-			</div>
-			{editor ? (
+			{!summary ? (
+				<div className="mt-4">
+					<button
+						type="button"
+						className="min-h-10 text-[15px] font-medium text-[#3B57D0]"
+						onClick={() => setEditor(freshEditor("record", overview.version))}
+					>
+						记录阶段成果
+					</button>
+				</div>
+			) : null}
+			{!summary && editor ? (
 				<RecordEditor key={editor.key} projectId={projectId} editor={editor} onChange={setEditor} onSaved={onChanged} />
 			) : null}
 			<Archive
@@ -548,7 +585,8 @@ export function StageProgress({
 				count={overview.archiveCounts?.progress ?? 0}
 				version={overview.version}
 				onChanged={onChanged}
-				onEdit={(p, v) => setEditor(freshEditor("edit-progress", v, p))}
+				onEdit={summary ? undefined : (p, v) => setEditor(freshEditor("edit-progress", v, p))}
+				label={summary ? "阶段成果" : undefined}
 			/>
 		</div>
 	);

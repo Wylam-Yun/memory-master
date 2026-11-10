@@ -6,6 +6,7 @@ import { ErrorNote } from "./components/StatusMessage.tsx";
 import ArchitecturePage from "./pages/ArchitecturePage.tsx";
 import HistoryPage from "./pages/HistoryPage.tsx";
 import OverviewPage from "./pages/OverviewPage.tsx";
+import ProjectHomePage from "./pages/ProjectHomePage.tsx";
 import { OVERVIEW_PAGES } from "./overview-pages.ts";
 import ProjectsPage from "./pages/ProjectsPage.tsx";
 import ResourcesPage from "./pages/ResourcesPage.tsx";
@@ -122,13 +123,10 @@ export default function App() {
 				<Route path="/projects" element={<Navigate to="/" replace />} />
 				<Route path="/settings" element={<SettingsPage libraryRoot={state.libraryRoot} reload={load} />} />
 				<Route path="/projects/:id" element={<AppShell projects={state.projects} />}>
-					{OVERVIEW_PAGES.map((page) =>
-						page.path ? (
-							<Route key={page.field} path={page.path} element={<OverviewPage field={page.field} />} />
-						) : (
-							<Route key={page.field} index element={<OverviewPage field={page.field} />} />
-						),
-					)}
+					<Route index element={<ProjectHomePage />} />
+					{OVERVIEW_PAGES.map((page) => (
+						<Route key={page.field} path={page.path} element={<OverviewPage field={page.field} />} />
+					))}
 					<Route path="tasks" element={<TasksPage />} />
 					<Route path="architecture" element={<ArchitecturePage />} />
 					<Route path="resources" element={<ResourcesPage />} />

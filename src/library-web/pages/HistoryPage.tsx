@@ -1,5 +1,6 @@
 import { PROJECT_CONTENT_NAMES } from "../../library/project-content.ts";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api, type HistoryEntry, type LibraryProject, type ProjectMeta } from "../api.ts";
 import { PageHeader, useProject } from "../components/AppShell.tsx";
 import { EmptyNote, ErrorNote, LoadingNote } from "../components/StatusMessage.tsx";
@@ -11,6 +12,7 @@ const FIELD_LABELS: Record<string, string> = {
 	description: PROJECT_CONTENT_NAMES.description,
 	goal: PROJECT_CONTENT_NAMES.goal,
 	agreements: PROJECT_CONTENT_NAMES.agreements,
+	criticalPaths: PROJECT_CONTENT_NAMES.criticalPaths,
 	current: PROJECT_CONTENT_NAMES.current,
 	features: PROJECT_CONTENT_NAMES.features,
 	name: "名称",
@@ -83,7 +85,18 @@ export default function HistoryPage() {
 
 function HistoryInner({ project }: { project: LibraryProject }) {
 	const projectId = project.id;
-	const [entries, setEntries] = useState<HistoryEntry[] | null>(null);
+	const [history, setEntries] = useState<HistoryEntry[] | null>(null);
+	const [params, setParams] = useSearchParams();
+	const progressOnly = params.get("field") === "current";
+	const entries = useMemo(
+		() =>
+			progressOnly
+				? (history?.flatMap((entry) =>
+						entry.changes.current ? [{ ...entry, changes: { current: entry.changes.current } }] : [],
+					) ?? null)
+				: history,
+		[history, progressOnly],
+	);
 	const [meta, setMeta] = useState<ProjectMeta | null>(null);
 	const [error, setError] = useState<unknown>(null);
 	const [range, setRange] = useState<(typeof RANGES)[number]["key"]>("all");
@@ -98,6 +111,8 @@ function HistoryInner({ project }: { project: LibraryProject }) {
 	useEffect(() => {
 		setShown(PAGE);
 		setOpenIds(new Set());
+	}, [progressOnly, range]);
+	useEffect(() => {
 		load().catch(setError);
 	}, [load]);
 
@@ -147,6 +162,17 @@ function HistoryInner({ project }: { project: LibraryProject }) {
 	return (
 		<div>
 			<PageHeader title="变更记录" actions={headerActions} />
+			<label className="mb-4 flex items-center gap-2 text-[15px] text-[#555B65]">
+				记录范围
+				<select
+					className="h-10 rounded-lg border border-[#8A9099]/40 bg-white px-2"
+					value={progressOnly ? "current" : "all"}
+					onChange={(event) => setParams(event.target.value === "current" ? { field: "current" } : {})}
+				>
+					<option value="all">全部记录</option>
+					<option value="current">历次进展</option>
+				</select>
+			</label>
 			{error && !entries ? (
 				<ErrorNote error={error} onRetry={() => load().catch(setError)} />
 			) : !entries ? (

@@ -12,6 +12,7 @@ export interface LibraryProject {
 
 export interface ProjectOverview {
 	agreements?: string;
+	criticalPaths?: string;
 	goals?: Goal[];
 	currentUpdatedAt?: string | null;
 	archiveCounts?: { completed: number; adjusted: number; progress: number };
@@ -170,8 +171,8 @@ export const api = {
 
 	listGoals: (id: string, status = "active", offset = 0) =>
 		request<TrackingPage<Goal>>(`/api/projects/${id}/goals?status=${status}&offset=${offset}&limit=20`),
-	listProgress: (id: string, offset = 0) =>
-		request<TrackingPage<Progress>>(`/api/projects/${id}/progress?offset=${offset}&limit=20`),
+	listProgress: (id: string, offset = 0, limit = 20) =>
+		request<TrackingPage<Progress>>(`/api/projects/${id}/progress?offset=${offset}&limit=${limit}`),
 	getGoal: (id: string, recordId: string) =>
 		request<Goal & { version: string }>(`/api/projects/${id}/goals/${encodeURIComponent(recordId)}`),
 	getProgress: (id: string, recordId: string) =>

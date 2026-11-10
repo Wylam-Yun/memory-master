@@ -10,10 +10,10 @@ export default function OverviewContent({ field, source }: { field: OverviewFiel
 		return <p className="text-[16px] leading-7 text-[#555B65]">还没有填写{PROJECT_CONTENT_NAMES[field]}。</p>;
 	if (field === "features") return <FeaturesContent source={source} />;
 	if (field === "current") return <CurrentContent source={source} />;
-	if (field === "agreements")
+	if (field === "agreements" || field === "criticalPaths")
 		return (
 			<article
-				aria-label={PROJECT_CONTENT_NAMES.agreements}
+				aria-label={PROJECT_CONTENT_NAMES[field]}
 				className="overview-agreements max-w-[780px] text-[16px] leading-7 [&_.wmde-markdown]:text-[16px] [&_.wmde-markdown]:leading-[1.8] [&_.wmde-markdown>ul>li]:mb-6 [&_.wmde-markdown>ol>li]:mb-6 [&_.wmde-markdown>ul]:pl-6 [&_.wmde-markdown>ol]:pl-6 [&_.wmde-markdown_h2]:mt-10 [&_.wmde-markdown_h3]:mt-8"
 			>
 				<Markdown source={source} />
@@ -80,22 +80,23 @@ function FeaturesContent({ source }: { source: string }) {
 	);
 }
 
-function CurrentContent({ source }: { source: string }) {
+export function CurrentContent({ source, summary = false }: { source: string; summary?: boolean }) {
 	const progress = useMemo(() => progressSections(source), [source]);
+	const sections = summary ? progress.sections.filter(({ title }) => title !== "已完成") : progress.sections;
 	const readable = (body: string) => (progress.definitions ? `${body}\n\n${progress.definitions}` : body);
 	return (
 		<article aria-label={PROJECT_CONTENT_NAMES.current} className="overview-current text-[16px] leading-7">
 			{progress.introduction.trim() ? (
-				<div className={progress.sections.length ? "mb-7" : ""}>
+				<div className={sections.length ? "mb-7" : ""}>
 					<Markdown source={readable(progress.introduction)} />
 				</div>
 			) : null}
-			{progress.sections.length ? (
+			{sections.length ? (
 				<dl className="space-y-7">
-					{progress.sections.map((section, index) => (
+					{sections.map((section, index) => (
 						<div
 							key={`${section.title}:${index}`}
-							className={`grid gap-2 min-[640px]:grid-cols-[124px_minmax(0,1fr)] min-[640px]:gap-6 ${section.title === "下一步" ? "border-l-2 border-[#3B57D0] pl-5" : ""}`}
+							className={`grid gap-2 min-[640px]:grid-cols-[124px_minmax(0,1fr)] min-[640px]:gap-6 ${section.title === "下一步" || section.title === "需要你决定" ? "border-l-2 border-[#3B57D0] pl-5" : ""}`}
 						>
 							<dt className="text-[16px] font-semibold leading-7">{section.title}</dt>
 							<dd className="min-w-0 [&_.wmde-markdown]:text-[16px] [&_.wmde-markdown]:leading-[1.8] [&_.wmde-markdown>p:last-child]:mb-0">
@@ -104,6 +105,8 @@ function CurrentContent({ source }: { source: string }) {
 						</div>
 					))}
 				</dl>
+			) : summary && !progress.introduction.trim() ? (
+				<p>暂无当前进展。</p>
 			) : null}
 		</article>
 	);

@@ -1,7 +1,11 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
-import { CURRENT_PROGRESS_HEADINGS, PROJECT_CONTENT_NAMES } from "../library/project-content.ts";
+import {
+	CRITICAL_PATHS_GUIDANCE,
+	CURRENT_PROGRESS_HEADINGS,
+	PROJECT_CONTENT_NAMES,
+} from "../library/project-content.ts";
 import { getVersion } from "../utils/version.ts";
 
 /**
@@ -141,17 +145,11 @@ export class LibraryBridge {
 				case "overview_read":
 					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/overview`));
 				case "overview_write": {
-					const fields = this.writeArgs(args, [
-						"base_version",
-						"description",
-						"goal",
-						"current",
-						"features",
-						"agreements",
-					]);
+					const writable = ["description", "goal", "current", "features", "agreements", "criticalPaths"] as const;
+					const fields = this.writeArgs(args, ["base_version", ...writable]);
 					const baseVersion = this.requireBaseVersion(fields);
 					const body: Record<string, unknown> = { baseVersion };
-					for (const key of ["description", "goal", "current", "features", "agreements"] as const) {
+					for (const key of writable) {
 						if (fields[key] !== undefined) body[key] = fields[key];
 					}
 					return ok(
@@ -384,7 +382,7 @@ export class LibraryBridge {
 			},
 			{
 				name: "overview_read",
-				description: `读取项目概览：${PROJECT_CONTENT_NAMES.description}、${PROJECT_CONTENT_NAMES.agreements}、${PROJECT_CONTENT_NAMES.current}、${PROJECT_CONTENT_NAMES.features}、${PROJECT_CONTENT_NAMES.goal}与归档数量及共享版本。阶段进展用progress_list读取，历史目标用goal_list读取。名称与人类网页一致。`,
+				description: `读取项目概览：${PROJECT_CONTENT_NAMES.description}、${PROJECT_CONTENT_NAMES.agreements}、${PROJECT_CONTENT_NAMES.current}、${PROJECT_CONTENT_NAMES.features}、${PROJECT_CONTENT_NAMES.criticalPaths}、${PROJECT_CONTENT_NAMES.goal}与归档数量及共享版本。阶段进展用progress_list读取，历史目标用goal_list读取。名称与人类网页一致。`,
 				inputSchema: { type: "object" as const, properties: {} },
 			},
 			{
@@ -406,6 +404,9 @@ export class LibraryBridge {
 							`${PROJECT_CONTENT_NAMES.current}：整理替换比目标详细、精准的最新情况，按实际内容使用${CURRENT_PROGRESS_HEADINGS.map((title) => `## ${title}`).join("、")}小标题，与网页同一正文；有内容才写，不补空段或推测状态。`,
 						),
 						features: str(`${PROJECT_CONTENT_NAMES.features}：已有功能或成果，以及具体入口和使用步骤。`),
+						criticalPaths: str(
+							`${PROJECT_CONTENT_NAMES.criticalPaths}：关键数据、测试文件和材料的 Markdown 记录。${CRITICAL_PATHS_GUIDANCE}`,
+						),
 					},
 					required: ["base_version"],
 				},

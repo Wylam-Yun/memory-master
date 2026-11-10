@@ -1,4 +1,4 @@
-import { PROJECT_CONTENT_NAMES } from "../../library/project-content.ts";
+import { CRITICAL_PATHS_GUIDANCE, PROJECT_CONTENT_NAMES } from "../../library/project-content.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { ApiError, api, type ProjectOverview } from "../api.ts";
@@ -231,6 +231,9 @@ function OverviewInner({ projectId, field }: { projectId: string; field: Overvie
 								</button>
 							</div>
 						</section>
+					) : null}
+					{field === "criticalPaths" ? (
+						<p className="mb-3 text-[15px] text-[#555B65]">{CRITICAL_PATHS_GUIDANCE}</p>
 					) : null}
 					<GrowingTextarea
 						value={editing.value}

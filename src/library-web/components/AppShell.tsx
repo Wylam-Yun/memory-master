@@ -5,7 +5,6 @@ import { isOverviewPage } from "../overview-pages.ts";
 
 const NAV_ITEMS = [
 	{ to: ".", label: "概览", end: true },
-	{ to: "tasks", label: "任务" },
 	{ to: "architecture", label: "项目架构" },
 	{ to: "resources", label: "资料" },
 	{ to: "history", label: "变更记录" },
@@ -146,7 +145,7 @@ function ProjectNav({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 /**
- * 项目外壳：≥960px 常驻侧栏（项目切换器 + 五入口 + 所有项目/设置），窄屏收
+ * 项目外壳：≥960px 常驻侧栏（项目切换器 + 项目入口 + 所有项目/设置），窄屏收
  * 为顶栏「项目导航 ▾」菜单。项目经 Outlet context 传给各页面。
  */
 export default function AppShell({ projects }: { projects: LibraryProject[] }) {

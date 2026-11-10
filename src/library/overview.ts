@@ -14,7 +14,14 @@ import type { ProjectOverview } from "./types.ts";
 export const OVERVIEW_FILE_NAME = "overview.md";
 
 // New optional sections trail the array so older files preserve untouched content.
-export const OVERVIEW_SECTION_KEYS = ["DESCRIPTION", "GOAL", "CURRENT", "FEATURES", "AGREEMENTS"] as const;
+export const OVERVIEW_SECTION_KEYS = [
+	"DESCRIPTION",
+	"GOAL",
+	"CURRENT",
+	"FEATURES",
+	"AGREEMENTS",
+	"CRITICAL_PATHS",
+] as const;
 export type OverviewSectionKey = (typeof OVERVIEW_SECTION_KEYS)[number];
 
 const SECTION_HEADINGS: Record<OverviewSectionKey, string> = {
@@ -23,6 +30,7 @@ const SECTION_HEADINGS: Record<OverviewSectionKey, string> = {
 	CURRENT: PROJECT_CONTENT_NAMES.current,
 	FEATURES: PROJECT_CONTENT_NAMES.features,
 	AGREEMENTS: PROJECT_CONTENT_NAMES.agreements,
+	CRITICAL_PATHS: PROJECT_CONTENT_NAMES.criticalPaths,
 };
 
 const SECTION_FIELD: Record<OverviewSectionKey, keyof ProjectOverview> = {
@@ -31,6 +39,7 @@ const SECTION_FIELD: Record<OverviewSectionKey, keyof ProjectOverview> = {
 	CURRENT: "current",
 	FEATURES: "features",
 	AGREEMENTS: "agreements",
+	CRITICAL_PATHS: "criticalPaths",
 };
 
 function beginMarker(key: OverviewSectionKey): string {
@@ -99,6 +108,7 @@ function extractSection(content: string, key: OverviewSectionKey): string {
 export function parseOverviewContent(content: string): ProjectOverview {
 	return {
 		agreements: extractSection(content, "AGREEMENTS"),
+		criticalPaths: extractSection(content, "CRITICAL_PATHS"),
 		description: extractSection(content, "DESCRIPTION"),
 		goal: extractSection(content, "GOAL"),
 		current: extractSection(content, "CURRENT"),
@@ -127,8 +137,8 @@ export function applyOverviewUpdate(content: string, update: Partial<ProjectOver
 		const start = findMarkerLine(lines, beginMarker(key));
 		const stop = start === -1 ? -1 : findMarkerLine(lines, endMarker(key), start + 1);
 		if (stop === -1) {
-			// Old clients and unrelated edits do not migrate a missing, empty agreement section.
-			if (key === "AGREEMENTS" && !value.trim()) continue;
+			// Older files get optional sections only after a nonempty write.
+			if ((key === "AGREEMENTS" || key === "CRITICAL_PATHS") && !value.trim()) continue;
 			// Section missing entirely: append it in the canonical order at the end.
 			next = `${next.trimEnd()}\n\n${renderOverviewSection(key, value)}\n`;
 			continue;

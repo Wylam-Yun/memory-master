@@ -1,7 +1,7 @@
 import type { HistoryEntry, Task } from "./api.ts";
 
 /**
- * Pure helpers for the five-page library web UI — kept DOM-free so the helpers
+ * Pure helpers for the library web UI — kept DOM-free so the helpers
  * test can exercise them without a browser.
  */
 

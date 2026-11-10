@@ -97,6 +97,7 @@ afterEach(async () => {
 		"overview:current",
 		"overview:features",
 		"overview:agreements",
+		"overview:criticalPaths",
 		"dynamic:goals",
 		"dynamic:progress",
 	])
@@ -117,7 +118,11 @@ async function mount(page = "progress") {
 	for (
 		let i = 0;
 		i < 60 &&
-		!Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "编辑" || b.textContent === "保存");
+		!(page === ""
+			? container.querySelector("#latest-progress")
+			: Array.from(container.querySelectorAll("button")).some(
+					(b) => b.textContent === "编辑" || b.textContent === "保存",
+				));
 		i++
 	)
 		await flush();
@@ -319,7 +324,7 @@ test("旧草稿分到对应页面，进展冲突保留输入并保持最新约�
 	expect((await snapshot()).agreements).toBe("用户已明确：不增加待决定页面。");
 });
 
-test("默认完整简介与四个真实地址隔离正文，刷新直达仍选中概览", async () => {
+test("默认概览摘取简介首句，独立详情地址保留原文，刷新直达仍选中概览", async () => {
 	const o = await snapshot();
 	const intro = "读书会为第一次参与的读者提供完整背景。".repeat(12);
 	expect(
@@ -338,16 +343,20 @@ test("默认完整简介与四个真实地址隔离正文，刷新直达仍选�
 		).status,
 	).toBe(200);
 	await mount("");
-	expect(container.textContent).toContain(intro);
-	expect(container.textContent).not.toContain("当前专属进展正文");
-	expect(container.textContent).not.toContain("用法专属步骤正文");
+	expect(container.textContent).toContain("读书会为第一次参与的读者提供完整背景。");
+	expect(container.textContent).not.toContain(intro);
+	expect(container.textContent).toContain("当前专属进展正文");
 	const sidebar = container.querySelector('[aria-label="项目导航"]');
 	expect(sidebar?.querySelector('[aria-current="page"]')?.textContent).toBe("概览");
+	const introLink = container.querySelector<HTMLAnchorElement>('a[href$="/intro"]');
+	expect(introLink).not.toBeNull();
+	await act(async () => introLink?.click());
+	await flush();
 	for (const [label, path, body, absent] of [
 		["进展与目标", "progress", "当前专属进展正文", intro],
 		["功能与用法", "features", "用法专属步骤正文", "当前专属进展正文"],
 		["项目约定", "agreements", "约定专属正文", "用法专属步骤正文"],
-		["项目简介", "", intro, "约定专属正文"],
+		["项目简介", "intro", intro, "约定专属正文"],
 	]) {
 		await navigate(label!);
 		expect(dom.window.location.pathname).toBe(`/projects/${project.id}${path ? `/${path}` : ""}`);
@@ -362,9 +371,53 @@ test("默认完整简介与四个真实地址隔离正文，刷新直达仍选�
 	expect(container.textContent).toContain("用法专属步骤正文");
 });
 
+test("概览从共享记录直达重点任务和进展历史", async () => {
+	const previous = await snapshot();
+	const updated = await api("overview", { baseVersion: previous.version, current: "先核对阅读入口。" }, "PUT");
+	expect(updated.status).toBe(200);
+	const taskResponse = await api("tasks", { title: "确认阅读入口", description: "打开项目后进入资料页。" });
+	expect(taskResponse.status).toBe(201);
+	const task = await taskResponse.json();
+	expect((await api("tasks", { title: "已完成的准备", status: "Done" })).status).toBe(201);
+	expect((await api("tasks", { title: "稍后处理", priority: "p1" })).status).toBe(201);
+
+	await mount("");
+	await flush();
+	const link = container.querySelector<HTMLAnchorElement>(`a[href$="/tasks?task=${task.id}"]`);
+	expect(link?.textContent).toBe("确认阅读入口");
+	expect(container.textContent).not.toContain("已完成的准备");
+	expect(container.textContent).not.toContain("稍后处理");
+	expect(container.querySelector('[aria-label="项目导航"] a[href$="/tasks"]')).toBeNull();
+	await act(async () => link?.click());
+	await flush();
+	expect(dom.window.location.search).toBe(`?task=${task.id}`);
+	expect(container.querySelector(`#task-row-${task.id}`)?.textContent).toContain("打开项目后进入资料页。");
+	expect(dom.window.document.activeElement?.id).toBe(`task-row-${task.id}`);
+	const back = Array.from(container.querySelectorAll<HTMLAnchorElement>("main a")).find((a) =>
+		a.textContent?.includes("返回概览"),
+	);
+	await act(async () => back?.click());
+	await flush();
+
+	const history = container.querySelector<HTMLAnchorElement>('a[href$="/history?field=current"]');
+	expect(history).not.toBeNull();
+	await act(async () => history?.click());
+	await flush();
+	expect(dom.window.location.search).toBe("?field=current");
+	expect(container.textContent).not.toContain("确认阅读入口");
+	const change = Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find((button) =>
+		button.textContent?.includes("更新概览 · 当前进展"),
+	);
+	expect(change).toBeDefined();
+	await act(async () => change?.click());
+	await flush();
+	expect(container.textContent).toContain("先核对阅读入口。");
+	expect(container.textContent).toContain(previous.current);
+});
+
 test("切页保留各自草稿，单页覆盖冲突不会覆盖其他页新内容", async () => {
 	const original = await snapshot();
-	await mount("");
+	await mount("intro");
 	await click("编辑");
 	await fill("项目简介", "我修改的完整简介，保留用途与使用背景。");
 	await navigate("功能与用法");

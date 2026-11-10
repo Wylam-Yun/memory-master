@@ -106,7 +106,7 @@ describe("phase 3+4: questions, resources, client setup", () => {
 		// The V1.1 block: read-first writes with base_version, questions asked
 		// in the conversation — question_ask is no longer promoted.
 		expect(claudeMd).toContain("project_open");
-		expect(claudeMd).toContain("history_list");
+		expect(claudeMd).toContain("读取当前进展、目标和相关任务");
 		expect(claudeMd).toContain("base_version");
 		expect(claudeMd).not.toContain("question_ask");
 		// The whole skill bundle lands, not just SKILL.md.
@@ -114,8 +114,12 @@ describe("phase 3+4: questions, resources, client setup", () => {
 		for (const name of EXPECTED_SKILL_FILES) {
 			expect(await Bun.file(join(skillDir, name)).exists()).toBe(true);
 		}
-		expect(await readFile(join(skillDir, "SKILL.md"), "utf8")).toContain("name: memory-master");
-		expect(await readFile(join(skillDir, "CONTENT-STANDARD.md"), "utf8")).toContain("共同写作规则");
+		const installedSkill = await readFile(join(skillDir, "SKILL.md"), "utf8");
+		const installedStandard = await readFile(join(skillDir, "CONTENT-STANDARD.md"), "utf8");
+		expect(installedSkill).toContain("history_list");
+		expect(installedSkill).toContain("criticalPaths");
+		expect(installedStandard).toContain("服务器名称和服务器内路径");
+		expect(installedStandard).toContain("可复现的操作");
 
 		// Configured but NOT yet connected: project routes stay closed.
 		const gated = await req("/api/agent/projects", { token: slot.token });
@@ -159,6 +163,12 @@ describe("phase 3+4: questions, resources, client setup", () => {
 		for (const name of EXPECTED_SKILL_FILES) {
 			expect(await Bun.file(join(clientHome, ".agents", "skills", "memory-master", name)).exists()).toBe(true);
 		}
+		const installedStandard = await readFile(
+			join(clientHome, ".agents", "skills", "memory-master", "CONTENT-STANDARD.md"),
+			"utf8",
+		);
+		expect(installedStandard).toContain("服务器名称和服务器内路径");
+		expect(installedStandard).toContain("可复现的操作");
 
 		// Disable → re-enable: managed blocks get replaced, never appended twice.
 		await req("/api/clients/codex", { method: "PUT", body: { enabled: false } });

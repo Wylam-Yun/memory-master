@@ -32,6 +32,7 @@ import {
 	type LibraryClientId,
 	LibraryError,
 	type LibraryProject,
+	type ProjectOverview,
 	versionConflictError,
 } from "./types.ts";
 
@@ -464,7 +465,7 @@ export class LibraryService {
 	private async writeOverview(
 		identity: { token: string; id: LibraryClientId } | null,
 		projectId: string,
-		update: { description?: string; goal?: string; current?: string; features?: string; agreements?: string },
+		update: Partial<ProjectOverview>,
 		baseVersion: string | undefined,
 	): Promise<unknown> {
 		for (const [key, value] of Object.entries(update))
@@ -752,11 +753,14 @@ export class LibraryService {
 		identity: { token: string; id: LibraryClientId } | null,
 	): Promise<Response> {
 		const body = await parseBody(req);
-		checkFields(body, ["baseVersion", "description", "goal", "current", "features", "agreements"]);
+		checkFields(body, ["baseVersion", "description", "goal", "current", "features", "agreements", "criticalPaths"]);
 		if (body.agreements !== undefined && typeof body.agreements !== "string")
 			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "项目约定必须是正文字符串。", 400);
+		if (body.criticalPaths !== undefined && typeof body.criticalPaths !== "string")
+			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "关键路径必须是正文字符串。", 400);
 		const update = {
 			...(typeof body.agreements === "string" ? { agreements: body.agreements } : {}),
+			...(typeof body.criticalPaths === "string" ? { criticalPaths: body.criticalPaths } : {}),
 			...(typeof body.description === "string" ? { description: body.description } : {}),
 			...(typeof body.goal === "string" ? { goal: body.goal } : {}),
 			...(typeof body.current === "string" ? { current: body.current } : {}),
@@ -765,7 +769,7 @@ export class LibraryService {
 		if (Object.keys(update).length === 0) {
 			throw new LibraryError(
 				LIBRARY_ERROR_CODES.VALIDATION,
-				"Nothing to update — send at least one of: description, goal, current, features, agreements.",
+				"Nothing to update — send at least one of: description, goal, current, features, agreements, criticalPaths.",
 				400,
 			);
 		}

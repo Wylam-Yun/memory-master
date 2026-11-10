@@ -14,6 +14,42 @@ function plainText(node: unknown): string {
 	return "";
 }
 
+export function introductionSubtitle(source: string): string {
+	const paragraph = fromMarkdown(source).children.find((node) => node.type === "paragraph");
+	const text = plainText(paragraph).replace(/\s+/g, " ").trim();
+	return (
+		new Intl.Segmenter(undefined, { granularity: "sentence" })
+			.segment(text)
+			[Symbol.iterator]()
+			.next()
+			.value?.segment.trim() ?? ""
+	);
+}
+
+export function featurePreview(source: string) {
+	const chapters = contentOutline(source);
+	const first = chapters[0];
+	if (!first) return null;
+	const root = fromMarkdown(source);
+	const lines = source.split("\n");
+	const next = chapters[1];
+	const heading = root.children.find((node) => node.type === "heading" && node.position?.start.line === first.line);
+	const chapter = lines.slice(heading?.position?.end.line ?? first.line, next ? next.line - 1 : undefined).join("\n");
+	const opening = fromMarkdown(chapter).children[0];
+	const end = opening?.type === "paragraph" ? (opening.position?.end.offset ?? 0) : 0;
+	const definitions = root.children
+		.filter((node) => node.type === "definition")
+		.map((node) => source.slice(node.position?.start.offset, node.position?.end.offset))
+		.join("\n");
+	return {
+		title: first.title,
+		purpose: chapter.slice(0, end).trim(),
+		steps: chapter.slice(end).trim(),
+		older: next ? lines.slice(next.line - 1).join("\n") : "",
+		definitions,
+	};
+}
+
 /** Root headings only: code fences and nested list content never become navigation. */
 export function contentOutline(source: string): ContentHeading[] {
 	const headings = fromMarkdown(source).children.filter((node) => node.type === "heading");

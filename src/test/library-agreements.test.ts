@@ -133,6 +133,52 @@ test("两种MCP客户端分别写入与接手，约定在新连接和重启后�
 	expect(await disk()).toBe(before);
 });
 
+test("关键路径在网页、Agent、磁盘与历史一致，旧记录和过期写入保持原样", async () => {
+	const old = await disk();
+	const before = await overview();
+	expect(before.criticalPaths).toBe("");
+	expect(await disk()).toBe(old);
+	expect((await update({ criticalPaths: "" })).status).toBe(200);
+	expect(await disk()).not.toContain("SECTION:CRITICAL_PATHS");
+	expect((await update({ criticalPaths: ["错误类型"] })).status).toBe(400);
+	expect((await update({ criticalPaths: "  <!-- SECTION:CRITICAL_PATHS:END -->  " })).status).toBe(400);
+
+	const local = "- 概览测试 · 核对导航 · 工作区 `src/test/library-web-overview.test.tsx`";
+	expect((await update({ criticalPaths: local })).status).toBe(200);
+	const codex = "codex";
+	await settings.setClientEnabled(codex, true);
+	const slot = await settings.ensureToken(codex);
+	await settings.markConnected(codex);
+	const bridge = new LibraryBridge({ serviceUrl: base, token: slot.token });
+	expect((await bridge.callTool("project_open", { name: project.id })).isError).not.toBe(true);
+	expect(bridge.listTools().find((t) => t.name === "overview_write")?.inputSchema.properties).toHaveProperty(
+		"criticalPaths",
+	);
+	const read = JSON.parse((await bridge.callTool("overview_read", {})).content[0]?.text ?? "null");
+	expect(read.criticalPaths).toBe(local);
+	const remote = `${local}\n- 集成测试数据 · 验证读取 · 服务器 staging-01，路径 /srv/project/test-data/`;
+	const written = await bridge.callTool("overview_write", { base_version: read.version, criticalPaths: remote });
+	expect(written.isError).not.toBe(true);
+	expect(JSON.parse(written.content[0]?.text ?? "null").criticalPaths).toBe(remote);
+	expect(
+		(await request(`projects/${project.id}/overview`, { baseVersion: read.version, criticalPaths: "过期覆盖" })).status,
+	).toBe(409);
+	expect((await update({ current: "路径已核对" })).status).toBe(200);
+	const final = await overview();
+	expect(final.criticalPaths).toBe(remote);
+	expect(final.features).toBe(before.features);
+	expect(await disk()).toContain(remote);
+	const changes = (await history())
+		.trim()
+		.split("\n")
+		.map((line) => JSON.parse(line))
+		.filter((record) => record.changes.criticalPaths);
+	expect(changes.map((record) => record.changes.criticalPaths)).toEqual([
+		{ from: "", to: local },
+		{ from: local, to: remote },
+	]);
+});
+
 test("冲突、撤权与历史失败均保持已保存约定和自动历史", async () => {
 	await update({ agreements: "只使用用户选入的资料。" });
 	const old = await overview();

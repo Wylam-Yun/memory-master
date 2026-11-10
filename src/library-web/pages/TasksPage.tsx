@@ -1,4 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError, type LibraryProject, type ProjectMeta, type Task } from "../api.ts";
 import { PageHeader, useProject } from "../components/AppShell.tsx";
 import { clearDraft, getDraft, setDraft } from "../components/drafts.ts";
@@ -10,15 +11,19 @@ const SEL_WHICH = "sel:task";
 
 export default function TasksPage() {
 	const project = useProject();
-	return <TasksInner key={project.id} project={project} />;
+	const [params] = useSearchParams();
+	const requestedId = params.get("task");
+	return <TasksInner key={JSON.stringify([project.id, requestedId])} project={project} requestedId={requestedId} />;
 }
 
-function TasksInner({ project }: { project: LibraryProject }) {
+function TasksInner({ project, requestedId }: { project: LibraryProject; requestedId: string | null }) {
 	const projectId = project.id;
 	const [meta, setMeta] = useState<ProjectMeta | null>(null);
 	const [tasks, setTasks] = useState<Task[] | null>(null);
 	const [loadError, setLoadError] = useState<unknown>(null);
-	const [expandedId, setExpandedId] = useState<string | null>(() => getDraft(projectId, SEL_WHICH) || null);
+	const [expandedId, setExpandedId] = useState<string | null>(
+		() => requestedId || getDraft(projectId, SEL_WHICH) || null,
+	);
 	const [rowErrors, setRowErrors] = useState<Record<string, { text: string; retryStatus: string }>>({});
 	const [newTitle, setNewTitle] = useState("");
 	const [adding, setAdding] = useState(false);
@@ -36,6 +41,15 @@ function TasksInner({ project }: { project: LibraryProject }) {
 	useEffect(() => {
 		load().catch(setLoadError);
 	}, [load]);
+
+	const linkedId =
+		meta && tasks?.some((task) => task.id === requestedId && isP0Task(task, meta.p0)) ? requestedId : null;
+	useEffect(() => {
+		if (!linkedId) return;
+		const row = document.getElementById(`task-row-${linkedId}`);
+		row?.scrollIntoView?.({ block: "nearest" });
+		row?.focus({ preventScroll: true });
+	}, [linkedId]);
 
 	const toggleExpanded = (task: Task) => {
 		if (!task.description?.trim()) return;
@@ -133,7 +147,12 @@ function TasksInner({ project }: { project: LibraryProject }) {
 		const hasDesc = Boolean(t.description?.trim());
 		const expanded = expandedId === t.id && hasDesc;
 		return (
-			<li key={t.id} className="min-h-14 border-b border-[#E5E7EB] py-2 last:border-b-0">
+			<li
+				key={t.id}
+				id={`task-row-${t.id}`}
+				tabIndex={linkedId === t.id ? -1 : undefined}
+				className={`min-h-14 border-b border-[#E5E7EB] py-2 last:border-b-0 ${linkedId === t.id ? "rounded-lg bg-[#EEF2FF] px-3" : ""}`}
+			>
 				<div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1">
 					<input
 						type="checkbox"
@@ -195,6 +214,9 @@ function TasksInner({ project }: { project: LibraryProject }) {
 
 	return (
 		<div>
+			<Link to={`/projects/${projectId}`} className="text-[15px] font-medium text-[#3B57D0] hover:underline">
+				← 返回概览
+			</Link>
 			<PageHeader title="任务" actions={headerActions} />
 			<p className="mb-4 text-[15px] font-medium leading-6 text-[#555B65]">P0 · 当前重点</p>
 
@@ -206,7 +228,9 @@ function TasksInner({ project }: { project: LibraryProject }) {
 				<ul className="mb-6">{open.map(row)}</ul>
 			)}
 
-			{done.length > 0 ? <DoneGroup done={done} renderRow={row} /> : null}
+			{done.length > 0 ? (
+				<DoneGroup done={done} renderRow={row} initiallyOpen={done.some((task) => task.id === linkedId)} />
+			) : null}
 
 			{addOpen || p0Tasks.length === 0 ? (
 				<div className="mt-6 max-w-[560px]">
@@ -240,8 +264,16 @@ function TasksInner({ project }: { project: LibraryProject }) {
 	);
 }
 
-function DoneGroup({ done, renderRow }: { done: Task[]; renderRow: (t: Task) => ReactNode }) {
-	const [open, setOpen] = useState(false);
+function DoneGroup({
+	done,
+	renderRow,
+	initiallyOpen,
+}: {
+	done: Task[];
+	renderRow: (t: Task) => ReactNode;
+	initiallyOpen: boolean;
+}) {
+	const [open, setOpen] = useState(initiallyOpen);
 	return (
 		<section className="mt-2">
 			<button
