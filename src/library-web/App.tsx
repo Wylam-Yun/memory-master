@@ -5,7 +5,6 @@ import AppShell from "./components/AppShell.tsx";
 import { ErrorNote } from "./components/StatusMessage.tsx";
 import ArchitecturePage from "./pages/ArchitecturePage.tsx";
 import HistoryPage from "./pages/HistoryPage.tsx";
-import OverviewPage from "./pages/OverviewPage.tsx";
 import ProjectHomePage from "./pages/ProjectHomePage.tsx";
 import { OVERVIEW_PAGES } from "./overview-pages.ts";
 import ProjectsPage from "./pages/ProjectsPage.tsx";
@@ -125,7 +124,7 @@ export default function App() {
 				<Route path="/projects/:id" element={<AppShell projects={state.projects} />}>
 					<Route index element={<ProjectHomePage />} />
 					{OVERVIEW_PAGES.map((page) => (
-						<Route key={page.field} path={page.path} element={<OverviewPage field={page.field} />} />
+						<Route key={page.field} path={page.path} element={<ProjectHomePage section={page.field} />} />
 					))}
 					<Route path="tasks" element={<TasksPage />} />
 					<Route path="architecture" element={<ArchitecturePage />} />

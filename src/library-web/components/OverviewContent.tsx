@@ -1,15 +1,20 @@
 import { useEffect, useMemo } from "react";
 import { PROJECT_CONTENT_NAMES } from "../../library/project-content.ts";
-import { contentOutline, progressSections } from "../overview-content.ts";
+import { contentOutline, introductionSubtitle, progressSections } from "../overview-content.ts";
 import type { OverviewField } from "../overview-pages.ts";
 import Markdown from "./Markdown.tsx";
 
 /** Different reading tasks, backed by the same original overview fields. */
-export default function OverviewContent({ field, source }: { field: OverviewField; source: string }) {
+export default function OverviewContent({
+	field,
+	source,
+}: {
+	field: Exclude<OverviewField, "current">;
+	source: string;
+}) {
 	if (!source.trim())
 		return <p className="text-[16px] leading-7 text-[#555B65]">还没有填写{PROJECT_CONTENT_NAMES[field]}。</p>;
 	if (field === "features") return <FeaturesContent source={source} />;
-	if (field === "current") return <CurrentContent source={source} />;
 	if (field === "agreements" || field === "criticalPaths")
 		return (
 			<article
@@ -80,33 +85,84 @@ function FeaturesContent({ source }: { source: string }) {
 	);
 }
 
-export function CurrentContent({ source, summary = false }: { source: string; summary?: boolean }) {
+export function CurrentContent({ source }: { source: string }) {
 	const progress = useMemo(() => progressSections(source), [source]);
-	const sections = summary ? progress.sections.filter(({ title }) => title !== "已完成") : progress.sections;
+	const excerpt = useMemo(
+		() =>
+			progress.sections.length === 0 && progress.introduction.length > 300
+				? introductionSubtitle(progress.introduction)
+				: "",
+		[progress],
+	);
+	const sections = progress.sections.filter(({ title }) => title !== "已完成");
+	const prominent = sections.some(({ title }) => title !== "未完成或未验证");
+	const order = ["当前停点", "下一步", "需要你决定", "未完成或未验证"];
+	const ordered = [...sections].sort((a, b) => order.indexOf(a.title) - order.indexOf(b.title));
 	const readable = (body: string) => (progress.definitions ? `${body}\n\n${progress.definitions}` : body);
 	return (
-		<article aria-label={PROJECT_CONTENT_NAMES.current} className="overview-current text-[16px] leading-7">
-			{progress.introduction.trim() ? (
-				<div className={sections.length ? "mb-7" : ""}>
-					<Markdown source={readable(progress.introduction)} />
-				</div>
+		<article aria-label={PROJECT_CONTENT_NAMES.current} className="overview-current space-y-3 text-[15px] leading-6">
+			{excerpt ? (
+				<details className="group">
+					<summary className="cursor-pointer list-none py-1 text-[14px] text-[#555B65] hover:text-[#3B57D0] [&::-webkit-details-marker]:hidden">
+						<span className="mb-2 line-clamp-3 break-words text-[15px] leading-6 text-[#202124] group-open:hidden">
+							{excerpt}
+						</span>
+						<span className="inline-flex items-center gap-1">
+							<span aria-hidden="true" className="group-open:rotate-90">
+								▸
+							</span>
+							完整进展
+						</span>
+					</summary>
+					<div className="pt-2">
+						<Markdown source={readable(progress.introduction)} />
+					</div>
+				</details>
+			) : progress.introduction.trim() ? (
+				<Markdown source={readable(progress.introduction)} />
 			) : null}
-			{sections.length ? (
-				<dl className="space-y-7">
-					{sections.map((section, index) => (
-						<div
-							key={`${section.title}:${index}`}
-							className={`grid gap-2 min-[640px]:grid-cols-[124px_minmax(0,1fr)] min-[640px]:gap-6 ${section.title === "下一步" || section.title === "需要你决定" ? "border-l-2 border-[#3B57D0] pl-5" : ""}`}
-						>
-							<dt className="text-[16px] font-semibold leading-7">{section.title}</dt>
-							<dd className="min-w-0 [&_.wmde-markdown]:text-[16px] [&_.wmde-markdown]:leading-[1.8] [&_.wmde-markdown>p:last-child]:mb-0">
-								<Markdown source={readable(section.body)} />
-							</dd>
-						</div>
-					))}
+			{ordered.length ? (
+				<dl className="space-y-3">
+					{ordered.map(({ title, body }, index) => {
+						const key = `${title}:${index}`;
+						if (title === "未完成或未验证" && prominent) {
+							return (
+								<div key={key}>
+									<dt className="sr-only">{title}</dt>
+									<dd>
+										<details>
+											<summary className="w-fit cursor-pointer py-1 text-[14px] text-[#555B65] hover:text-[#3B57D0]">
+												{title}
+											</summary>
+											<div className="pt-2">
+												<Markdown source={readable(body)} />
+											</div>
+										</details>
+									</dd>
+								</div>
+							);
+						}
+						const focus = title === "下一步" || title === "需要你决定";
+						return (
+							<div key={key} className={focus ? "rounded-md bg-[#EEF2FF] px-3 py-2.5" : ""}>
+								<dt
+									className={
+										focus
+											? "mb-0.5 text-[14px] font-semibold text-[#283D91]"
+											: "mb-0.5 text-[14px] font-medium text-[#555B65]"
+									}
+								>
+									{title}
+								</dt>
+								<dd className="min-w-0 [&_.wmde-markdown]:text-[15px] [&_.wmde-markdown]:leading-6 [&_.wmde-markdown>p:last-child]:mb-0">
+									<Markdown source={readable(body)} />
+								</dd>
+							</div>
+						);
+					})}
 				</dl>
-			) : summary && !progress.introduction.trim() ? (
-				<p>暂无当前进展。</p>
+			) : !progress.introduction.trim() ? (
+				<p className="text-[#555B65]">暂无当前进展。</p>
 			) : null}
 		</article>
 	);

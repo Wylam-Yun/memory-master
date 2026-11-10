@@ -46,7 +46,7 @@ overview.md新增按需创建的AGREEMENTS标记节，对应agreements正文。�
 
 agreements通过既有overview_read/write和Web概览API维护，共享overview的内容哈希版本、写锁、撤权复核、失败回滚和自动历史。新增字段已同步后端类型、解析、写入允许列表、MCP schema、Web API及历史标签。current更新不触碰agreements；旧客户端省略新字段时保持原文。
 
-项目根地址读取综合概览。详情路由包括 intro、progress、features、agreements 和 critical-paths。overview-pages.ts提供统一字段、路径和名称，App注册路由，AppShell让这些子页保持概览选中。单页编辑只提交当前字段，冲突比较和覆盖也只影响本页。旧overview多字段草稿拆到overview:字段名，保留各自旧baseVersion；缺失字段不猜内容，取消或保存一页不清其他页草稿。
+项目根地址和旧详情路由（intro、progress、features、agreements、critical-paths）均挂载 ProjectHomePage。旧地址默认展开并定位对应栏目，AppShell 保持概览选中。概览统一读取一份带版本的记录；OverviewFieldEditor 只提交对应字段，冲突比较和覆盖也只影响该栏。旧多字段草稿拆到 overview:字段名，保留各自的 baseVersion。
 
 CONTENT-STANDARD的“接手与交接”描述停点、下一步、长期决定与已回答问题的保护、相关文件和可用Skill、过期状态核对及脱敏；SKILL.md通过明确指针要求接手时读取。接手信息分别来自概览、约定与任务，不产生平行的长期进度文件。上游规则固定到提交版本，UPSTREAM记录适配边界，UPSTREAM-LICENSE保留两位作者完整MIT许可。
 
@@ -54,15 +54,15 @@ library-agreements.test.ts覆盖实际HTTP/MCP与磁盘，分别断言旧文无�
 
 ## 概览阅读隔离
 
-综合概览和详情共用概览 API 与内容版本。副标题、功能预览、最近完成均从已有正文或阶段成果派生。任务详情通过 tasks 的 task 查询参数定位；进展历史使用 history 的 field=current 筛选，包含与其他字段一起保存的进展变更。进展与目标页沿用Goals/StageProgress，阶段记录外层按需分页，内层单条details打开后才挂载summary正文与修正按钮，避免一次展开所有成果长文。导航随窄屏换行，正文保持正常字号与单列宽度。
+副标题、最新进展、功能预览和最近完成从已有正文或阶段成果派生。进展按显式小标题组织停点、下一步和需用户决定的问题，未验证内容按需展开；旧的非结构化正文保持可读。任务通过 tasks 的 task 查询参数定位；进展历史使用 history 的 field=current 筛选。Goals 和 StageProgress 提供同页管理，归档展开时分页读取，单条成果打开后才挂载详细正文。
 
 criticalPaths 使用可选 CRITICAL_PATHS 正文节和现有的 Web/MCP 概览读写接口。空节首次读取不迁移，旧客户端省略字段时保留原文。类型检查、预留标记校验、共享版本和自动历史走同一条服务链路。
 
 ## 内容命名与概览页头
 
-project-content.ts提供人类可读的共享名称，overview持久化节标题、网页字段名与历史标签、MCP概览工具描述共用；旧英文工具参数与存储标记保持兼容。Skill和内容标准使用相同名称，并明确进展与目标是页面分组、简报是当前进展的写法。
+project-content.ts提供人类可读的共享名称，overview持久化节标题、网页字段名与历史标签、MCP概览工具描述共用；旧英文工具参数与存储标记保持兼容。Skill 和内容标准说明网页栏目与共享正文的对应关系。
 
-OverviewPage的导航与操作合并为header，选中导航承担可见页面名称，唯一h1使用sr-only保留可访问标题。正文不再由通用PageHeader重复显示同名大标题；其他一级页面继续使用各自原有页头。真实App回归覆盖当前页导航、可访问标题和操作区的实际DOM。
+概览只用项目名作为主标题，栏标题标明内容和编辑范围；简介和阅读细节在原处展开。项目架构、资料、变更记录及任务管理保留自己的路由。
 
 ## 概览内容的四种阅读组织
 

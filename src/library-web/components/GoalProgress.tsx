@@ -1,5 +1,4 @@
-import { PROJECT_CONTENT_NAMES } from "../../library/project-content.ts";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api, type Goal, type Progress, type ProjectOverview } from "../api.ts";
 import { useImeGuard } from "../useImeGuard.ts";
 import { GrowingTextarea } from "./AppShell.tsx";
@@ -342,7 +341,7 @@ function Archive({
 	onEdit,
 	onGoalEdit,
 	onChanged,
-	label: customLabel,
+	actions,
 }: {
 	projectId: string;
 	kind: "completed" | "adjusted" | "progress";
@@ -351,7 +350,7 @@ function Archive({
 	onEdit?: (r: Progress, version: string) => void;
 	onGoalEdit?: (r: Goal, version: string) => void;
 	onChanged: () => Promise<void>;
-	label?: string;
+	actions?: ReactNode;
 }) {
 	const [open, setOpen] = useState(false),
 		[rows, setRows] = useState<(Goal | Progress)[]>([]),
@@ -360,9 +359,7 @@ function Archive({
 		[error, setError] = useState<unknown>(null);
 	const epoch = useRef(0),
 		inFlight = useRef(false);
-	const label =
-		customLabel ??
-		(kind === "progress" ? PROJECT_CONTENT_NAMES.progress : kind === "completed" ? "已完成目标" : "已调整的目标");
+	const label = kind === "progress" ? "阶段成果" : kind === "completed" ? "已完成目标" : "已调整的目标";
 	const load = useCallback(
 		async (offset: number, generation = epoch.current) => {
 			if (inFlight.current) return;
@@ -403,14 +400,15 @@ function Archive({
 			epoch.current++;
 		};
 	}, [open, load, count]);
-	if (!count && !customLabel) return null;
+	if (!count && kind !== "progress") return null;
 	return (
-		<details className="my-5" onToggle={(e) => setOpen(e.currentTarget.open)}>
-			<summary className="w-fit cursor-pointer py-2 text-[16px] font-medium">
+		<details className={kind === "progress" ? "" : "my-2"} onToggle={(e) => setOpen(e.currentTarget.open)}>
+			<summary className="w-fit cursor-pointer py-2.5 text-[15px] font-medium">
 				{label}（{count}）
 			</summary>
 			{open ? (
-				<div className="mt-3 space-y-5 pl-2">
+				<div className="space-y-4 pb-4">
+					{actions}
 					{count === 0 ? <p className="text-[15px] text-[#555B65]">暂无阶段成果。</p> : null}
 					{rows.map((r) =>
 						"summary" in r ? (
@@ -452,60 +450,37 @@ export function Goals({
 	projectId,
 	overview,
 	onChanged,
-	summary = false,
 }: {
 	projectId: string;
 	overview: ProjectOverview;
 	onChanged: () => Promise<void>;
-	summary?: boolean;
 }) {
 	const [editor, setEditor] = useEditor(projectId, "dynamic:goals");
-	const goals = overview.goals ?? [],
-		counts = overview.archiveCounts ?? { completed: 0, adjusted: 0, progress: 0 };
+	const [managing, setManaging] = useState(Boolean(editor));
+	const goals = overview.goals ?? [];
+	const counts = overview.archiveCounts ?? { completed: 0, adjusted: 0, progress: 0 };
 	const legacy = overview.goal.trim() && !overview.goal.startsWith("待补充") ? overview.goal : "";
-	const editArchivedGoal = summary
-		? undefined
-		: (g: Goal, version: string) => setEditor(freshEditor("complete", version, g));
-	const archives = (
-		<>
-			<Archive
-				projectId={projectId}
-				kind="completed"
-				count={counts.completed}
-				version={overview.version}
-				onChanged={onChanged}
-				onGoalEdit={editArchivedGoal}
-			/>
-			<Archive
-				projectId={projectId}
-				kind="adjusted"
-				count={counts.adjusted}
-				version={overview.version}
-				onChanged={onChanged}
-				onGoalEdit={summary ? undefined : (g, version) => setEditor(freshEditor("adjust", version, g))}
-			/>
-		</>
-	);
 	return (
-		<section className={summary ? "min-w-0" : "mb-8"}>
-			<div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-				<h2 className="text-[20px] font-semibold leading-7">{summary ? "当前目标" : PROJECT_CONTENT_NAMES.goal}</h2>
-				{!summary ? (
-					<button
-						type="button"
-						className={button}
-						onClick={() => setEditor(freshEditor("create-goal", overview.version))}
-					>
-						添加目标
-					</button>
-				) : null}
+		<section className="min-w-0" aria-labelledby="current-goals">
+			<div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+				<h2 id="current-goals" className="text-[20px] font-semibold leading-7">
+					当前目标
+				</h2>
+				<button
+					type="button"
+					aria-expanded={managing}
+					className="min-h-9 text-[14px] text-[#555B65] hover:text-[#3B57D0]"
+					onClick={() => setManaging((open) => !open)}
+				>
+					{managing ? "收起管理" : "管理目标"}
+				</button>
 			</div>
 			{goals.length ? (
-				<ul className="space-y-4">
+				<ul className="space-y-2.5">
 					{goals.map((g) => (
-						<li key={g.id} className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
-							<p className="min-w-0 flex-1 text-[16px] leading-7">{g.title}</p>
-							{!summary ? (
+						<li key={g.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+							<p className="min-w-0 flex-1 text-[15px] leading-6">{g.title}</p>
+							{managing ? (
 								<>
 									<button
 										type="button"
@@ -526,68 +501,98 @@ export function Goals({
 						</li>
 					))}
 				</ul>
-			) : !legacy ? (
+			) : (
 				<p className="text-[15px] text-[#555B65]">暂无正在推进的目标</p>
+			)}
+			{managing ? (
+				<div className="mt-3 space-y-3">
+					<button
+						type="button"
+						className={button}
+						onClick={() => setEditor(freshEditor("create-goal", overview.version))}
+					>
+						添加目标
+					</button>
+					{editor ? (
+						<RecordEditor
+							key={editor.key}
+							projectId={projectId}
+							editor={editor}
+							onChange={setEditor}
+							onSaved={onChanged}
+						/>
+					) : null}
+				</div>
 			) : null}
-			{!summary && editor ? (
-				<RecordEditor key={editor.key} projectId={projectId} editor={editor} onChange={setEditor} onSaved={onChanged} />
-			) : null}
-			{legacy ? (
-				<details className="my-4" open={goals.length + counts.completed + counts.adjusted === 0}>
-					<summary className="w-fit cursor-pointer py-2 text-[15px] font-medium">原有目标</summary>
-					<Markdown source={legacy} />
+			{legacy || counts.completed + counts.adjusted > 0 ? (
+				<details className="mt-2">
+					<summary className="w-fit cursor-pointer py-2 text-[14px] text-[#555B65]">历史目标</summary>
+					{legacy ? (
+						<details className="my-2">
+							<summary className="w-fit cursor-pointer py-2 text-[15px] font-medium">原有目标</summary>
+							<Markdown source={legacy} />
+						</details>
+					) : null}
+					<Archive
+						projectId={projectId}
+						kind="completed"
+						count={counts.completed}
+						version={overview.version}
+						onChanged={onChanged}
+						onGoalEdit={managing ? (g, v) => setEditor(freshEditor("complete", v, g)) : undefined}
+					/>
+					<Archive
+						projectId={projectId}
+						kind="adjusted"
+						count={counts.adjusted}
+						version={overview.version}
+						onChanged={onChanged}
+						onGoalEdit={managing ? (g, v) => setEditor(freshEditor("adjust", v, g)) : undefined}
+					/>
 				</details>
 			) : null}
-			{summary ? (
-				counts.completed + counts.adjusted > 0 ? (
-					<details className="mt-3">
-						<summary className="w-fit cursor-pointer py-2 text-[15px] text-[#555B65]">历史目标</summary>
-						{archives}
-					</details>
-				) : null
-			) : (
-				archives
-			)}
 		</section>
 	);
 }
+
 export function StageProgress({
 	projectId,
 	overview,
 	onChanged,
-	summary = false,
 }: {
 	projectId: string;
 	overview: ProjectOverview;
 	onChanged: () => Promise<void>;
-	summary?: boolean;
 }) {
 	const [editor, setEditor] = useEditor(projectId, "dynamic:progress");
 	return (
-		<div>
-			{!summary ? (
-				<div className="mt-4">
+		<Archive
+			projectId={projectId}
+			kind="progress"
+			count={overview.archiveCounts?.progress ?? 0}
+			version={overview.version}
+			onChanged={onChanged}
+			onEdit={(p, v) => setEditor(freshEditor("edit-progress", v, p))}
+			actions={
+				<>
 					<button
 						type="button"
-						className="min-h-10 text-[15px] font-medium text-[#3B57D0]"
+						className="min-h-9 text-[15px] font-medium text-[#3B57D0]"
 						onClick={() => setEditor(freshEditor("record", overview.version))}
 					>
 						记录阶段成果
 					</button>
-				</div>
-			) : null}
-			{!summary && editor ? (
-				<RecordEditor key={editor.key} projectId={projectId} editor={editor} onChange={setEditor} onSaved={onChanged} />
-			) : null}
-			<Archive
-				projectId={projectId}
-				kind="progress"
-				count={overview.archiveCounts?.progress ?? 0}
-				version={overview.version}
-				onChanged={onChanged}
-				onEdit={summary ? undefined : (p, v) => setEditor(freshEditor("edit-progress", v, p))}
-				label={summary ? "阶段成果" : undefined}
-			/>
-		</div>
+					{editor ? (
+						<RecordEditor
+							key={editor.key}
+							projectId={projectId}
+							editor={editor}
+							onChange={setEditor}
+							onSaved={onChanged}
+						/>
+					) : null}
+				</>
+			}
+		/>
 	);
 }

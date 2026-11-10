@@ -1,12 +1,10 @@
-import { PROJECT_CONTENT_NAMES } from "../library/project-content.ts";
-
-/** Each overview subject has its own URL and reading/editing scope. */
+/** Existing overview URLs open the corresponding section of the project overview. */
 export const OVERVIEW_PAGES = [
-	{ field: "description", path: "intro", label: PROJECT_CONTENT_NAMES.description },
-	{ field: "current", path: "progress", label: "进展与目标" },
-	{ field: "features", path: "features", label: PROJECT_CONTENT_NAMES.features },
-	{ field: "agreements", path: "agreements", label: PROJECT_CONTENT_NAMES.agreements },
-	{ field: "criticalPaths", path: "critical-paths", label: PROJECT_CONTENT_NAMES.criticalPaths },
+	{ field: "description", path: "intro" },
+	{ field: "current", path: "progress" },
+	{ field: "features", path: "features" },
+	{ field: "agreements", path: "agreements" },
+	{ field: "criticalPaths", path: "critical-paths" },
 ] as const;
 
 export type OverviewField = (typeof OVERVIEW_PAGES)[number]["field"];
