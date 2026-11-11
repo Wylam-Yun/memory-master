@@ -56,3 +56,23 @@
 另以独立编译产物启动实际服务及 stdio MCP 子进程，逐项检查默认只读拒绝、单个项目授权后创建任务且文件落盘、项目关闭连接后列表隐藏、已选中项目拒绝继续读取、恢复继承后重新只读，全部通过。类型检查与编译 smoke checks 重跑通过。Biome 全项目检查退出码 0，保留 21 条现有警告。
 
 本机验证日志保存在 /tmp/mm-agent-permissions-full-tests.log、/tmp/mm-agent-permissions-failure-recheck.log、/tmp/mm-agent-permissions-main-comparison.log 与 /tmp/mm-agent-permissions-biome.log。完整测试结果保留为失败，当前功能的 128 项相关测试通过。
+
+## 2026-11-11 浏览器操作与 harness 权限终态实测
+
+独立启动编译后的 Memory Master 服务，使用隔离的记忆库、两个实际项目和客户端配置目录。在 Chrome 页面通过真实鼠标输入逐次操作「允许连接」「默认允许修改」「允许修改」和「恢复继承」。每次保存后，从对应 harness 凭据启动的编译版 stdio MCP 子进程读取或修改项目概览，核对工具错误码，并读取项目目录实际文件。
+
+Codex、Claude Code、Devin、Cursor、OpenCode、Hermes、DeepSeek Harness 分别通过 11 个场景，共 77 个场景，进程退出码 0。每个 harness 都单独覆盖以下情况。
+
+- 全局连接开启后可以读取，默认修改关闭时拒绝写入，目录快照不变。
+- 项目 A 单独开启修改后实际落盘，项目 B 仍拒绝写入。
+- 全局开启默认修改后，继承的项目 B 实际落盘。
+- 项目 A 单独禁止修改后拒绝写入，项目 B 仍实际落盘。
+- 恢复继承后项目 A 跟随全局默认并实际落盘。
+- 全局关闭默认修改后，两个继承项目均拒绝写入，目录快照不变。
+- 关闭项目 A 的连接后，已选中它的会话拒绝继续读取，项目列表隐藏 A，B 仍可读取。
+- 再次恢复继承后，A 恢复为可读且只读。
+- 全局关闭连接后，旧会话返回 ACCESS_DISABLED，项目连接开关禁用。
+- 全局重开连接后，项目 A 的只读例外与项目 B 的默认修改继续生效。
+- 关闭并重新启动编译服务，重新建立每个 harness 的 MCP 会话，A 的只读例外与 B 的修改默认继续生效。
+
+这次实测确认 Memory Master 对各 harness 身份的权限执行。会话由实际 MCP 客户端驱动，没有启动七种产品各自的模型聊天。每条操作证据在本机 /tmp/mm-harness-permissions-evidence.json，完整执行输出在 /tmp/mm-harness-permissions-browser.log。实测未发现新增权限管理功能失效，既有全量测试结果继续保留。
