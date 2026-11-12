@@ -184,6 +184,7 @@ test("两种Agent共享目标，主观确认、未知字段和撤权逐项生效
 	await b.callTool("project_open", { name: project.id });
 	const parse = (r: Awaited<ReturnType<LibraryBridge["callTool"]>>) => JSON.parse(r.content[0]?.text ?? "null");
 	const r = await a.callTool("goal_create", {
+		project_id: project.id,
 		base_version: (await overview()).version,
 		key: "subjective",
 		title: "让参与者满意",
@@ -191,12 +192,18 @@ test("两种Agent共享目标，主观确认、未知字段和撤权逐项生效
 	});
 	expect(r.isError).not.toBe(true);
 	const g = parse(r);
-	const seen = parse(await b.callTool("goal_list", {}));
+	const seen = parse(await b.callTool("goal_list", { project_id: project.id }));
 	expect(seen.items[0].id).toBe(g.id);
-	const denied = await b.callTool("goal_update", { base_version: seen.version, goal_id: g.id, status: "completed" });
+	const denied = await b.callTool("goal_update", {
+		project_id: project.id,
+		base_version: seen.version,
+		goal_id: g.id,
+		status: "completed",
+	});
 	expect(denied.isError).toBe(true);
 	expect((await overview()).goals[0].status).toBe("active");
 	const good = await b.callTool("goal_update", {
+		project_id: project.id,
 		base_version: seen.version,
 		goal_id: g.id,
 		status: "completed",
@@ -206,6 +213,7 @@ test("两种Agent共享目标，主观确认、未知字段和撤权逐项生效
 	expect(good.isError).not.toBe(true);
 	expect((await history()).at(-1).actor).toEqual({ type: "agent", client: "claude-code" });
 	const bad = await a.callTool("progress_record", {
+		project_id: project.id,
 		base_version: (await overview()).version,
 		key: "bad",
 		title: "成果",
@@ -216,6 +224,7 @@ test("两种Agent共享目标，主观确认、未知字段和撤权逐项生效
 	const bytes = await disk();
 	const hold = holds.create("revoke");
 	const pending = a.callTool("progress_record", {
+		project_id: project.id,
 		base_version: (await overview()).version,
 		key: "revoked",
 		title: "不应保存",
@@ -226,8 +235,8 @@ test("两种Agent共享目标，主观确认、未知字段和撤权逐项生效
 	holds.release(hold.id);
 	expect((await pending).isError).toBe(true);
 	expect(await disk()).toBe(bytes);
-	expect((await a.callTool("goal_list", {})).isError).toBe(true);
-	expect((await b.callTool("goal_list", {})).isError).not.toBe(true);
+	expect((await a.callTool("goal_list", { project_id: project.id })).isError).toBe(true);
+	expect((await b.callTool("goal_list", { project_id: project.id })).isError).not.toBe(true);
 	for (const name of [
 		"goal_list",
 		"goal_create",
@@ -246,7 +255,7 @@ test("两种Agent共享目标，主观确认、未知字段和撤权逐项生效
 			goal_id: "g",
 			progress_id: "p",
 		});
-		expect(called.content[0]?.text).not.toContain("Unknown tool");
+		expect(called.content[0]?.text).toContain("[PROJECT_ID_REQUIRED]");
 	}
 });
 

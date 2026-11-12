@@ -9,7 +9,7 @@ description: 在用户明确指定的 Memory Master 项目中接手工作、维�
 
 ## 接手与项目归属
 
-1. 用户明确给出项目名称或 ID 时，用实际可用的 `project_open` 打开。名称有歧义时向用户确认候选。本会话保持所选项目，用户明确切换前不改选。
+1. 用户明确给出项目名称或 ID 时，用实际可用的 `project_open` 打开。名称有歧义时向用户确认候选。保存返回的 `opened.id`。每个项目内容工具都要求顶层 `project_id`；读取、写入、重读核对都传目标项目的同一个 ID。处理多个项目时分别保存 ID，按项目配对 `base_version`。
 2. 先读 `overview_read` 的当前进展和当前目标，再用 `task_list` 找到相关任务。按任务需要查完整简介、约定、`criticalPaths` 和近期 `history_list`；需要回顾已完成/已调整目标时用 `goal_list`，阶段成果用 `progress_list`，按需分页；按任务需要用 `resource_list`、`resource_read` 读取用户选入的资料。已有问题记录仅在需要核对先前答案时读取。
 3. 写任何项目正文前，必须读 [内容标准](CONTENT-STANDARD.md) 的「共同写作规则」和本次涉及的板块；已经读过且未变化时可继续沿用。整理架构前再读 [架构格式](ARCHITECTURE-FORMAT.md)。
 4. 无工作目录的项目照常管理。读取额外本地文件需要明确的位置，当前目录不能自动决定项目归属。临时杂事不写入项目。

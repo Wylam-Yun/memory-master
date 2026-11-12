@@ -110,8 +110,9 @@ test("两种MCP客户端分别写入与接手，约定在新连接和重启后�
 	for (let i = 0; i < bridges.length; i++) {
 		const bridge = bridges[i];
 		if (!bridge) throw new Error("Missing client");
-		const read = parse(await bridge.callTool("overview_read", {}));
+		const read = parse(await bridge.callTool("overview_read", { project_id: project.id }));
 		const result = await bridge.callTool("overview_write", {
+			project_id: project.id,
 			base_version: read.version,
 			agreements: i === 0 ? "- 不增加待决定页。" : "- 不增加待决定页。\n- 不重复询问已经回答的问题。",
 		});
@@ -119,7 +120,7 @@ test("两种MCP客户端分别写入与接手，约定在新连接和重启后�
 		expect(await disk()).toContain(parse(result).agreements);
 	}
 	for (const bridge of bridges) {
-		const read = parse(await bridge.callTool("overview_read", {}));
+		const read = parse(await bridge.callTool("overview_read", { project_id: project.id }));
 		expect(read.agreements).toContain("不重复询问");
 		expect(bridge.listTools().find((t) => t.name === "overview_write")?.inputSchema.properties).toHaveProperty(
 			"agreements",
@@ -156,10 +157,16 @@ test("关键路径在网页、Agent、磁盘与历史一致，旧记录和过期
 	expect(bridge.listTools().find((t) => t.name === "overview_write")?.inputSchema.properties).toHaveProperty(
 		"criticalPaths",
 	);
-	const read = JSON.parse((await bridge.callTool("overview_read", {})).content[0]?.text ?? "null");
+	const read = JSON.parse(
+		(await bridge.callTool("overview_read", { project_id: project.id })).content[0]?.text ?? "null",
+	);
 	expect(read.criticalPaths).toBe(local);
 	const remote = `${local}\n- 集成测试数据 · 验证读取 · 服务器 staging-01，路径 /srv/project/test-data/`;
-	const written = await bridge.callTool("overview_write", { base_version: read.version, criticalPaths: remote });
+	const written = await bridge.callTool("overview_write", {
+		project_id: project.id,
+		base_version: read.version,
+		criticalPaths: remote,
+	});
 	expect(written.isError).not.toBe(true);
 	expect(JSON.parse(written.content[0]?.text ?? "null").criticalPaths).toBe(remote);
 	expect(

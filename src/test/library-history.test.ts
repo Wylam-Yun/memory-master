@@ -279,7 +279,7 @@ describe("library history & versioning", () => {
 	});
 
 	test("bridge enforces base_version and surfaces conflicts with the latest value", async () => {
-		await createProject("订单系统");
+		const project = await createProject("订单系统");
 		const codex = await enableClient("codex");
 		const claude = await enableClient("claude-code");
 		const a = new LibraryBridge({ serviceUrl: base, token: codex });
@@ -288,17 +288,23 @@ describe("library history & versioning", () => {
 		await b.callTool("project_open", { name: "订单系统" });
 
 		// Missing base_version → a readable instruction, not an HTTP 400.
-		const missing = await a.callTool("task_update", { task_id: "TASK-1", status: "Done" });
+		const missing = await a.callTool("task_update", { project_id: project.id, task_id: "TASK-1", status: "Done" });
 		expect(missing.isError).toBe(true);
 		expect(missing.content[0]!.text).toContain("base_version is required");
 
-		await a.callTool("task_create", { title: "桥接冲突任务" });
-		const list = (await b.callTool("task_list", {})).content[0]!.text;
+		await a.callTool("task_create", { project_id: project.id, title: "桥接冲突任务" });
+		const list = (await b.callTool("task_list", { project_id: project.id })).content[0]!.text;
 		const task = JSON.parse(list)[0];
 		expect(task.version).toMatch(/^sha256:/);
 
-		await a.callTool("task_update", { task_id: task.id, base_version: task.version, status: "In Progress" });
+		await a.callTool("task_update", {
+			project_id: project.id,
+			task_id: task.id,
+			base_version: task.version,
+			status: "In Progress",
+		});
 		const conflict = await b.callTool("task_update", {
+			project_id: project.id,
 			task_id: task.id,
 			base_version: task.version,
 			status: "Done",
@@ -307,7 +313,7 @@ describe("library history & versioning", () => {
 		expect(conflict.content[0]!.text).toContain("VERSION_CONFLICT");
 		expect(conflict.content[0]!.text).toContain("In Progress");
 
-		const history = await b.callTool("history_list", {});
+		const history = await b.callTool("history_list", { project_id: project.id });
 		expect(history.isError).toBeUndefined();
 		expect(history.content[0]!.text).toContain("桥接冲突任务");
 	});

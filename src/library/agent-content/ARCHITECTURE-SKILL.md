@@ -11,7 +11,7 @@ description: 软件架构图专项扩展草案。用户明确要求软件架构�
 
 ## 1. 确认项目和代码位置
 
-- 有 Memory Master MCP 时，先按用户明确给出的名称或 ID 用 `project_open` 打开项目，再读 `overview_read`、`task_list` 和 `question_list`。保持本次选定的项目。
+- 有 Memory Master MCP 时，先按用户明确给出的名称或 ID 用 `project_open` 打开项目，再读 `overview_read`、`task_list` 和 `question_list`。将 `project_open` 返回的 `opened.id` 作为后续每次项目读写的 `project_id`，架构写入时使用从同一个项目读到的版本。
 - 从用户给定的代码路径或已选项目的 `workingDir` 读取代码。记忆库里的项目目录是记忆存储位置，代码位置以用户给定路径或 `workingDir` 为准。
 - 创建或核对架构需要用户明确提供的代码位置，或已选项目中可读取的 `workingDir`。缺少时先询问具体路径，等用户提供后再调查代码并生成文件。当前工作目录及其父目录只能在用户明确指定它们时作为代码来源。用户仅要求查看现有架构时直接读取已有内容。
 - 临时杂事跳过项目记录。新增功能和重构建议交给用户决定后再进入计划。

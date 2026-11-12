@@ -118,6 +118,88 @@ describe("Agent project access", () => {
 		);
 	}
 
+	test("explicit MCP targets prevent a write intended for read-only A from landing in selected B", async () => {
+		const a = await project("Target A");
+		const b = await project("Target B");
+		const codex = await client("codex");
+		const bridge = new LibraryBridge({ serviceUrl: service.baseUrl(), token: codex });
+		await policy(b.id, { allowWrite: true });
+
+		for (const [target, description] of [
+			[a, "Overview from A"],
+			[b, "Overview from B"],
+		] as const) {
+			const path = `/api/projects/${target.id}/overview`;
+			const current = await req(path);
+			expect(current.status).toBe(200);
+			expect(
+				(await req(path, { description, baseVersion: (await current.json()).version }, undefined, "PUT")).status,
+			).toBe(200);
+		}
+		const beforeA = await snapshot(a.dir);
+		const beforeB = await snapshot(b.dir);
+		expect((await bridge.callTool("project_open", { name: a.id })).isError).toBeUndefined();
+		expect((await bridge.callTool("project_open", { name: b.id })).isError).toBeUndefined();
+		const missing = await bridge.callTool("task_create", { title: "Implicitly written to B before the fix" });
+		expect(await snapshot(a.dir)).toEqual(beforeA);
+		expect(await snapshot(b.dir)).toEqual(beforeB);
+		expect(missing.isError).toBe(true);
+		expect(missing.content[0]?.text).toContain("[PROJECT_ID_REQUIRED]");
+
+		const [readA, readB, denied] = await Promise.all([
+			bridge.callTool("overview_read", { project_id: a.id }),
+			bridge.callTool("overview_read", { project_id: b.id }),
+			bridge.callTool("task_create", { project_id: a.id, title: "Denied in A" }),
+		]);
+		expect(readA.isError).toBeUndefined();
+		expect(readB.isError).toBeUndefined();
+		expect(JSON.parse(readA.content[0]?.text ?? "").description).toBe("Overview from A");
+		expect(JSON.parse(readB.content[0]?.text ?? "").description).toBe("Overview from B");
+		expect(denied.isError).toBe(true);
+		expect(denied.content[0]?.text).toContain("[WRITE_DISABLED]");
+		expect(await snapshot(a.dir)).toEqual(beforeA);
+		expect(await snapshot(b.dir)).toEqual(beforeB);
+
+		const allowed = await bridge.callTool("task_create", { project_id: b.id, title: "Explicitly written to B" });
+		expect(allowed.isError).toBeUndefined();
+		expect(await snapshot(a.dir)).toEqual(beforeA);
+		const taskDir = join(b.dir, "memaster", "tasks");
+		const files = await readdir(taskDir);
+		expect(files).toHaveLength(1);
+		const file = files[0];
+		if (!file) throw new Error("Expected a task file in B");
+		expect(await Bun.file(join(taskDir, file)).text()).toContain("Explicitly written to B");
+	});
+
+	test("every project data tool requires a top-level project ID in its schema and handler", async () => {
+		const bridge = new LibraryBridge({ serviceUrl: service.baseUrl(), token: await client("codex") });
+		const a = await project("Schema target");
+		expect((await bridge.callTool("project_open", { name: a.id })).isError).toBeUndefined();
+		const before = await snapshot(a.dir);
+		const discovery = ["project_list", "project_open", "project_current"];
+		for (const tool of bridge.listTools()) {
+			if (discovery.includes(tool.name)) {
+				expect(tool.inputSchema.required ?? [], tool.name).not.toContain("project_id");
+				continue;
+			}
+			expect(tool.inputSchema.required, tool.name).toContain("project_id");
+			expect(tool.inputSchema.properties, tool.name).toHaveProperty("project_id.type", "string");
+			for (const args of [
+				{},
+				{ project_id: "" },
+				{ project_id: " " },
+				{ project_id: 42 },
+				{ project_id: ".." },
+				{ data: { project_id: a.id } },
+			]) {
+				const refused = await bridge.callTool(tool.name, args);
+				expect(refused.isError, tool.name).toBe(true);
+				expect(refused.content[0]?.text, tool.name).toContain("[PROJECT_ID_REQUIRED]");
+			}
+		}
+		expect(await snapshot(a.dir)).toEqual(before);
+	});
+
 	test("hidden projects cannot be discovered or reused from a selected MCP session", async () => {
 		const a = await project("Project A public");
 		const b = await project("Project B private");
@@ -142,16 +224,16 @@ describe("Agent project access", () => {
 			expect(denied.content[0]?.text).toContain("[PROJECT_NOT_FOUND]");
 		}
 		for (const name of ["project_current", "overview_read", "history_list", "resource_list"]) {
-			const denied = await tool(name);
+			const denied = await tool(name, name === "project_current" ? {} : { project_id: b.id });
 			expect(denied.isError).toBe(true);
 			expect(denied.content[0]?.text).toContain("[PROJECT_NOT_FOUND]");
 		}
 		expect((await req(`/api/agent/projects/${b.id}/overview`, undefined, claude)).status).toBe(200);
 		expect((await req(`/api/projects/${b.id}/overview`)).status).toBe(200);
 		await policy(b.id, { allowConnection: true });
-		expect((await tool("overview_read")).isError).toBeUndefined();
+		expect((await tool("overview_read", { project_id: b.id })).isError).toBeUndefined();
 		expect((await req("/api/clients/codex", { enabled: false }, undefined, "PUT")).status).toBe(200);
-		const blocked = await tool("overview_read");
+		const blocked = await tool("overview_read", { project_id: b.id });
 		expect(blocked.isError).toBe(true);
 		expect(blocked.content[0]?.text).toContain("[ACCESS_DISABLED]");
 	});

@@ -331,8 +331,11 @@ describe("library V1.1: content & write capabilities", () => {
 		// The same field through the MCP tool — end to end onto the same file.
 		const bridge = new LibraryBridge({ serviceUrl: base, token });
 		await bridge.callTool("project_open", { name: "订单系统" });
-		const read = JSON.parse((await bridge.callTool("overview_read", {})).content[0]?.text ?? "{}");
+		const read = JSON.parse(
+			(await bridge.callTool("overview_read", { project_id: project.id })).content[0]?.text ?? "{}",
+		);
 		const wrote = await bridge.callTool("overview_write", {
+			project_id: project.id,
 			features: "MCP 写入的功能",
 			base_version: read.version,
 		});
@@ -351,19 +354,25 @@ describe("library V1.1: content & write capabilities", () => {
 		// as a JSON string. It must write, not silently no-op.
 		const bridge = new LibraryBridge({ serviceUrl: base, token });
 		await bridge.callTool("project_open", { name: "订单系统" });
-		const read = JSON.parse((await bridge.callTool("overview_read", {})).content[0]?.text ?? "{}");
+		const read = JSON.parse(
+			(await bridge.callTool("overview_read", { project_id: project.id })).content[0]?.text ?? "{}",
+		);
 		const wrote = await bridge.callTool("overview_write", {
+			project_id: project.id,
 			base_version: read.version,
 			data: JSON.stringify({ current: "信封里的进展" }),
 		});
 		expect(wrote.isError).toBeUndefined();
 		expect(await Bun.file(path).text()).toContain("信封里的进展");
-		const written = JSON.parse((await bridge.callTool("overview_read", {})).content[0]?.text ?? "{}");
+		const written = JSON.parse(
+			(await bridge.callTool("overview_read", { project_id: project.id })).content[0]?.text ?? "{}",
+		);
 		expect(written.current).toBe("信封里的进展");
 		expect(written.version).not.toBe(read.version);
 
 		// `data` as an object works too; top-level fields win over the envelope.
 		const again = await bridge.callTool("overview_write", {
+			project_id: project.id,
 			base_version: written.version,
 			current: "顶层优先",
 			data: { current: "信封里" },
@@ -373,6 +382,7 @@ describe("library V1.1: content & write capabilities", () => {
 
 		// An argument the tool doesn't know must error, never drop silently.
 		const bogus = await bridge.callTool("overview_write", {
+			project_id: project.id,
 			base_version: written.version,
 			goal_new: "编造的字段",
 		});
@@ -421,6 +431,7 @@ describe("library V1.1: content & write capabilities", () => {
 		const bridge = new LibraryBridge({ serviceUrl: base, token });
 		await bridge.callTool("project_open", { name: "订单系统" });
 		const wrote = await bridge.callTool("resource_write", {
+			project_id: project.id,
 			name: "meeting-notes.md",
 			content: "# 会议纪要\n\n第一条结论",
 		});
@@ -559,7 +570,7 @@ describe("library V1.1: content & write capabilities", () => {
 		// MCP task_create carries priority end to end.
 		const bridge = new LibraryBridge({ serviceUrl: base, token });
 		await bridge.callTool("project_open", { name: "订单系统" });
-		const mcp = await bridge.callTool("task_create", { title: "MCP 后排任务", priority: "P1" });
+		const mcp = await bridge.callTool("task_create", { project_id: project.id, title: "MCP 后排任务", priority: "P1" });
 		expect(mcp.isError).toBeUndefined();
 		const mcpTask = JSON.parse(mcp.content[0]?.text ?? "{}");
 		expect(mcpTask.priority).toBe("p1");

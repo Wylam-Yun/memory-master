@@ -284,14 +284,14 @@ describe("library service", () => {
 		expect(opened.isError).toBeUndefined();
 		expect(opened.content[0]!.text).toContain(project.id);
 
-		const created = await bridge.callTool("task_create", { title: "桥接创建的任务" });
+		const created = await bridge.callTool("task_create", { project_id: project.id, title: "桥接创建的任务" });
 		expect(created.isError).toBeUndefined();
 		const tasks = await json(await req(`/api/projects/${project.id}/tasks`));
 		expect(tasks.map((t: { title: string }) => t.title)).toEqual(["桥接创建的任务"]);
 
 		// Revocation shows up at the tool layer as a readable error, not a stack trace.
 		await req("/api/clients/codex", { method: "PUT", body: { enabled: false } });
-		const denied = await bridge.callTool("task_list", {});
+		const denied = await bridge.callTool("task_list", { project_id: project.id });
 		expect(denied.isError).toBe(true);
 		expect(denied.content[0]!.text).toContain("ACCESS_DISABLED");
 
