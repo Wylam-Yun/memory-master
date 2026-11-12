@@ -76,3 +76,11 @@ Codex、Claude Code、Devin、Cursor、OpenCode、Hermes、DeepSeek Harness 分�
 - 关闭并重新启动编译服务，重新建立每个 harness 的 MCP 会话，A 的只读例外与 B 的修改默认继续生效。
 
 这次实测确认 Memory Master 对各 harness 身份的权限执行。会话由实际 MCP 客户端驱动，没有启动七种产品各自的模型聊天。每条操作证据在本机 /tmp/mm-harness-permissions-evidence.json，完整执行输出在 /tmp/mm-harness-permissions-browser.log。实测未发现新增权限管理功能失效，既有全量测试结果继续保留。
+
+## 2026-11-12 Codex 与 Claude Code 真实会话验收
+
+用本机 Codex CLI 0.164.0 和 Claude Code 2.1.308 分别启动真实模型会话。每个项目独立开会话，权限在隔离的编译版 Memory Master 服务上设置。按客户端逐项核对工具响应和实际任务文件。只读项目可读概览，创建任务返回 `WRITE_DISABLED`，目录不变；授权项目各成功创建一份预期任务文件；项目关闭连接时返回 `PROJECT_NOT_FOUND`，目录不变。全局断开连接单独验证 `ACCESS_DISABLED`，目录不变。
+
+首次 Claude Code 多项目会话并行调用了 `project_open`，原本打算对只读项目发起的写入落到了已授权项目。这次写入不计入只读验证。独立会话复测时，只读项目没有文件变化，授权项目仅出现一份预期任务。并行选中多个项目会改变后续工具的写入目标，见 [已知踩坑](../../docs/pitfalls.md)。
+
+隔离环境的工具调用记录保存在本机临时目录 mm-live-client-evidence-twm5t5du。Claude Code 使用机器已配置的模型代理；为实测启动了已启用代理的 CC Switch 应用。此次验证未使用正式记忆库。
