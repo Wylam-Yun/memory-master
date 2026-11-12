@@ -1,458 +1,215 @@
 <p align="center">
-  <img src="./.github/memaster-logo.png" alt="Memaster logo" width="120">
+  <img src=".github/memaster-logo.png" alt="Memory Master" width="100">
 </p>
 
-<h1 align="center">Memaster</h1>
-<p align="center"><strong>Markdown‑native Task Manager &amp; Kanban visualizer for any Git repository</strong></p>
-<p align="center">AI agents write the code. You review the tasks: before, during, and after.</p>
+<h1 align="center">Memory Master</h1>
 
-<p align="center">
-  <a href="https://www.npmjs.com/package/memory-master"><img src="https://img.shields.io/npm/v/memory-master?color=brightgreen" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/memory-master"><img src="https://img.shields.io/npm/dm/memory-master" alt="npm downloads"></a>
-  <a href="https://github.com/Wylam-Yun/memory-master/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Wylam-Yun/memory-master" alt="MIT license"></a>
-  <a href="https://github.com/Wylam-Yun/memory-master"><img src="https://img.shields.io/github/stars/Wylam-Yun/memory-master?style=social" alt="GitHub stars"></a>
-</p>
+<p align="center"><strong>让人和多个 AI Agent 接着推进同一个项目。</strong></p>
+<p align="center">在网页查看进展，在熟悉的 Agent 聊天中工作，共用保存在本机的项目记录。</p>
+<p align="center">简体中文 · <a href="README.en.md">English</a></p>
 
-<p align="center">
-<code>npm i -g memory-master</code>
-</p>
+Memory Master 是一个本地项目管理与交接工具。它保存项目背景、长期约定、目标、当前进展、任务和资料，让你在换一个聊天或换一个 Agent 后，仍能找到工作停在哪里、下一步做什么。
 
-![Memaster demo GIF using: memaster board](./.github/memaster-v1.40.gif)
+你可以用它管理软件开发，也可以管理学习计划、活动筹备、创作或调研。每个项目有独立的记忆目录，可以按需关联工作文件夹。
 
+[快速开始](#快速开始) · [连接-agent](#连接-agent) · [日常使用](#日常使用) · [数据保存](#数据保存) · [本地开发](#本地开发)
 
----
+## 主要功能
 
-> **Memaster** turns any folder into a **self‑contained project board**
-> powered by plain Markdown files and a zero‑config CLI.
+| 能力 | 你可以做什么 |
+| --- | --- |
+| 多项目记忆库 | 在一个本机网页里建立、切换和管理多个项目，分别保存项目记录。 |
+| 项目概览 | 先看最新进展、当前目标和重点任务，按需展开完整简介、项目约定、功能与用法和关键路径。 |
+| Agent 接手 | 在聊天中指定项目，让 Agent 读取共享记录，接着推进并保存结果。 |
+| 目标与阶段进展 | 独立管理目标，保留已完成和已调整目标的原文与日期，记录和修正关键阶段成果。 |
+| 任务管理 | 跟踪任务状态，网页展示当前重点 P0，Agent 可维护后续安排 P1。 |
+| 项目架构 | 用关系图、各部分职责和主要流程说明项目，支持 Markdown 编辑与预览。 |
+| 项目资料 | 上传原件，在网页阅读 Markdown 和文本，下载其他格式，供 Agent 按需读取。 |
+| 版本与变更记录 | 修改时校验读取版本，冲突时返回最新内容，成功保存后记录操作者、时间与前后值。 |
+| 客户端授权 | 分别启用或关闭各个 Agent 客户端的记忆库访问，启用时自动安装连接配置与协作 Skill。 |
 
-## Why Memaster in the AI era
+## 快速开始
 
-AI agents can now produce more plausible code in an hour than you can carefully read in a day.
-The bottleneck is no longer writing code. It's your attention. You can't meaningfully review
-15,000 generated lines in one sitting, but you can read a screenful of task specs with acceptance
-criteria before any code exists, and push back while a misunderstanding is still one sentence,
-not a rebuilt feature.
-
-Memaster structures agent work around **three review checkpoints**:
-
-1. **Review the spec:** the agent decomposes your idea into tasks with descriptions, acceptance
-   criteria, and milestones before implementation starts.
-2. **Review the plan:** the agent researches your codebase and writes its implementation plan
-   into the task. Approve it or steer before any code is written.
-3. **Review the code:** one task = one context window = one PR. Diffs stay a size a human can
-   actually read.
-
-Afterwards, the completed tasks remain in Git as a permanent record of what was attempted and why,
-legible to you, your team, and the next agent.
-
-**Dogfooded:** nearly all of Memaster's own code is written by AI agents working through
-Memaster itself. The full task ledger lives in this repo's [memaster folder](memaster/tasks).
-
-📺 **See it in action:** [Devoxx Belgium 2025](https://www.youtube.com/watch?v=LSoDQU_9MMA) · [AI Engineer Code Summit 2025](https://www.youtube.com/watch?v=zMXKhhwiCIc)
-
-## Features
-
-* 🤖 **AI-ready** -- works with Claude Code, Gemini CLI, Codex, Kiro & any other MCP or CLI compatible AI assistant
-
-* 📝 **Markdown-native tasks** -- every task is a plain `.md` file in your repo
-
-* ✅ **Acceptance criteria & Definition of Done** -- verifiable scope per task, plus a reusable DoD checklist for every new task
-
-* 🎯 **Milestones & dependencies** -- structure bigger efforts and make execution order reviewable, with task detail showing what a task waits on and what waits on it
-
-* 📊 **Terminal Kanban** -- `memaster board` paints a live board in your shell; `memaster board export` creates shareable markdown reports
-
-* 🌐 **Web UI** -- `memaster browser` serves a local Kanban board with drag-and-drop and task editing forms
-
-* 🔍 **Search** -- fuzzy search across tasks, docs & decisions with `memaster search`
-
-* 🔒 **Local-first** -- no server, no account, no telemetry; tasks are plain files in your repo, and remote Git operations are optional
-
-* �️ **Memory library (V1.0 phase 1)** -- `memaster serve` runs a local service that hosts multiple independent projects under one library directory, with a web UI for project management and per-client authorization switches for agent access
-
-* �💻 Cross-platform (macOS, Linux, Windows) · 🆓 MIT-licensed & open-source
-
-### Memory Master service (memory library)
-
-`memaster serve` starts the local service (default port 6420) and opens the library web UI:
-
-* **Choose a memory library** on first launch (default `~/Documents/MemoryMaster`); each project is its own directory with a `memaster/` store and a `资料/` folder.
-* **Create and manage projects** from the project workspace. The overview shows latest progress, current goals and priority tasks. The sidebar links to overview, architecture, resources, and history. Open task management from the overview.
-* **Authorize agent clients** in `/settings`: Codex and Claude Code have independent switches and credentials, off by default. Revoking takes effect immediately, including writes already in flight.
-* **Connect an agent**: `memaster connect codex` (or `claude-code`) prints a ready-to-paste `mcpServers` config; the agent talks to the service through `memaster bridge` and can open projects by name from any directory.
-* **One-click client setup**: enabling a client in `/settings` installs its MCP config, a short instruction block, and the collaboration skill into its real config files — existing user config is preserved and re-enabling is idempotent. A client only gains project access after its bridge actually pings the service (`configured` → `connected`, shown per client in the UI).
-* **Project architecture**: read the relationship diagram, visible responsibilities, and main workflow. Composition tables are displayed once as readable explanations; click a diagram node to locate its explanation. Optional sources and P0 task links expand under “补充信息”. Read and edit preview use the same layout. See the [user guide](docs/USER-GUIDE.md).
-* **Consistent content names**: web pages, record headings, MCP descriptions and collaboration instructions use the same project content names. Overview sections show their own edit controls.
-* **Content-specific reading**: complete introduction prose, explicit current-progress sections, chapter navigation for longer usage guides, and readable agreement lists. All views use the same Markdown agents read; existing unstructured progress stays readable.
-* **Project overview**: projects open on the latest progress with the introduction’s first sentence beneath the project name. Expand and edit content within the overview. Existing links open the matching section in that same overview.
-* **Project agreements and handoff**: keep confirmed decisions, constraints, and important excluded approaches separate from the latest brief. Humans edit them in the overview; agents read/write `agreements` through the existing overview tools. The collaboration skill preserves the exact stop point, a concrete next action, answered questions, relevant references and revalidation needs.
-* **Critical paths**: record the name, purpose, and location of key data, test files, and materials. Include the server name for a server path. The overview displays these notes on demand, and agents use the same `criticalPaths` field.
-* **Dynamic project overview**: maintain a precise latest progress brief, one-sentence goals, completed/adjusted goal archives, and key-result stage reports with actual completion dates. Humans manage them in the overview; agents use `goal_*` and `progress_*` MCP tools. Shared versions, duplicate prevention, confirmation and automatic history apply to both. Legacy goal text stays available. See the [user guide](docs/USER-GUIDE.md).
-* **Consistent light workspace**: project content and previews use the page's light palette even when the operating system prefers dark mode.
-* **Collaborate in your agent chat**: decisions are discussed in Codex or Claude Code; project progress and tasks retain confirmed results. Test-session notes belong in progress/tasks, rather than architecture.
-* **Project resources (项目资料)**: upload files into a project's `资料/` directory from the web UI; connected agents list and read them via `resource_list` / `resource_read`. Disabled clients lose even list access.
-* **Versions & history**: every record carries a content-hash version — updates must send `baseVersion` back, conflicts return the latest value. A per-project changelog (`memaster/changelog.jsonl`) attributes each write to the user or a specific agent, and record + history commit atomically.
-
----
-
-## <img src="./.github/5-minute-tour-256.png" alt="Getting started" width="28" height="28" align="center"> Getting started
+以下步骤从当前仓库源码运行。准备 Git 和 Bun 1.4.4；开发与发布工具的 Node.js 要求为 26.12.1 或更高，详见开发文档。[查看开发环境说明](DEVELOPMENT.md)
 
 ```bash
-# Install
-npm i -g memory-master
-# or: bun add -g memory-master
-# or: brew install memaster-md
-# or: nix run github:Wylam-Yun/memory-master
-
-# Initialize in any Git repo
-memaster init "My Awesome Project"
-
-# Or initialize without Git for local/non-code projects
-memaster init "Personal Planning" --no-git
+git clone https://github.com/Wylam-Yun/memory-master.git
+cd memory-master
+bun install
+bun src/cli.ts serve
 ```
 
-> [!TIP]
-> **Trying it without installing?** Use the full package name: `npx memory-master init "My Project"`, `npx memory-master board`.
+终端会打印网页地址，默认是 `http://127.0.0.1:6420`。端口被占用时会选择后续可用端口，以实际输出为准。若网页没有自动打开，将该地址粘贴到浏览器。
 
-### Run with Nix
+1. 首次进入时选择记忆库目录，默认建议 `~/Documents/MemoryMaster`。
+2. 在「所有项目」点击「＋ 新建项目」，输入名称。需要时展开「关联本地文件夹（可选）」，填写已有文件夹的绝对路径。
+3. 在概览填写项目简介和当前进展，或按下一节连接 Agent 后，在聊天中让它整理。
+4. 打开「设置」，启用你准备使用的 Agent 客户端。
 
-Run Memaster directly from the repository flake:
+服务运行期间保持终端进程开启。关闭网页后服务继续运行，在终端按 `Ctrl+C` 可停止服务。
+
+也可以指定端口并自行打开网页。
 
 ```bash
-nix run github:Wylam-Yun/memory-master -- --version
+bun src/cli.ts serve --port 6430 --no-open
 ```
 
-Or install the named package into your Nix profile:
+构建后可通过独立可执行文件启动。
 
 ```bash
-nix profile install github:Wylam-Yun/memory-master#memaster-md
+bun run build
+./dist/memaster serve
 ```
 
-The Nix flake supports `x86_64-linux`, `aarch64-linux`, and
-`aarch64-darwin`. The x86_64 Linux package uses
-[Bun's unified x64 runtime](https://bun.com/docs/installation#cpu-requirements),
-with an SSE4.2 minimum and automatic CPU-specific paths. Pre-AVX2 compatibility
-is checked under Ivy Bridge emulation. Intel macOS users can use the npm, Bun,
-or Homebrew installation instead.
-
-The init wizard will ask how you want to connect AI tools:
-- **CLI instructions** (recommended): creates a short instruction file that tells agents to run `memaster instructions overview`.
-- **MCP connector**: optionally auto-configures Claude Code, Codex, Gemini CLI, Kiro or Cursor for teams that prefer MCP.
-- **Skip**: no AI setup; use Memaster purely as a task manager.
-
-For Cursor with CLI instructions, select AGENTS.md or pass `--agent-instructions cursor`; both use the same AGENTS.md target. Memaster preserves existing AGENTS.md content and does not migrate or remove unrelated user-managed `.cursor/rules` files.
-
-Everything is stored as human-readable Markdown in a project-local memaster folder such as `memaster/`, `.memaster/`, or a custom project-relative path configured through `memaster.config.yml` (e.g. `memaster_directory: my-memaster`). Task IDs use a configurable prefix (`memaster init --task-prefix`): the default produces `TASK-1`-style IDs, while this repository uses `back`, so examples below show `BACK-1`-style IDs. Git is optional: `memaster init --no-git` creates a filesystem-only project.
-
-> [!TIP]
-> **Want an architecture diagram of your repo, kept up to date automatically?** See the [Memaster + Groma.md integration](#groma-md) below.
-
----
-
-## Working with AI agents
-
-This is the recommended flow for Claude Code, Codex, Gemini CLI, Kiro and similar tools, following the **spec‑driven AI development** approach.
-After running `memaster init`, agents should start by running `memaster instructions overview`. Work in this loop:
-
-**Step 1: Describe your idea.** Tell the agent what you want to build and ask it to split the work into small tasks with clear descriptions and acceptance criteria.
-
-**🤖 Ask your AI Agent:**
-> I want to add a search feature to the web view that searches tasks, docs, and decisions. Please decompose this into small Memaster tasks.
-
 > [!NOTE]
-> **Review checkpoint #1:** read the task descriptions and acceptance criteria.
+> 本文描述当前主干源码的功能。项目仍在开发中，macOS 安装应用属于后续交付计划。
 
-**Step 2: One task at a time.** Work on a single task per agent session, one PR per task. Good task splitting means each session can work independently without conflicts. Make sure each task is small enough to complete in a single conversation. You want to avoid running out of context window.
+## 连接 Agent
 
-**Step 3: Plan before coding.** Ask the agent to research and write an implementation plan in the task. Do this right before implementation so the plan reflects the current state of the codebase.
+Memory Master 通过 MCP（Model Context Protocol，让 Agent 调用外部工具的协议）向聊天中的 Agent 提供项目读写工具。服务端保存记录，客户端通过 `bridge` 连接本机服务。
 
-**🤖 Ask your AI Agent:**
-> Work on BACK-10 only. Research the codebase and write an implementation plan in the task. Wait for my approval before coding.
+```mermaid
+flowchart LR
+  user[你] -->|查看和编辑| web[本机网页]
+  user -->|交代工作| agent[Agent 聊天]
+  web -->|读取和更新| service[Memory Master 服务]
+  agent -->|调用项目工具| bridge[MCP bridge]
+  bridge -->|读取和更新| service
+  service -->|保存| files[本机记忆库]
+```
 
-> [!NOTE]
-> **Review checkpoint #2:** read the plan. Does the approach make sense? Approve it or ask the agent to revise.
+### 在设置中启用
 
-**Step 4: Implement and verify.** Let the agent implement the task.
+1. 启动服务，打开网页「设置」。
+2. 找到已安装的客户端，打开访问开关。系统会写入 MCP 配置、协作指令和 `memory-master` Skill，并保留配置中已有的其他内容。
+3. 在对应客户端开启新会话或重新加载 MCP 连接。
+4. 等待设置页从「已配置，等待接入」变为「已接入」，再在聊天中指定项目。
 
-> [!NOTE]
-> **Review checkpoint #3:** review the code, run tests, check linting, and verify the results match your expectations.
+当前提供以下客户端的配置安装与独立授权。
 
-Mark verified work Done (or the configured final status). During periodic cleanup, `memaster task archive` moves it off the board; the same command takes canceled, duplicate, or invalid work off the board at any time. An archived task keeps its ID, record, and dependency links, stays readable with `memaster task view`, and is read-only. `memaster task restore` brings an archived task back to the board with the same ID. To remove a task for good, archive it and then run `memaster task delete`, which releases its ID once no other branch or worktree still holds the task.
+| 客户端 | `connect` 参数 |
+| --- | --- |
+| Codex | `codex` |
+| Claude Code | `claude-code` |
+| Devin | `devin` |
+| Cursor | `cursor` |
+| OpenCode | `opencode` |
+| Hermes | `hermes` |
+| DeepSeek Harness | `dsh` |
 
-If the output is not good enough: clear the plan/notes/final summary, refine the task description and acceptance criteria, and run the task again in a fresh session.
+「已接入」表示该客户端的桥接进程曾成功联系服务。关闭某个客户端的开关后，服务会拒绝它后续的项目读写请求。
 
----
-
-## Working without AI agents
-
-Use Memaster as a standalone task manager from the terminal or browser.
+需要手动配置时，先在设置中启用客户端，再在仓库目录运行相应命令，取得该客户端格式的配置片段。
 
 ```bash
-# Create and refine tasks
-memaster task create "Render markdown as kanban"
-memaster task edit BACK-1 -d "Detailed context" --ac "Clear acceptance criteria"
+bun src/cli.ts connect codex
+bun src/cli.ts connect claude-code
+```
 
-# Track work
-memaster task list -s "To Do"
-memaster task list --json | jq '.tasks[] | .id'
-memaster task edit BACK-1 --comment "Can we split the UI work into a separate PR?" --comment-author @sara
-memaster search "kanban"
+输出包含本机服务地址和访问凭据，请将它用于对应客户端的本地配置。
+
+### 在聊天中指定项目
+
+先在网页建立一个名为「读书会」的项目，然后可以这样交代工作。
+
+> 打开 Memory Master 的「读书会」项目。先读当前进展、项目约定和相关任务，告诉我停在哪里，然后继续准备下次活动需要的阅读材料。
+
+换一个 Agent 或开启新聊天后，继续指定同一个项目。
+
+> 接手「读书会」项目，根据共享记录继续下一步。完成后更新任务和当前进展，写清已经完成的结果、剩余工作和下一步。
+
+安装的协作 Skill 规定 Agent 先读取记录，再按实际结果维护进度。涉及需要你决定的选择时，在原聊天中讨论，并把确认结论保存到项目记录。接手效果取决于客户端是否加载了连接、指令和 Skill，以及记录是否及时维护。
+
+## 日常使用
+
+### 查看当前情况与长期约定
+
+打开项目后，概览优先展示最新进展、当前目标和当前任务。点任务名称可进入任务页并定位相应条目，点「查看全部任务」进入任务管理。
+
+「完整简介」保存项目背景。「项目约定」保存已确认、以后仍需遵守的决定与限制。「关键路径」记录关键数据、测试文件或材料的位置，便于下一位 Agent 找到继续工作所需的内容。每一栏都可以在概览内阅读和编辑。
+
+### 管理目标和阶段成果
+
+在「当前目标」点击「管理目标」添加一句话目标。目标达成后归档为已完成，方向变化时调整并保留原目标。需要你认可结果的目标，可以勾选「完成前需要我确认」。
+
+关键成果完成后，在「阶段成果」记录标题、日期和结果说明。历史目标与阶段成果按需展开，支持修正记录；日期无法确认时可以标为未知。
+
+### 阅读项目架构和资料
+
+从侧栏进入「项目架构」，按整体说明、关系图、各部分职责和主要流程阅读。点击图节点可以定位对应职责，选择「编辑」可修改 Markdown 并查看预览。
+
+从「资料」上传项目原件，单个文件上限为 10 MiB。点击文件名可阅读 Markdown 或文本，其他格式可下载原件。Agent 可以读取同一份已上传资料。[查看详细操作](docs/USER-GUIDE.md)
+
+### 查看修改与处理冲突
+
+「变更记录」显示谁在什么时候改了哪些内容，展开可查看前后值。多人或多个 Agent 修改同一条记录时，过期版本会被拒绝；重新读取最新内容，比较差异后再保存。
+
+## 数据保存
+
+记忆库目录与工作文件夹分别保存。以名为 `reading-club` 的项目目录为例，主要文件如下。
+
+```text
+~/Documents/MemoryMaster/
+└── reading-club/
+    ├── memaster/
+    │   ├── config.yml        # 项目身份、名称和可选工作文件夹
+    │   ├── overview.md       # 简介、约定、当前进展、目标、成果与用法
+    │   ├── architecture.md   # 保存后生成的项目架构
+    │   ├── tasks/            # Markdown 任务文件
+    │   └── changelog.jsonl    # 自动生成的变更记录
+    └── 资料/                  # 用户上传的原件
+```
+
+应用设置默认保存在 `~/.memory-master/settings.json`，包含记忆库位置、服务端口与客户端授权信息。备份项目时保存记忆库目录，妥善保管含访问凭据的应用设置文件。
+
+网页与 MCP 使用同一份记录。更新项目内容请通过对应入口保存，以便保留版本校验与自动历史。服务监听 `127.0.0.1`，网页和 Agent 的项目访问都依赖本机服务运行。
+
+## 仓库内的任务管理
+
+项目还提供 `memaster` CLI、终端看板和仓库内网页看板，适合把任务、文档和决策记录与代码放在一起。以下命令假设你已构建项目，并将生成的可执行文件加入 `PATH`。
+
+```bash
+# 在需要管理的项目目录中初始化
+memaster init "My Project" --defaults
+
+# 创建和查看任务，默认 ID 前缀为 TASK
+memaster task create "准备发布说明"
+memaster task list --plain
+memaster task view TASK-1 --plain
+
+# 打开终端看板或当前目录项目的网页看板
 memaster board
-
-# Work visually in the browser
-memaster browser
-```
-
-You can switch between AI-assisted and manual workflows at any time; both operate on the same Markdown task files. Just prefer Memaster commands (CLI/MCP/Web) over hand-editing task files, so field types and metadata stay consistent.
-
-Read commands support stable, versioned JSON for scripts and integrations. Use `--json` with `task list`, `task view`, the `task <id>` shorthand, `draft list`, `decision list`, and `search`. JSON mode is noninteractive and keeps successful stdout machine-readable. Add `--watch` to `task list --json` for an initial full list followed by changed full replacements, using the exact same JSON format. Read successive complete JSON values; each response replaces the previous list.
-
-**Learn more:** [CLI reference](CLI-INSTRUCTIONS.md) | [Advanced configuration](ADVANCED-CONFIG.md)
-
----
-
-<a id="groma-md"></a>
-
-## 🗺️ Memaster + Groma.md
-
-Memaster keeps the spec, the plan and the code reviewable. [Groma.md](https://groma.md) adds the
-architecture: it scans your repository into a C4 map that you or your coding agent curate, stored next
-to your code as an [Open Knowledge Format 0.2](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md)
-bundle. It reads your Memaster tasks, so the two work well together:
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./.github/groma-map-dark.webp">
-  <img src="./.github/groma-map-light.webp" alt="Memaster's own architecture in Groma.md: Memaster tasks pinned to the components they touch, with one task selected and its acceptance criteria open" width="100%">
-</picture>
-
-* 📍 **Tasks on the map** -- every task is pinned to the components it touches, so you see where the work lands in your system, not only in a list
-
-* 👀 **Who is doing what** -- with several agents at work, the map shows where each one is busy
-
-* 🔍 **Review a task by its architecture** -- select a task to highlight the components it touches and inspect its changes without leaving the map
-
-* 📦 **Open Knowledge Format 0.2** -- one Markdown document per element, so the map stays portable and readable without Groma.md
-
-* 📝 **Still plain files** -- both run locally, need no account, and keep everything as Markdown in your repo
-
-Groma.md is a separate install, and Memaster works fine without it. To add the map to a repo that
-already uses Memaster:
-
-```bash
-npm i -g groma.md
-groma web
-```
-
-Memaster uses it on itself: every push to main updates its map, and every pull request gets a comment
-showing what it changes in the architecture.
-
-👉 **[Get started at groma.md](https://groma.md)**
-
-🗺️ **[Explore Memaster's own architecture, live](https://mrlesk.github.io/Memaster/architecture/auto/)**
-
----
-
-## <img src="./.github/web-interface-256.png" alt="Web Interface" width="28" height="28" align="center"> Web Interface
-
-Launch a web interface for visual task management on the local machine. The server listens on `127.0.0.1` and is not
-reachable from other devices on the LAN or VPN:
-
-```bash
-# Start the web server (opens browser automatically)
 memaster browser
 
-# Custom port
-memaster browser --port 8080
-
-# Don't open browser automatically
-memaster browser --no-open
+# 搜索任务、文档和决策
+memaster search "发布" --plain
 ```
 
-**Features:**
-- Interactive Kanban board with drag-and-drop
-- Multi-select cards to move several tasks to one column
-- Task creation and editing with forms
-- Interactive acceptance criteria editor with checklists
-- Real-time updates across all views
-- Responsive design for desktop and mobile
-- Task archiving with confirmation dialogs
-- Seamless CLI integration - all changes sync with markdown files
+`memaster serve` 打开多项目记忆库，`memaster browser` 打开当前目录项目的任务看板。仓库任务模式也支持里程碑、依赖、验收项、任务归档与恢复，以及用于脚本的 JSON 输出。初始化普通本地文件项目时可添加 `--no-git`。
 
-![Web Interface Screenshot](./.github/web.jpeg)
+仓库模式的 Agent 连接入口是 `memaster mcp start`，共享记忆库使用 `memaster bridge`，由设置页安装客户端配置。[CLI 参考](CLI-INSTRUCTIONS.md) · [高级配置](ADVANCED-CONFIG.md) · [Shell 补全](completions/README.md)
 
-To keep the Web UI running as an auto-starting local service, see [Running Memaster as a Service](memaster/docs/doc-003%20-%20Running-Memaster-Browser-as-a-Service.md).
+## 本地开发
 
----
+主要实现使用 TypeScript、Bun 和 React。以下目录分别负责命令、共享服务、网页和 Agent 连接。
 
-## 🔧 MCP Integration (Model Context Protocol)
-
-CLI instructions are the default AI setup. MCP remains supported for AI coding assistants like Claude Code, Codex, Gemini CLI and Kiro when you explicitly prefer an MCP connector.
-You can run `memaster init` (even if you already initialized Memaster) and choose MCP integration, or follow the manual steps below.
-
-### Client guides
-
-<details>
-  <summary><strong>Claude Code</strong></summary>
-
-  ```bash
-  claude mcp add memaster --scope user -- memaster mcp start
-  ```
-
-</details>
-
-<details>
-  <summary><strong>Codex</strong></summary>
-
-  ```bash
-  codex mcp add memaster -- memaster mcp start
-  ```
-
-</details>
-
-<details>
-  <summary><strong>Gemini CLI</strong></summary>
-
-  ```bash
-  gemini mcp add memaster -s user memaster mcp start
-  ```
-
-</details>
-
-<details>
-  <summary><strong>Kiro</strong></summary>
-
-  ```bash
-  kiro-cli mcp add --scope global --name memaster --command memaster --args mcp,start
-  ```
-
-</details>
-
-<details>
-  <summary><strong>Cursor / other MCP clients</strong></summary>
-
-  Use the manual JSON config below in your client's MCP settings.
-
-</details>
-
-Use the shared `memaster` server name everywhere. The server finds the active project from your client's MCP roots, and re-resolves when you switch workspace or worktree. A single user-scope server covers every repo.
-
-<details>
-  <summary><strong>Manual config</strong></summary>
-
-```json
-{
-  "mcpServers": {
-    "memaster": {
-      "command": "memaster",
-      "args": ["mcp", "start"],
-      "env": {
-        "MEMASTER_CWD": "/absolute/path/to/your/project"
-      }
-    }
-  }
-}
-```
-
-Set `MEMASTER_CWD` to pin the server to one project and stop workspace following. Use it to always target the same memaster, or when your client can't report MCP roots.
-If your IDE supports custom args but not env vars, you can also use `["mcp", "start", "--cwd", "/absolute/path/to/your/project"]`.
-Until the server finds an initialized project, it serves `memaster://init-required`.
-
-</details>
-
-> [!IMPORTANT]
-> When adding the MCP server manually, add a short instruction to your CLAUDE.md/AGENTS.md files telling agents to read `memaster://workflow/overview`.
-> This step is not required when using `memaster init` as it adds these instructions automatically.
-> For CLI-based setups, use `memaster instructions overview` to fetch the current workflow guidance.
-
-
-Once connected, agents can read the Memaster workflow instructions via `memaster://workflow/overview`, with detailed guides at `memaster://workflow/task-creation`, `memaster://workflow/task-execution`, and `memaster://workflow/task-finalization`.
-Use `/mcp` command in your AI tool (Claude Code, Codex, Kiro) to verify if the connection is working.
-
----
-
-## <img src="./.github/cli-reference-256.png" alt="CLI Reference" width="28" height="28" align="center"> CLI reference
-
-Full command reference covering task management, search, board, docs, decisions, and more: **[CLI-INSTRUCTIONS.md](CLI-INSTRUCTIONS.md)**
-
-Quick examples: `memaster`, `memaster instructions`, `memaster task create`, `memaster task list`, `memaster task edit`, `memaster milestone add`, `memaster milestone rename`, `memaster milestone remove`, `memaster search`, `memaster board`, `memaster browser`.
-
-Full help: `memaster --help`
-
----
-
-## <img src="./.github/configuration-256.png" alt="Configuration" width="28" height="28" align="center"> Configuration
-
-Memaster works with zero configuration. Settings merge from CLI flags, then the project config file (`memaster.config.yml` when present, otherwise `memaster/config.yml` or `.memaster/config.yml`), then built‑in defaults.
-
-Run `memaster config` with no arguments to launch the interactive wizard (the same experience triggered from `memaster init` advanced setup). It walks through cross-branch accuracy (`checkActiveBranches`, `remoteOperations`, `activeBranchDays`), Git workflow (`autoCommit`, `bypassGitHooks`), ID formatting (`zeroPaddedIds`), editor integration (`defaultEditor`), Definition of Done defaults, and Web UI defaults (`defaultPort`, `autoOpenBrowser`). Skipping the wizard applies the safe built-in defaults, and rerunning `memaster init` or `memaster config` pre-populates prompts with your current values.
-
-For filesystem-only projects (`memaster init --no-git`), the saved config forces `checkActiveBranches=false`, `remoteOperations=false`, and `autoCommit=false` so CLI, Web, and MCP local-file workflows do not depend on a Git repository.
-
-### Definition of Done defaults
-
-Set project-wide DoD items with `memaster config` (or during `memaster init` advanced setup), in the Web UI (Settings → Definition of Done Defaults), or by editing the project config file directly:
-
-```yaml
-definition_of_done:
-  - Tests pass
-  - Documentation updated
-  - No regressions introduced
-```
-
-When a project uses root config discovery, edit `memaster.config.yml` instead of `memaster/config.yml`.
-
-These items are added to every new task by default. You can add more on create with `--dod`, or disable defaults per task with `--no-dod-defaults`.
-
-For the full configuration reference (all options, default values, commands, and detailed notes), see **[ADVANCED-CONFIG.md](ADVANCED-CONFIG.md)**.
-
----
-
-## Troubleshooting
-
-### Apple Silicon (macOS)
-
-On M-series Macs, `memaster` can fail with `illegal hardware instruction` or `Binary package not installed for darwin-...` when Node, Bun, or Homebrew run under Rosetta (x64 emulation) and install the Intel binary instead of the arm64 one — or the other way around. The launcher runs whichever darwin variant (arm64 or x64) is actually installed, but a clean native-arch install is the reliable fix.
-
-Check what your tools report:
+| 位置 | 职责 |
+| --- | --- |
+| `src/cli.ts` | `serve`、`connect`、`bridge` 与仓库任务命令入口。 |
+| `src/library/` | 项目存储、概览、目标、资料、版本、历史与客户端配置安装。 |
+| `src/library-web/` | 多项目记忆库的 React 网页。 |
+| `src/mcp/library-bridge.ts` | 将共享记忆库工具连接到 MCP 客户端。 |
+| `src/library/agent-content/` | 随客户端安装的协作 Skill 与内容标准。 |
+| `src/core/`、`src/server/`、`src/web/` | 仓库任务管理、任务看板服务和网页。 |
+| `src/test/` | 自动化测试。 |
 
 ```bash
-uname -m                            # arm64 = Apple Silicon hardware; x86_64 = Intel or a Rosetta shell
-node -p process.arch                # architecture of your Node/Bun runtime
-sysctl -in sysctl.proc_translated   # 1 = current shell runs under Rosetta
-which brew                          # /opt/homebrew = arm64 brew, /usr/local = Intel brew
+bun run check:types
+bun run check
+bun run test
+bun run build
 ```
 
-If the architectures disagree, reinstall with the native one:
+环境设置、构建与 MCP 调试见开发文档，项目操作见用户指南。[开发说明](DEVELOPMENT.md) · [用户指南](docs/USER-GUIDE.md)
 
-```bash
-# Homebrew: make sure `which brew` prints /opt/homebrew, then
-brew reinstall memaster-md
-
-# npm
-arch -arm64 npm i -g memory-master
-
-# Bun
-arch -arm64 bun add -g memory-master
-```
-
-Running an x64 Node under Rosetta on purpose also works: `memaster` falls back to whichever `memory-master-darwin-*` package is present.
-
----
-
-## 📺 Talks & Community
-
-Watch Memaster in action:
-
-- **Devoxx Belgium 2025**: [the spec-driven agent workflow behind Memaster, live on stage](https://www.youtube.com/watch?v=LSoDQU_9MMA)
-- **AI Engineer Code Summit 2025**: [Memaster: task management for AI agents](https://www.youtube.com/watch?v=zMXKhhwiCIc)
-- Slides from these and more talks: [mrlesk.com/talks](https://mrlesk.com/talks)
-
-### Community tools
-
-- **[vscode-memaster-md](https://marketplace.visualstudio.com/items?itemName=ysamlan.vscode-memaster-md)** - VS Code extension with issues panel, kanban view, and editing. ([ysamlan/vscode-memaster-md](https://github.com/ysamlan/vscode-memaster-md))
-
----
-
-## License
-
-Memaster is released under the **MIT License**: do anything, just give credit. See [LICENSE](LICENSE).
+Memory Master 基于 Backlog.md 演进，原有版权信息保留在许可文件中。[项目许可](LICENSE)
