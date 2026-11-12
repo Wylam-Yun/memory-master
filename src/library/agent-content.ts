@@ -30,7 +30,7 @@ export function instructionBlock(serviceUrl: string): string {
 	return `${MANAGED_BEGIN}
 ## Memory Master 协作规则
 
-本机运行 Memory Master（本地项目管理与交接服务，${serviceUrl}）。当用户提到继续、推进或处理某个 Memory Master 项目，或明确给出项目名时：
+本机运行 Memory Master（本地项目管理与交接服务，${serviceUrl}）。用户要求在聊天中建立项目、继续已有项目，或讨论需要持续保存进度的工作时，加载 memory-master skill。尚未确定归属时先用 \`project_search\` 查找相关项目，在当前聊天请用户选择更新已有项目还是新建；用户明确要求新建时用 \`project_create\`。明确指定已有项目时：
 
 1. 用 \`project_open\` 按名称或 ID 打开项目；名称有歧义时它会返回候选列表，向用户确认后再打开。所选项目在本会话内保持，用户明确切换前不要换。
 2. 先加载已安装的 memory-master skill（调用 Skill 工具或直接读 SKILL.md），再按 Skill 读取当前进展、目标和相关任务，弄清现状再动手；写任何项目正文前，必须按 Skill 要求读「内容标准」的共同写作规则和本次涉及的板块。

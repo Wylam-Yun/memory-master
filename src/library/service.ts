@@ -19,7 +19,14 @@ import {
 } from "./overview.ts";
 import { ProjectStore, type TaskWriteInput } from "./project-store.ts";
 import { answerQuestion, createQuestion, getQuestion, listQuestions, type ProjectQuestion } from "./questions.ts";
-import { createProject, getProjectById, listProjects, resolveProject } from "./registry.ts";
+import {
+	createProject,
+	getProjectById,
+	listProjects,
+	resolveProject,
+	searchProjects,
+	validateWorkingDir,
+} from "./registry.ts";
 import { assertSafeResourceName, listResources, readResource, resourcesDir, saveResource } from "./resources.ts";
 import { AppSettingsStore } from "./settings.ts";
 import { TestHolds } from "./test-holds.ts";
@@ -691,30 +698,111 @@ export class LibraryService {
 		return json(await listProjects(await this.requireLibraryRoot()));
 	}
 
-	private async handleCreateProject(req: Request): Promise<Response> {
+	private async handleCreateProject(
+		req: Request,
+		identity: { token: string; id: LibraryClientId } | null = null,
+	): Promise<Response> {
 		const body = await parseBody(req);
+		checkFields(body, ["name", "workingDir"]);
 		const name = optionalString(body.name);
 		if (!name) throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Project name is required.", 400);
-		const project = await createProject(await this.requireLibraryRoot(), {
-			name,
-			workingDir: optionalString(body.workingDir),
-		});
-		// First changelog line: the project's own creation, attributed to the user
-		// (project creation is only exposed on the web channel).
-		await appendHistory(project.dir, {
-			ts: new Date().toISOString(),
-			actor: { type: "user" },
-			target: { type: "project", id: project.id, title: project.name },
-			action: "create",
-			changes: { name: { to: project.name } },
-			version: "",
-		});
-		return json(project, 201);
+		const workingDir = await validateWorkingDir(body.workingDir);
+		const project = await createProject(
+			await this.requireLibraryRoot(),
+			{
+				name,
+				workingDir,
+			},
+			{
+				beforeCommit: async () => {
+					await this.holds.waitIfAny();
+					this.assertRunning();
+					if (identity) await this.settings.assertAuthorized(identity.token);
+				},
+				onCreated: async (created) => {
+					this.holds.throwIfHistoryFailpoint();
+					await appendHistory(created.dir, {
+						ts: new Date().toISOString(),
+						actor: this.actorOf(identity),
+						target: { type: "project", id: created.id, title: created.name },
+						action: "create",
+						changes: diffFields({}, { name, workingDir }),
+						version: contentVersion(await Bun.file(join(created.dir, "memaster", "config.yml")).bytes()),
+					});
+				},
+			},
+		);
+		return json(await this.projectWithVersion(project), 201);
+	}
+
+	private async projectWithVersion(project: LibraryProject) {
+		const store = this.storeFor(project);
+		const bytes = await Bun.file(store.filesystem.configFilePath).bytes();
+		const config = store.filesystem.parseConfig(new TextDecoder().decode(bytes));
+		return { ...project, workingDir: config.workingDir, version: contentVersion(bytes) };
 	}
 
 	private async handleGetProject(projectId: string): Promise<Response> {
 		const project = await this.projectFor(projectId);
-		return json({ ...project, ...(await this.storeFor(project).projectMeta()) });
+		return json({ ...(await this.projectWithVersion(project)), ...(await this.storeFor(project).projectMeta()) });
+	}
+
+	private async handlePutProject(
+		req: Request,
+		projectId: string,
+		identity: { token: string; id: LibraryClientId } | null,
+	) {
+		const body = await parseBody(req);
+		checkFields(body, ["workingDir", "baseVersion"]);
+		if (!optionalString(body.baseVersion) || body.workingDir === undefined)
+			throw new LibraryError(
+				LIBRARY_ERROR_CODES.VALIDATION,
+				"workingDir and baseVersion are required; use null to unlink.",
+				400,
+			);
+		const workingDir = await validateWorkingDir(body.workingDir);
+		const project = await this.projectFor(projectId);
+		const store = this.storeFor(project);
+		const path = store.filesystem.configFilePath;
+		return store.withWriteLock(() =>
+			store.filesystem.withTaskLock({ id: "project-config", filePath: path }, async () => {
+				const before = await Bun.file(path).bytes();
+				const config = store.filesystem.parseConfig(new TextDecoder().decode(before));
+				const current = { ...project, workingDir: config.workingDir, version: contentVersion(before) };
+				if (current.version !== body.baseVersion) throw versionConflictError(current, current.version);
+				await this.holds.waitIfAny();
+				this.assertRunning();
+				if (identity) await this.settings.assertAuthorized(identity.token);
+				if (current.workingDir === workingDir) return json(current);
+				// Change only the directory key, preserving comments and custom/legacy settings.
+				const source = new TextDecoder().decode(before);
+				const preserved = source
+					.split("\n")
+					.filter((line) => !/^\s*(working_dir|workingDir)\s*:/.test(line))
+					.join("\n");
+				const next = workingDir
+					? `${preserved.trimEnd()}\nworking_dir: '${workingDir.replace(/'/g, "''")}'\n`
+					: preserved;
+				try {
+					await Bun.write(path, next);
+					this.holds.throwIfHistoryFailpoint();
+					await appendHistory(project.dir, {
+						ts: new Date().toISOString(),
+						actor: this.actorOf(identity),
+						target: { type: "project", id: project.id, title: project.name },
+						action: "update",
+						changes: diffFields({ workingDir: current.workingDir }, { workingDir }),
+						version: contentVersion(next),
+					});
+				} catch (error) {
+					await Bun.write(path, before);
+					throw error;
+				} finally {
+					store.filesystem.invalidateConfigCache();
+				}
+				return json(await this.projectWithVersion(project));
+			}),
+		);
 	}
 
 	private async handleGetOverview(projectId: string): Promise<Response> {
@@ -1186,7 +1274,17 @@ export class LibraryService {
 		const body = await parseBody(req);
 		const name = optionalString(body.name);
 		if (!name) throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Project name is required.", 400);
-		return json(await resolveProject(await this.requireLibraryRoot(), name));
+		return json(await this.projectWithVersion(await resolveProject(await this.requireLibraryRoot(), name)));
+	}
+
+	private async handleAgentSearchProjects(req: Request): Promise<Response> {
+		const body = await parseBody(req);
+		checkFields(body, ["query", "workingDir"]);
+		const query = optionalString(body.query) ?? "";
+		const workingDir = optionalString(body.workingDir);
+		if (!query && !workingDir)
+			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "query or workingDir is required.", 400);
+		return json(await searchProjects(await this.requireLibraryRoot(), query, workingDir));
 	}
 
 	/** Probe wrapper: host check only — the handler itself applies the probe gate. */
@@ -1284,6 +1382,8 @@ export class LibraryService {
 				"/api/projects/:id": {
 					GET: async (req: Request & { params: { id: string } }) =>
 						this.withRoute(req, () => this.handleGetProject(req.params.id)),
+					PUT: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handlePutProject(req, req.params.id, null)),
 				},
 				"/api/projects/:id/overview": {
 					GET: async (req: Request & { params: { id: string } }) =>
@@ -1406,6 +1506,10 @@ export class LibraryService {
 				},
 				"/api/agent/projects": {
 					GET: async (req: Request) => this.withAgentRoute(req, () => this.handleAgentListProjects(req)),
+					POST: async (req: Request) => this.withAgentRoute(req, (identity) => this.handleCreateProject(req, identity)),
+				},
+				"/api/agent/projects/search": {
+					POST: async (req: Request) => this.withAgentRoute(req, () => this.handleAgentSearchProjects(req)),
 				},
 				"/api/agent/projects/resolve": {
 					POST: async (req: Request) => this.withAgentRoute(req, () => this.handleAgentResolveProject(req)),
@@ -1413,6 +1517,8 @@ export class LibraryService {
 				"/api/agent/projects/:id": {
 					GET: async (req: Request & { params: { id: string } }) =>
 						this.withAgentRoute(req, () => this.handleGetProject(req.params.id)),
+					PUT: async (req: Request & { params: { id: string } }) =>
+						this.withAgentRoute(req, (identity) => this.handlePutProject(req, req.params.id, identity)),
 				},
 				"/api/agent/projects/:id/architecture": {
 					GET: async (req: Request & { params: { id: string } }) =>

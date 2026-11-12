@@ -85,6 +85,116 @@ describe("library service", () => {
 		expect(settings.libraryRoot).toBe(library);
 	});
 
+	test("chat project creation, candidate discovery and directory updates share the web records", async () => {
+		await setupLibrary();
+		const token = await enableClient("codex");
+		const bridge = new LibraryBridge({ serviceUrl: base, token });
+		const value = (result: Awaited<ReturnType<LibraryBridge["callTool"]>>) => {
+			expect(result.isError).not.toBe(true);
+			return JSON.parse(result.content[0]?.text ?? "{}");
+		};
+		const project = value(await bridge.callTool("project_create", { name: "读书会", working_dir: home })).opened;
+		expect(project.version).toStartWith("sha256:");
+		expect((await json(await req("/api/projects")))[0].id).toBe(project.id);
+		const overview = value(await bridge.callTool("overview_read", {}));
+		value(
+			await bridge.callTool("overview_write", {
+				base_version: overview.version,
+				description: "组织每月科幻阅读和线下交流",
+			}),
+		);
+		value(await bridge.callTool("project_create", { name: "周末活动" }));
+		const selected = value(await bridge.callTool("project_current", {})).project;
+		const candidates = value(await bridge.callTool("project_search", { query: "科幻阅读" }));
+		expect(candidates.projects.map((p: { id: string }) => p.id)).toContain(project.id);
+		expect(candidates.projects[0].description).toContain("科幻");
+		expect(value(await bridge.callTool("project_search", { working_dir: home })).projects[0].id).toBe(project.id);
+		expect(value(await bridge.callTool("project_current", {})).project.id).toBe(selected.id);
+		expect((await bridge.callTool("project_create", { name: "读书会" })).isError).toBe(true);
+		expect(value(await bridge.callTool("project_current", {})).project.id).toBe(selected.id);
+		value(await bridge.callTool("project_open", { name: project.id }));
+		const configPath = join(project.dir, "memaster", "config.yml");
+		await Bun.write(configPath, `${await Bun.file(configPath).text()}\n# 用户自定义配置\ncustom_key: keep-me\n`);
+		const before = value(await bridge.callTool("project_current", {})).project;
+		const work = join(home, 'O\'Brien-"资料"');
+		await import("node:fs/promises").then(({ mkdir }) => mkdir(work));
+		const changed = value(
+			await bridge.callTool("project_update", { working_dir: work, base_version: before.version }),
+		).project;
+		expect(changed.workingDir).toBe(work);
+		expect((await json(await req(`/api/projects/${project.id}`))).workingDir).toBe(work);
+		expect(await Bun.file(configPath).text()).toContain("# 用户自定义配置\ncustom_key: keep-me");
+		const conflict = await req(`/api/projects/${project.id}`, {
+			method: "PUT",
+			body: { workingDir: null, baseVersion: before.version },
+		});
+		expect(conflict.status).toBe(409);
+		expect((await json(conflict)).current.workingDir).toBe(work);
+		const historyBefore = await json(await req(`/api/projects/${project.id}/history`));
+		value(await bridge.callTool("project_update", { working_dir: work, base_version: changed.version }));
+		expect((await json(await req(`/api/projects/${project.id}/history`))).length).toBe(historyBefore.length);
+		holds.armHistoryFailure();
+		expect(
+			(await bridge.callTool("project_update", { working_dir: null, base_version: changed.version })).isError,
+		).toBe(true);
+		expect(value(await bridge.callTool("project_current", {})).project.workingDir).toBe(work);
+		const unlinked = await req(`/api/projects/${project.id}`, {
+			method: "PUT",
+			body: { workingDir: null, baseVersion: changed.version },
+		});
+		expect(unlinked.status).toBe(200);
+		expect((await json(unlinked)).workingDir).toBeUndefined();
+		expect(value(await bridge.callTool("project_current", {})).project.workingDir).toBeUndefined();
+		const history = await json(await req(`/api/projects/${project.id}/history`));
+		expect(history[0].actor).toEqual({ type: "agent", client: "codex" });
+		expect(history[0].changes.workingDir.to).toBe(home);
+	});
+
+	test("project creation is serialized and failures or revocation leave no partial project", async () => {
+		await setupLibrary();
+		const token = await enableClient("codex");
+		const create = (name: string) => req("/api/agent/projects", { method: "POST", token, body: { name } });
+		const responses = await Promise.all([create("同一项目"), create("同一项目")]);
+		expect(responses.map((response) => response.status).sort()).toEqual([201, 409]);
+		holds.armHistoryFailure();
+		expect((await create("写入失败")).status).toBe(500);
+		expect((await json(await req("/api/projects"))).map((p: { name: string }) => p.name)).toEqual(["同一项目"]);
+		const hold = holds.create("create-before-publish");
+		const pending = create("撤销期间创建");
+		await holds.waitForWaiter();
+		expect((await json(await req("/api/projects"))).length).toBe(1);
+		await req("/api/clients/codex", { method: "PUT", body: { enabled: false } });
+		holds.release(hold.id);
+		expect((await pending).status).toBe(403);
+		expect((await json(await req("/api/projects"))).length).toBe(1);
+		expect((await readdir(library)).some((name) => name.startsWith(".project-"))).toBe(false);
+		expect((await create("无授权")).status).toBe(403);
+		expect((await req("/api/agent/projects/search", { method: "POST", token, body: { query: "项目" } })).status).toBe(
+			403,
+		);
+	});
+
+	test("directory updates validate inputs and recheck authorization before committing", async () => {
+		await setupLibrary();
+		const project = await createProject("目录关联");
+		const token = await enableClient("codex");
+		const update = (workingDir: unknown, baseVersion = project.version) =>
+			req(`/api/agent/projects/${project.id}`, {
+				method: "PUT",
+				token,
+				body: { workingDir, baseVersion },
+			});
+		for (const invalid of ["relative/path", "/no/such/directory", 42]) expect((await update(invalid)).status).toBe(400);
+		expect((await update(home, "")).status).toBe(400);
+		const hold = holds.create("directory-before-write");
+		const pending = update(home);
+		await holds.waitForWaiter();
+		await req("/api/clients/codex", { method: "PUT", body: { enabled: false } });
+		holds.release(hold.id);
+		expect((await pending).status).toBe(403);
+		expect((await json(await req(`/api/projects/${project.id}`))).workingDir).toBeUndefined();
+	});
+
 	test("two library projects stay isolated through the web API and on disk", async () => {
 		await setupLibrary();
 		const orders = await createProject("订单系统");

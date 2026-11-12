@@ -8,6 +8,7 @@ import Markdown from "../components/Markdown.tsx";
 import OverviewContent, { CurrentContent } from "../components/OverviewContent.tsx";
 import OverviewFieldEditor from "../components/OverviewFieldEditor.tsx";
 import { ErrorNote, LoadingNote } from "../components/StatusMessage.tsx";
+import WorkingDirectory from "../components/WorkingDirectory.tsx";
 import { featurePreview, introductionSubtitle, progressSections } from "../overview-content.ts";
 import { type OverviewField, overviewPagePath } from "../overview-pages.ts";
 import { isDoneStatus, isP0Task } from "../utils.ts";
@@ -72,6 +73,7 @@ function ProjectHome({ projectId, name, section }: { projectId: string; name: st
 		<div className="max-w-[1000px] space-y-6 min-[720px]:space-y-8">
 			<header id="overview-description" className="scroll-mt-4">
 				<h1 className="break-words text-[28px] font-semibold leading-9">{name}</h1>
+				<WorkingDirectory projectId={projectId} />
 				{subtitle ? (
 					<p className="mt-1 line-clamp-3 break-words text-[14px] leading-6 text-[#555B65]">{subtitle}</p>
 				) : null}

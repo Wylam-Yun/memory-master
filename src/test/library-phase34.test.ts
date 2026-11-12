@@ -106,6 +106,8 @@ describe("phase 3+4: questions, resources, client setup", () => {
 		// The V1.1 block: read-first writes with base_version, questions asked
 		// in the conversation — question_ask is no longer promoted.
 		expect(claudeMd).toContain("project_open");
+		expect(claudeMd).toContain("project_search");
+		expect(claudeMd).toContain("project_create");
 		expect(claudeMd).toContain("读取当前进展、目标和相关任务");
 		expect(claudeMd).toContain("base_version");
 		expect(claudeMd).not.toContain("question_ask");

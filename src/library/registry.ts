@@ -1,9 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { mkdir, readdir, stat } from "node:fs/promises";
-import { basename, join, resolve } from "node:path";
+import { mkdir, mkdtemp, readdir, rename, rm, rmdir, stat } from "node:fs/promises";
+import { basename, isAbsolute, join } from "node:path";
+import Fuse from "fuse.js";
+import lockfile from "proper-lockfile";
 import { initializeProject } from "../core/init.ts";
 import { Core } from "../core/memaster.ts";
-import { initialOverviewContent, overviewFilePath } from "./overview.ts";
+import { initialOverviewContent, overviewFilePath, readOverview } from "./overview.ts";
 import {
 	LIBRARY_ERROR_CODES,
 	LibraryError,
@@ -141,6 +143,35 @@ export async function getProjectById(libraryRoot: string, id: string): Promise<L
 export async function createProject(
 	libraryRoot: string,
 	options: { name: string; workingDir?: string },
+	hooks: { beforeCommit?: () => Promise<void>; onCreated?: (project: LibraryProject) => Promise<void> } = {},
+): Promise<LibraryProject> {
+	await mkdir(libraryRoot, { recursive: true });
+	const release = await lockfile.lock(libraryRoot, { retries: { retries: 30, minTimeout: 10, maxTimeout: 100 } });
+	try {
+		return await createProjectLocked(libraryRoot, options, hooks);
+	} finally {
+		await release();
+	}
+}
+
+export async function validateWorkingDir(value: unknown): Promise<string | undefined> {
+	if (value === undefined || value === null || value === "") return undefined;
+	if (typeof value !== "string")
+		throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Working directory must be a string or null.", 400);
+	const path = value.trim();
+	if (!path) return undefined;
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: paths cannot contain config line separators
+	if (/[\x00-\x1f\x7f]/.test(path) || !isAbsolute(path))
+		throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Working directory must be an absolute path.", 400);
+	if (!(await isDirectory(path)))
+		throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, `Working directory "${path}" does not exist.`, 400);
+	return path;
+}
+
+async function createProjectLocked(
+	libraryRoot: string,
+	options: { name: string; workingDir?: string },
+	hooks: { beforeCommit?: () => Promise<void>; onCreated?: (project: LibraryProject) => Promise<void> },
 ): Promise<LibraryProject> {
 	const name = assertValidProjectName(options.name);
 	const existing = await listProjects(libraryRoot);
@@ -154,15 +185,7 @@ export async function createProject(
 
 	// Validate the working directory before creating anything, so a bad value
 	// leaves no half-made project directory behind.
-	const workingDirRaw = options.workingDir?.trim() || undefined;
-	// biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally rejecting control characters
-	if (workingDirRaw && /[\x00-\x1f\x7f]/.test(workingDirRaw)) {
-		throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "Working directory cannot contain control characters.", 400);
-	}
-	const workingDir = workingDirRaw ? resolve(workingDirRaw) : undefined;
-	if (workingDir && !(await isDirectory(workingDir))) {
-		throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, `Working directory "${workingDirRaw}" does not exist.`, 400);
-	}
+	const workingDir = await validateWorkingDir(options.workingDir);
 
 	const dirName = sanitizeProjectDirName(name);
 	const dir = join(libraryRoot, dirName);
@@ -176,30 +199,73 @@ export async function createProject(
 			);
 		}
 	}
-	await mkdir(dir, { recursive: true });
+	const staging = await mkdtemp(join(libraryRoot, ".project-"));
+	try {
+		const core = new Core(staging, { enableWatchers: false });
+		await initializeProject(core, {
+			projectName: name,
+			integrationMode: "none",
+			filesystemOnly: true,
+		});
 
-	const core = new Core(dir);
-	await initializeProject(core, {
-		projectName: name,
-		integrationMode: "none",
-		filesystemOnly: true,
-	});
+		const config = await core.filesystem.loadConfig();
+		const id = generateProjectId();
+		if (config) {
+			config.projectId = id;
+			// New projects are born speaking the P0/P1 priority vocabulary.
+			config.priorities = ["P0", "P1"];
+			if (workingDir) config.workingDir = workingDir;
+			await core.filesystem.saveConfig(config);
+		}
 
-	const config = await core.filesystem.loadConfig();
-	const id = generateProjectId();
-	if (config) {
-		config.projectId = id;
-		// New projects are born speaking the P0/P1 priority vocabulary.
-		config.priorities = ["P0", "P1"];
-		if (workingDir) config.workingDir = workingDir;
-		await core.filesystem.saveConfig(config);
+		await Bun.write(overviewFilePath(staging), initialOverviewContent(name));
+		await mkdir(join(staging, RESOURCES_DIR_NAME), { recursive: true });
+		await hooks.onCreated?.({ id, name, dir: staging, workingDir });
+		await hooks.beforeCommit?.();
+		// Publishing a fully initialized directory also publishes its creation history.
+		if (await isDirectory(dir)) await rmdir(dir);
+		await rename(staging, dir);
+		return { id, name, dir, workingDir };
+	} finally {
+		await rm(staging, { recursive: true, force: true });
 	}
+}
 
-	await Bun.write(overviewFilePath(dir), initialOverviewContent(name));
-	await mkdir(join(dir, RESOURCES_DIR_NAME), { recursive: true });
-
-	// Post-create self-check: a concurrent create racing into the same directory
-	// could have overwritten this project's identity — never return a dangling ID.
-	const persisted = await getProjectById(libraryRoot, id);
-	return { id: persisted.id, name: persisted.name, dir, workingDir };
+/** Read-only candidate discovery. The chatting agent decides semantic relevance with the user. */
+export async function searchProjects(libraryRoot: string, query: string, workingDir?: string) {
+	const projects = await listProjects(libraryRoot);
+	const records = await Promise.all(
+		projects.map(async (project) => {
+			const overview = await readOverview(project.dir);
+			const context = await Bun.file(overviewFilePath(project.dir))
+				.text()
+				.catch((error: NodeJS.ErrnoException) => {
+					if (error.code === "ENOENT") return "";
+					throw error;
+				});
+			return {
+				...project,
+				description: overview.description,
+				current: overview.current,
+				context,
+			};
+		}),
+	);
+	const search = new Fuse(records, {
+		keys: ["name", "description", "current", "context", "workingDir"],
+		threshold: 0.35,
+		ignoreLocation: true,
+		minMatchCharLength: 2,
+	});
+	const textMatches = query.trim() ? search.search(query.trim()).map(({ item }) => item) : [];
+	const directoryMatches = workingDir ? records.filter((project) => project.workingDir === workingDir) : [];
+	const matches = [...new Map([...directoryMatches, ...textMatches].map((project) => [project.id, project])).values()];
+	return {
+		total: matches.length,
+		projects: matches.slice(0, 20).map(({ context: _context, ...project }) => ({
+			...project,
+			description: project.description.slice(0, 600),
+			current: project.current.slice(0, 600),
+		})),
+	};
 }

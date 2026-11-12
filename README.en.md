@@ -108,7 +108,17 @@ bun src/cli.ts connect claude-code
 
 The output contains the local service address and an access credential. Use it in the corresponding client's local configuration.
 
-### Name the project in chat
+### Create or choose a project in chat
+
+After connecting your agent, ask it to create a project directly.
+
+> Create an “Order System” project in Memory Master, associate `/Users/me/workspace/orders`, and organize the requirements we just agreed on into its introduction and next tasks.
+
+The agent searches for related projects first. When a candidate may describe the same work, it explains the connection and asks in the current chat whether to update that project or create a new one. It saves after your choice. You can also ask it to check whether the current discussion belongs to an existing project.
+
+Candidate discovery matches names, overview content, and an explicitly supplied working directory. It returns up to 20 summaries. The agent assesses relevance using the chat context and can try other keywords or inspect the project list when wording differs. Newly created projects appear in the web workspace, whose project list refreshes periodically and when you return to the window.
+
+### Continue a project in chat
 
 First create a project named “Reading Club” in the web workspace. Then ask your agent to work on it.
 
@@ -119,6 +129,14 @@ Name the same project when switching agents or starting a new chat.
 > Take over “Reading Club” using its shared records and continue the next step. When finished, update the tasks and current progress with the completed results, remaining work, and next action.
 
 The installed collaboration skill instructs agents to read records first and maintain progress based on actual results. Discuss choices that need your decision in the original chat, then save the confirmed outcome to the project. Handoff depends on the client loading the connection, instructions, and skill, and on keeping the records current.
+
+### Associate an existing local project
+
+You can enter an existing absolute directory when creating a project. For an existing project, open its overview and choose **关联本地文件夹** (Associate local folder) or **修改关联** (Change association) below the project name. Save the complete path. Clear the input and save to unlink. Update the path here after moving the working folder.
+
+You can also ask your agent to associate a named project with an explicit path. The agent reads the current configuration version before updating it. The working directory tells the agent where to find work files. Project records live in the memory library. Access to work files depends on the agent client's filesystem permissions.
+
+After upgrading, restart the service, re-enable the relevant client in Settings to install updated instructions and the skill, then reconnect MCP or start a new chat to load the new tools.
 
 ## Everyday use
 

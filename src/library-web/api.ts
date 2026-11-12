@@ -52,6 +52,7 @@ export interface HistoryEntry {
 
 /** GET /api/projects/:id — project plus its task workflow/priority metadata. */
 export type ProjectMeta = LibraryProject & {
+	version: string;
 	statuses: string[];
 	doneStatus: string | null;
 	p0: string;
@@ -165,6 +166,8 @@ export const api = {
 	createProject: (name: string, workingDir?: string) =>
 		request<LibraryProject>("/api/projects", { method: "POST", body: { name, workingDir } }),
 	getProject: (id: string) => request<ProjectMeta>(`/api/projects/${id}`),
+	putProject: (id: string, workingDir: string | null, baseVersion: string) =>
+		request<ProjectMeta>(`/api/projects/${id}`, { method: "PUT", body: { workingDir, baseVersion } }),
 	getOverview: (id: string) => request<ProjectOverview>(`/api/projects/${id}/overview`),
 	putOverview: (id: string, update: Partial<Omit<ProjectOverview, "version">>, baseVersion: string) =>
 		request<ProjectOverview>(`/api/projects/${id}/overview`, { method: "PUT", body: { ...update, baseVersion } }),

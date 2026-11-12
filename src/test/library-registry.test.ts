@@ -3,7 +3,7 @@ import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Core } from "../core/memaster.ts";
-import { readOverview, writeOverview } from "../library/overview.ts";
+import { overviewFilePath, readOverview, writeOverview } from "../library/overview.ts";
 import {
 	createProject,
 	getProjectById,
@@ -11,6 +11,7 @@ import {
 	RESOURCES_DIR_NAME,
 	resolveProject,
 	sanitizeProjectDirName,
+	searchProjects,
 } from "../library/registry.ts";
 import { LIBRARY_ERROR_CODES } from "../library/types.ts";
 
@@ -48,6 +49,25 @@ describe("library registry", () => {
 		expect(project.workingDir).toBeUndefined();
 		const config = await new Core(project.dir).filesystem.loadConfig();
 		expect(config?.workingDir).toBeUndefined();
+	});
+
+	it("keeps legacy Windows paths and quoted working directories readable", () => {
+		const filesystem = new Core(library, { enableWatchers: false }).filesystem;
+		expect(filesystem.parseConfig('project_name: "旧项目"\nworking_dir: "C:\\temp\\new"\n').workingDir).toBe(
+			"C:\\temp\\new",
+		);
+		expect(filesystem.parseConfig("project_name: test\nworking_dir: '/Users/O''Brien/资料'\n").workingDir).toBe(
+			"/Users/O'Brien/资料",
+		);
+	});
+
+	it("searches valid projects even when an older project has no overview", async () => {
+		const old = await createProject(library, { name: "旧项目" });
+		await rm(overviewFilePath(old.dir));
+		const current = await createProject(library, { name: "读书会" });
+		await writeOverview(current.dir, { description: "准备科幻阅读材料" });
+		expect((await searchProjects(library, "科幻阅读")).projects.map((project) => project.id)).toContain(current.id);
+		expect((await searchProjects(library, "旧项目")).projects.map((project) => project.id)).toContain(old.id);
 	});
 
 	it("lists every project and resolves by name, dirname and id", async () => {

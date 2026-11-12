@@ -112,6 +112,51 @@ afterEach(async () => {
 	await service.stop();
 	await rm(home, { recursive: true, force: true });
 });
+
+test("在已有项目关联、更换和解除目录，冲突保留输入并显示最新路径", async () => {
+	await act(async () => {
+		window.history.replaceState({}, "", `/projects/${project.id}`);
+		root.render(<App />);
+	});
+	await flush();
+	await click("关联本地文件夹");
+	await fill("本地文件夹绝对路径", home);
+	await click("保存关联");
+	expect(container.textContent).toContain(`本地文件夹 · ${home}`);
+	const projectRecord = async () => (await nativeFetch(`${base}/api/projects/${project.id}`)).json();
+	expect((await projectRecord()).workingDir).toBe(home);
+	await click("修改关联");
+	await fill("本地文件夹绝对路径", "");
+	const record = await projectRecord();
+	await nativeFetch(`${base}/api/projects/${project.id}`, {
+		method: "PUT",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ workingDir: record.dir, baseVersion: record.version }),
+	});
+	await click("保存关联");
+	expect(container.textContent).toContain(`当前路径为 ${record.dir}`);
+	expect((container.querySelector('[aria-label="本地文件夹绝对路径"]') as HTMLInputElement).value).toBe("");
+	await click("重新读取关联");
+	expect((container.querySelector('[aria-label="本地文件夹绝对路径"]') as HTMLInputElement).value).toBe(record.dir);
+	await fill("本地文件夹绝对路径", "");
+	await click("保存关联");
+	expect((await projectRecord()).workingDir).toBeUndefined();
+	expect(container.textContent).toContain("本地文件夹 · 尚未关联");
+});
+
+test("切回已打开的网页时可以看见聊天创建的新项目", async () => {
+	await act(async () => root.render(<App />));
+	await flush();
+	expect(container.textContent).toContain("读书会");
+	await nativeFetch(`${base}/api/projects`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ name: "聊天新项目" }),
+	});
+	await act(async () => window.dispatchEvent(new dom.window.Event("focus")));
+	await flush();
+	expect(container.textContent).toContain("聊天新项目");
+});
 async function mount(page = "") {
 	dom.window.history.replaceState({}, "", `/projects/${project.id}${page ? `/${page}` : ""}`);
 	await act(async () => root.render(<App />));

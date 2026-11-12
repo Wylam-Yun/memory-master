@@ -91,13 +91,22 @@ export default function App() {
 		});
 	}, []);
 	useEffect(() => {
-		load().catch((e) =>
-			setState((s) => ({
-				...s,
-				loaded: true,
-				error: e instanceof Error ? e.message : String(e),
-			})),
-		);
+		const refresh = () => {
+			void load().catch((e) =>
+				setState((s) => ({
+					...s,
+					loaded: true,
+					error: s.loaded ? s.error : e instanceof Error ? e.message : String(e),
+				})),
+			);
+		};
+		refresh();
+		window.addEventListener("focus", refresh);
+		const timer = window.setInterval(refresh, 5000);
+		return () => {
+			window.removeEventListener("focus", refresh);
+			window.clearInterval(timer);
+		};
 	}, [load]);
 
 	if (!state.loaded) {

@@ -2411,7 +2411,11 @@ ${description || `Milestone: ${title}`}`,
 					break;
 				case "working_dir":
 				case "workingDir":
-					config.workingDir = value.replace(/['"]/g, "");
+					// Single-quoted YAML preserves backslashes, including legacy Windows paths.
+					config.workingDir =
+						value.startsWith("'") && value.endsWith("'")
+							? value.slice(1, -1).replace(/''/g, "'")
+							: value.replace(/^["]|["]$/g, "");
 					break;
 			}
 		}
@@ -2488,7 +2492,7 @@ ${description || `Milestone: ${title}`}`,
 			...(config.prefixes?.task ? [`task_prefix: "${config.prefixes.task}"`] : []),
 			...(config.memasterDirectory ? [`memaster_directory: "${config.memasterDirectory}"`] : []),
 			...(config.projectId ? [`project_id: "${config.projectId}"`] : []),
-			...(config.workingDir ? [`working_dir: "${config.workingDir}"`] : []),
+			...(config.workingDir ? [`working_dir: '${config.workingDir.replace(/'/g, "''")}'`] : []),
 		];
 
 		return `${lines.join("\n")}\n`;

@@ -121,7 +121,7 @@ export class LibraryBridge {
 		const version = typeof args.base_version === "string" ? args.base_version.trim() : "";
 		if (!version) {
 			throw new Error(
-				"base_version is required. Read the record first (task_get / overview_read / task_list) and pass back its `version` field — the write conflicts if the record changed since.",
+				"base_version is required. Read the record first (project_current / task_get / overview_read / task_list) and pass back its `version` field — the write conflicts if the record changed since.",
 			);
 		}
 		return version;
@@ -132,6 +132,33 @@ export class LibraryBridge {
 			switch (name) {
 				case "project_list":
 					return ok(await this.api("/api/agent/projects"));
+				case "project_search": {
+					const fields = this.writeArgs(args, ["query", "working_dir"]);
+					return ok(
+						await this.api("/api/agent/projects/search", {
+							method: "POST",
+							body: { query: fields.query, workingDir: fields.working_dir },
+						}),
+					);
+				}
+				case "project_create": {
+					const fields = this.writeArgs(args, ["name", "working_dir"]);
+					const project = (await this.api("/api/agent/projects", {
+						method: "POST",
+						body: { name: fields.name, workingDir: fields.working_dir },
+					})) as { id: string; name: string; dir: string };
+					this.selectedProject = project;
+					return ok({ opened: project });
+				}
+				case "project_update": {
+					const fields = this.writeArgs(args, ["working_dir", "base_version"]);
+					const project = (await this.api(`/api/agent/projects/${this.requireProject().id}`, {
+						method: "PUT",
+						body: { workingDir: fields.working_dir, baseVersion: this.requireBaseVersion(fields) },
+					})) as { id: string; name: string; dir: string };
+					this.selectedProject = project;
+					return ok({ project });
+				}
 				case "project_open": {
 					const project = (await this.api("/api/agent/projects/resolve", {
 						method: "POST",
@@ -141,7 +168,13 @@ export class LibraryBridge {
 					return ok({ opened: project });
 				}
 				case "project_current":
-					return ok(this.selectedProject ? { project: this.selectedProject } : { project: null });
+					if (!this.selectedProject) return ok({ project: null });
+					this.selectedProject = (await this.api(`/api/agent/projects/${this.selectedProject.id}`)) as {
+						id: string;
+						name: string;
+						dir: string;
+					};
+					return ok({ project: this.selectedProject });
 				case "overview_read":
 					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/overview`));
 				case "overview_write": {
@@ -360,6 +393,47 @@ export class LibraryBridge {
 			completed_at: date,
 		};
 		return [
+			{
+				name: "project_search",
+				description:
+					"Find potentially related projects by keywords in names and overview content, or an exact working directory. Returns short summaries without changing the selected project. Ask the user in this chat before choosing a merely similar project. Try several short keywords; use project_list and inspect candidates when wording differs.",
+				inputSchema: {
+					type: "object" as const,
+					properties: {
+						query: str("Short topic or project keywords"),
+						working_dir: str("User-supplied absolute working directory"),
+					},
+				},
+			},
+			{
+				name: "project_create",
+				description:
+					"Create and open a project when the user asks to establish one. Search for related projects first; let the user choose when a candidate may be the same work. Duplicate names fail without selecting a different project. After a timeout, check project_list before retrying.",
+				inputSchema: {
+					type: "object" as const,
+					properties: {
+						name: str("User-specified or confirmed project name"),
+						working_dir: str("Optional existing absolute directory explicitly supplied by the user"),
+					},
+					required: ["name"],
+				},
+			},
+			{
+				name: "project_update",
+				description:
+					"Set or unlink the selected project's associated working directory. Read project_current or project_open first and use that project's version, not the overview version. Only change the directory on the user's instruction.",
+				inputSchema: {
+					type: "object" as const,
+					properties: {
+						working_dir: {
+							type: ["string", "null"],
+							description: "Existing absolute path; null unlinks the directory",
+						},
+						base_version: str("Project config version from project_current or project_open"),
+					},
+					required: ["working_dir", "base_version"],
+				},
+			},
 			{
 				name: "project_list",
 				description: "List all projects in the Memory Master library.",
