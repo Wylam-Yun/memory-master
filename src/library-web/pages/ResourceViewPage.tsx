@@ -59,7 +59,7 @@ export default function ResourceViewPage() {
 		<div className="flex items-center gap-3">
 			<button
 				type="button"
-				className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124]"
+				className="h-10 rounded-lg border border-[#A8AEA4]/40 px-4 text-[15px] font-medium text-[#242724]"
 				onClick={() => download(content)}
 			>
 				下载原件
@@ -76,8 +76,8 @@ export default function ResourceViewPage() {
 	} else if (notFound) {
 		body = (
 			<div>
-				<p className="text-[15px] leading-6 text-[#555B65]">文件不存在</p>
-				<Link to={backLink} className="mt-2 inline-block text-[15px] font-medium text-[#3B57D0]">
+				<p className="text-[15px] leading-6 text-[#595F59]">文件不存在</p>
+				<Link to={backLink} className="mt-2 inline-block text-[15px] font-medium text-[#315DAD]">
 					← 返回资料
 				</Link>
 			</div>
@@ -85,7 +85,7 @@ export default function ResourceViewPage() {
 	} else if (error) {
 		body = (
 			<div
-				className="rounded-lg border border-[#B42318]/30 bg-[#FFF1F0] px-3 py-2 text-[15px] leading-6 text-[#B42318]"
+				className="rounded-lg border border-[#A6312B]/30 bg-[#FFF1F0] px-3 py-2 text-[15px] leading-6 text-[#A6312B]"
 				role="alert"
 			>
 				读取失败
@@ -98,12 +98,12 @@ export default function ResourceViewPage() {
 		if (content.base64 !== undefined) {
 			body = (
 				<div className="max-w-[560px]">
-					<p className="text-[15px] leading-6 text-[#555B65]">
+					<p className="text-[15px] leading-6 text-[#595F59]">
 						此格式暂不支持网页预览（{content.contentType} · {formatBytes(content.size)}）
 					</p>
 					<button
 						type="button"
-						className="mt-4 h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white"
+						className="mt-4 h-10 rounded-lg bg-[#2F3530] px-4 text-[15px] font-medium text-white"
 						onClick={() => download(content)}
 					>
 						下载原件
@@ -115,16 +115,18 @@ export default function ResourceViewPage() {
 			const truncated = text.length > PREVIEW_MAX;
 			const shown = truncated ? text.slice(0, PREVIEW_MAX) : text;
 			body = (
-				<div className="max-w-[820px]">
+				<div className="max-w-[820px] min-w-0">
 					{content.name.toLowerCase().endsWith(".md") ? (
 						<div className="text-[16px] leading-7">
 							<Markdown source={shown} />
 						</div>
 					) : (
-						<pre className="whitespace-pre-wrap break-all text-[15px] leading-6 text-[#202124]">{shown}</pre>
+						<pre className="whitespace-pre-wrap [overflow-wrap:anywhere] text-[15px] leading-6 text-[#242724]">
+							{shown}
+						</pre>
 					)}
 					{truncated ? (
-						<p className="mt-4 text-[14px] leading-[22px] text-[#555B65]">
+						<p className="mt-4 text-[14px] leading-[22px] text-[#595F59]">
 							内容过长，仅显示前一部分。完整文件请使用「下载原件」。
 						</p>
 					) : null}
@@ -136,7 +138,7 @@ export default function ResourceViewPage() {
 	return (
 		<div>
 			<p className="mb-2">
-				<Link to={backLink} className="text-[15px] font-medium leading-6 text-[#3B57D0]">
+				<Link to={backLink} className="text-[15px] font-medium leading-6 text-[#315DAD]">
 					← 返回资料
 				</Link>
 			</p>

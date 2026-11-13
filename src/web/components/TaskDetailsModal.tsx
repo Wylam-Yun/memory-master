@@ -157,7 +157,7 @@ const HierarchyStatusBadge: React.FC<{ status: string; statuses: string[] }> = (
       ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
       : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300';
   return (
-    <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium ${tone}`}>
+    <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[13px] font-medium ${tone}`}>
       {status}
     </span>
   );
@@ -1117,7 +1117,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
         onClose();
       }}
       title={isCreateMode ? (isDraftMode ? "Create New Draft" : "Create New Task") : `${displayId} — ${task.title}`}
-      maxWidthClass="max-w-5xl"
+      maxWidthClass="max-w-[1120px]"
       disableEscapeClose={mode === "edit" || mode === "create" || demoting}
       actions={
 		<div className="flex flex-nowrap items-center justify-end gap-2">
@@ -1125,7 +1125,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 		            <button
 		              onClick={() => void handleDemote()}
 		              disabled={demoting}
-		              className="inline-flex items-center px-3 py-2 sm:px-4 rounded-lg text-sm font-medium text-white bg-amber-500 dark:bg-amber-600 hover:bg-amber-600 dark:hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+		              className="inline-flex items-center px-3 py-2 sm:px-4 rounded-lg text-sm font-medium border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 bg-transparent hover:bg-amber-50 dark:hover:bg-amber-900/30 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
 		              title="Move task to drafts"
 		            >
 		              {demoting ? "Demoting…" : (
@@ -1140,7 +1140,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 		            <button
 		              onClick={() => setMode("edit")}
 		              disabled={demoting}
-		              className="inline-flex items-center px-3 py-2 sm:px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
+		              className="inline-flex items-center px-3 py-2 sm:px-4 border border-transparent rounded-lg text-sm font-medium text-white dark:text-gray-900 bg-[#2F3530] dark:bg-gray-200 hover:bg-[#424A43] dark:hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
 		              title="Edit"
 		            >
               <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1165,7 +1165,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 	              <button
 		                onClick={() => void handleSave()}
 		                disabled={saving || demoting}
-		                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200 disabled:opacity-50"
+		                className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-[#2F3530] dark:bg-gray-200 dark:text-gray-900 hover:bg-[#424A43] dark:hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200 disabled:opacity-50"
 		                title="Save"
 		              >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -1238,12 +1238,12 @@ export const TaskDetailsModal: React.FC<Props> = ({
         </nav>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6" onClickCapture={confirmNavigationAwayFromEdits}>
+      <div className="task-detail-grid grid grid-cols-1 min-[960px]:grid-cols-[minmax(0,1fr)_280px] gap-6" onClickCapture={confirmNavigationAwayFromEdits}>
         {/* Main content */}
-        <div className="md:col-span-2 space-y-6">
+        <div className="task-detail-body min-w-0 space-y-7">
           {/* Title field for create mode */}
           {isCreateMode && (
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+            <div className="min-w-0 border-b border-gray-200 dark:border-gray-700 pb-6">
               <SectionHeader title="Title" />
               <input
                 type="text"
@@ -1254,8 +1254,34 @@ export const TaskDetailsModal: React.FC<Props> = ({
               />
             </div>
           )}
+          {/* Title (editable for existing tasks) */}
+          {task && (
+            <div className="min-w-0">
+              <SectionHeader title="Title" />
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                }}
+                onBlur={() => {
+                  if (title.trim() && title !== task.title) {
+                    void handleInlineMetaUpdate({ title: title.trim() });
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.currentTarget.blur();
+                  }
+                }}
+                disabled={isReadOnly}
+                className={`w-full h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
+              />
+            </div>
+          )}
+
           {/* Description */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+          <div className="min-w-0 border-b border-gray-200 dark:border-gray-700 pb-6">
             <SectionHeader title="Description" />
             {mode === "preview" ? (
               description ? (
@@ -1278,8 +1304,79 @@ export const TaskDetailsModal: React.FC<Props> = ({
             )}
           </div>
 
+          {/* Acceptance Criteria */}
+          <div className="min-w-0 border-b border-gray-200 dark:border-gray-700 pb-6">
+            <SectionHeader
+              title={`Acceptance Criteria ${totalCount ? `(${checkedCount}/${totalCount})` : ""}`}
+              right={mode === "preview" && !isReadOnly ? (
+                <span>Toggle to update</span>
+              ) : null}
+            />
+            {mode === "preview" ? (
+              <ul className="space-y-2">
+                {(criteria || []).map((c) => (
+                  <li key={c.index} className="flex items-start gap-2 rounded-md px-2 py-1">
+                    <input
+                      type="checkbox"
+                      checked={c.checked}
+                      disabled={isReadOnly}
+                      onChange={(e) => void handleToggleCriterion(c.index, e.target.checked)}
+                      className="mt-0.5 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="mt-0.5 w-8 shrink-0 text-right font-mono text-xs font-semibold text-gray-500 dark:text-gray-400">
+                      {`#${c.index}`}
+                    </span>
+                    <div className="text-sm text-gray-800 dark:text-gray-100">{c.text}</div>
+                  </li>
+                ))}
+                {totalCount === 0 && (
+                  <li className="text-sm text-gray-500 dark:text-gray-400">No acceptance criteria</li>
+                )}
+              </ul>
+            ) : (
+              <AcceptanceCriteriaEditor criteria={criteria} onChange={setCriteria} />
+            )}
+          </div>
+
+          {/* Definition of Done */}
+          <div className="min-w-0 border-b border-gray-200 dark:border-gray-700 pb-6">
+            <SectionHeader
+              title={`Definition of Done ${definitionTotalCount ? `(${definitionCheckedCount}/${definitionTotalCount})` : ""}`}
+              right={mode === "preview" && !isReadOnly ? (
+                <span>Toggle to update</span>
+              ) : null}
+            />
+            {mode === "preview" ? (
+              <ul className="space-y-2">
+                {(definitionOfDone || []).map((item) => (
+                  <li key={item.index} className="flex items-start gap-2 rounded-md px-2 py-1">
+                    <input
+                      type="checkbox"
+                      checked={item.checked}
+                      disabled={isReadOnly}
+                      onChange={(e) => void handleToggleDefinitionOfDone(item.index, e.target.checked)}
+                      className="mt-0.5 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <div className="text-sm text-gray-800 dark:text-gray-100">{item.text}</div>
+                  </li>
+                ))}
+                {definitionTotalCount === 0 && (
+                  <li className="text-sm text-gray-500 dark:text-gray-400">No Definition of Done items</li>
+                )}
+              </ul>
+            ) : (
+              <AcceptanceCriteriaEditor
+                criteria={definitionOfDone}
+                onChange={setDefinitionOfDone}
+                label="Definition of Done"
+                preserveIndices
+                disableToggle={isCreateMode}
+              />
+            )}
+          </div>
+
           {subtasks.length > 0 && (
-            <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+            <section className="min-w-0 border-b border-gray-200 pb-6 dark:border-gray-700">
               <SectionHeader
                 title="Subtasks"
                 right={
@@ -1329,8 +1426,63 @@ export const TaskDetailsModal: React.FC<Props> = ({
             </section>
           )}
 
+          {dependencyGraph && dependencyGraph.nodes.length > 1 && (
+            <section className="min-w-0 border-b border-gray-200 pb-6 dark:border-gray-700">
+              <SectionHeader title="Dependency Graph" />
+              <DependencyGraphSection graph={dependencyGraph} />
+            </section>
+          )}
+
+          {/* Implementation Plan */}
+          <div className="min-w-0 border-b border-gray-200 dark:border-gray-700 pb-6">
+            <SectionHeader title="Implementation Plan" />
+            {mode === "preview" ? (
+              plan ? (
+                <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
+                  <MermaidMarkdown source={plan} />
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500 dark:text-gray-400">No plan</div>
+              )
+            ) : (
+              <div className="border border-gray-200 dark:border-gray-700 rounded-md">
+                <MDEditor
+                  value={plan}
+                  onChange={(val) => setPlan(val || "")}
+                  preview="edit"
+                  height={280}
+                  data-color-mode={theme}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Implementation Notes */}
+          <div className="min-w-0 border-b border-gray-200 dark:border-gray-700 pb-6">
+            <SectionHeader title="Implementation Notes" />
+            {mode === "preview" ? (
+              notes ? (
+                <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
+                  <MermaidMarkdown source={notes} />
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500 dark:text-gray-400">No notes</div>
+              )
+            ) : (
+              <div className="border border-gray-200 dark:border-gray-700 rounded-md">
+                <MDEditor
+                  value={notes}
+                  onChange={(val) => setNotes(val || "")}
+                  preview="edit"
+                  height={280}
+                  data-color-mode={theme}
+                />
+              </div>
+            )}
+          </div>
+
           {/* References */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+          <div className="min-w-0 border-b border-gray-200 dark:border-gray-700 pb-6">
             <SectionHeader title="References" />
             <div className="space-y-3">
               {references.length > 0 ? (
@@ -1359,7 +1511,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                             const newRefs = references.filter((_, i) => i !== idx);
                             handleInlineMetaUpdate({ references: newRefs });
                           }}
-                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
+                          className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0"
                           title="Remove reference"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1390,11 +1542,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
                     name="newRef"
                     type="text"
                     placeholder="URL or file path..."
-                    className="flex-1 text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    className="min-w-0 flex-1 text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                   />
                   <button
                     type="submit"
-                    className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                    className="px-4 py-2 text-sm font-medium bg-[#2F3530] text-white rounded-md hover:bg-[#424A43] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                   >
                     Add
                   </button>
@@ -1404,7 +1556,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
           </div>
 
           {/* Modified files */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+          <div className="min-w-0 border-b border-gray-200 dark:border-gray-700 pb-6">
             <SectionHeader title={`Modified files${modifiedFiles.length ? ` (${modifiedFiles.length})` : ""}`} />
             <div className="space-y-3">
               {modifiedFiles.length > 0 ? (
@@ -1424,7 +1576,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                             const newFiles = modifiedFiles.filter((_, i) => i !== idx);
                             handleInlineMetaUpdate({ modifiedFiles: newFiles });
                           }}
-                          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0 mt-0.5"
+                          className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-gray-400 hover:text-red-500 transition-all flex-shrink-0 mt-0.5"
                           title="Remove modified file"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1455,11 +1607,11 @@ export const TaskDetailsModal: React.FC<Props> = ({
                     name="newModifiedFile"
                     type="text"
                     placeholder="Path from project root..."
-                    className="flex-1 text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    className="min-w-0 flex-1 text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                   />
                   <button
                     type="submit"
-                    className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                    className="px-4 py-2 text-sm font-medium bg-[#2F3530] text-white rounded-md hover:bg-[#424A43] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                   >
                     Add
                   </button>
@@ -1470,7 +1622,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
           {/* Documentation */}
           {documentation.length > 0 && (
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+            <div className="min-w-0 border-b border-gray-200 dark:border-gray-700 pb-6">
               <SectionHeader title="Documentation" />
               <div className="space-y-2">
                 <ul className="space-y-2">
@@ -1499,135 +1651,9 @@ export const TaskDetailsModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Acceptance Criteria */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-            <SectionHeader
-              title={`Acceptance Criteria ${totalCount ? `(${checkedCount}/${totalCount})` : ""}`}
-              right={mode === "preview" && !isReadOnly ? (
-                <span>Toggle to update</span>
-              ) : null}
-            />
-            {mode === "preview" ? (
-              <ul className="space-y-2">
-                {(criteria || []).map((c) => (
-                  <li key={c.index} className="flex items-start gap-2 rounded-md px-2 py-1">
-                    <input
-                      type="checkbox"
-                      checked={c.checked}
-                      disabled={isReadOnly}
-                      onChange={(e) => void handleToggleCriterion(c.index, e.target.checked)}
-                      className="mt-0.5 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <span className="mt-0.5 w-8 shrink-0 text-right font-mono text-xs font-semibold text-gray-500 dark:text-gray-400">
-                      {`#${c.index}`}
-                    </span>
-                    <div className="text-sm text-gray-800 dark:text-gray-100">{c.text}</div>
-                  </li>
-                ))}
-                {totalCount === 0 && (
-                  <li className="text-sm text-gray-500 dark:text-gray-400">No acceptance criteria</li>
-                )}
-              </ul>
-            ) : (
-              <AcceptanceCriteriaEditor criteria={criteria} onChange={setCriteria} />
-            )}
-          </div>
-
-          {/* Definition of Done */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-            <SectionHeader
-              title={`Definition of Done ${definitionTotalCount ? `(${definitionCheckedCount}/${definitionTotalCount})` : ""}`}
-              right={mode === "preview" && !isReadOnly ? (
-                <span>Toggle to update</span>
-              ) : null}
-            />
-            {mode === "preview" ? (
-              <ul className="space-y-2">
-                {(definitionOfDone || []).map((item) => (
-                  <li key={item.index} className="flex items-start gap-2 rounded-md px-2 py-1">
-                    <input
-                      type="checkbox"
-                      checked={item.checked}
-                      disabled={isReadOnly}
-                      onChange={(e) => void handleToggleDefinitionOfDone(item.index, e.target.checked)}
-                      className="mt-0.5 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <div className="text-sm text-gray-800 dark:text-gray-100">{item.text}</div>
-                  </li>
-                ))}
-                {definitionTotalCount === 0 && (
-                  <li className="text-sm text-gray-500 dark:text-gray-400">No Definition of Done items</li>
-                )}
-              </ul>
-            ) : (
-              <AcceptanceCriteriaEditor
-                criteria={definitionOfDone}
-                onChange={setDefinitionOfDone}
-                label="Definition of Done"
-                preserveIndices
-                disableToggle={isCreateMode}
-              />
-            )}
-          </div>
-
-          {dependencyGraph && dependencyGraph.nodes.length > 1 && (
-            <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-              <SectionHeader title="Dependency Graph" />
-              <DependencyGraphSection graph={dependencyGraph} />
-            </section>
-          )}
-
-          {/* Implementation Plan */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-            <SectionHeader title="Implementation Plan" />
-            {mode === "preview" ? (
-              plan ? (
-                <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={plan} />
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500 dark:text-gray-400">No plan</div>
-              )
-            ) : (
-              <div className="border border-gray-200 dark:border-gray-700 rounded-md">
-                <MDEditor
-                  value={plan}
-                  onChange={(val) => setPlan(val || "")}
-                  preview="edit"
-                  height={280}
-                  data-color-mode={theme}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Implementation Notes */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-            <SectionHeader title="Implementation Notes" />
-            {mode === "preview" ? (
-              notes ? (
-                <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
-                  <MermaidMarkdown source={notes} />
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500 dark:text-gray-400">No notes</div>
-              )
-            ) : (
-              <div className="border border-gray-200 dark:border-gray-700 rounded-md">
-                <MDEditor
-                  value={notes}
-                  onChange={(val) => setNotes(val || "")}
-                  preview="edit"
-                  height={280}
-                  data-color-mode={theme}
-                />
-              </div>
-            )}
-          </div>
-
           {/* Comments */}
           {!isCreateMode && (
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+            <div className="min-w-0 border-b border-gray-200 dark:border-gray-700 pb-6">
               <SectionHeader title={`Comments${comments.length ? ` (${comments.length})` : ""}`} />
               {comments.length > 0 ? (
                 <div className="space-y-4">
@@ -1668,7 +1694,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
                       type="button"
                       onClick={() => void handleAddComment()}
                       disabled={commentSaving || commentBody.trim().length === 0}
-                      className="px-4 py-2 text-sm font-medium bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
+                      className="px-4 py-2 text-sm font-medium bg-[#2F3530] text-white rounded-md hover:bg-[#424A43] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50"
                     >
                       {commentSaving ? "Adding..." : "Add comment"}
                     </button>
@@ -1680,7 +1706,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
           {/* Final Summary */}
           {(mode !== "preview" || finalSummary.trim().length > 0) && (
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+            <div className="min-w-0 border-b border-gray-200 dark:border-gray-700 pb-6">
               <SectionHeader title="Final Summary" right="Completion summary" />
               {mode === "preview" ? (
                 <div className="prose prose-sm !max-w-none wmde-markdown" data-color-mode={theme}>
@@ -1705,10 +1731,10 @@ export const TaskDetailsModal: React.FC<Props> = ({
         </div>
 
         {/* Sidebar */}
-        <div className="md:col-span-1 space-y-4">
+        <div className="task-detail-meta min-w-0 space-y-5 min-[960px]:border-l min-[960px]:border-gray-200 min-[960px]:dark:border-gray-700 min-[960px]:pl-6">
           {/* Dates */}
 	          {task && (
-	            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 text-xs text-gray-600 dark:text-gray-300 space-y-1">
+	            <div className="min-w-0 text-xs text-gray-600 dark:text-gray-300 space-y-1">
 	              <div><span className="font-semibold text-gray-800 dark:text-gray-100">Created:</span> <StoredDate value={task.createdDate} dateFormat={dateFormat} className="text-gray-700 dark:text-gray-200" /></div>
 	              {task.updatedDate && (
 	                <div><span className="font-semibold text-gray-800 dark:text-gray-100">Updated:</span> <StoredDate value={task.updatedDate} dateFormat={dateFormat} className="text-gray-700 dark:text-gray-200" /></div>
@@ -1719,7 +1745,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 	            </div>
 	          )}
           {mode !== "preview" && (
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+            <div className="min-w-0">
               <SectionHeader title="Due" />
               <input
                 type="date"
@@ -1729,40 +1755,14 @@ export const TaskDetailsModal: React.FC<Props> = ({
               />
             </div>
           )}
-          {/* Title (editable for existing tasks) */}
-          {task && (
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
-              <SectionHeader title="Title" />
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                }}
-                onBlur={() => {
-                  if (title.trim() && title !== task.title) {
-                    void handleInlineMetaUpdate({ title: title.trim() });
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.currentTarget.blur();
-                  }
-                }}
-                disabled={isReadOnly}
-                className={`w-full h-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
-              />
-            </div>
-          )}
-
           {/* Status */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+          <div className="min-w-0">
             <SectionHeader title="Status" />
             <StatusSelect current={status} onChange={(val) => handleInlineMetaUpdate({ status: val })} disabled={isReadOnly || isOpenDraft} />
           </div>
 
           {/* Type */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+          <div className="min-w-0">
             <SectionHeader title="Type" />
             <select
               aria-label="Task type"
@@ -1791,7 +1791,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
           </div>
 
           {/* Assignee */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+          <div className="min-w-0">
             <SectionHeader title="Assignee" />
             <ChipInput
               name="assignee"
@@ -1804,7 +1804,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
           </div>
 
           {/* Labels */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+          <div className="min-w-0">
             <SectionHeader title="Labels" />
             <ChipInput
               name="labels"
@@ -1817,7 +1817,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
           </div>
 
           {/* Priority */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+          <div className="min-w-0">
             <SectionHeader title="Priority" />
             <select
               className={`w-full h-10 px-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
@@ -1836,7 +1836,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
           {/* Project */}
           {projectOptions.length > 0 && (
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+            <div className="min-w-0">
               <SectionHeader title="Project" />
               <select
                 className={`w-full h-10 px-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
@@ -1859,7 +1859,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
           )}
 
           {/* Milestone */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+          <div className="min-w-0">
             <SectionHeader title="Milestone" />
             <select
               className={`w-full h-10 px-3 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 focus:border-transparent transition-colors duration-200 ${isReadOnly ? 'opacity-60 cursor-not-allowed' : ''}`}
@@ -1884,7 +1884,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
           </div>
 
           {/* Dependencies */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+          <div className="min-w-0">
             <SectionHeader title="Dependencies" />
             <DependencyInput
               value={dependencies}
@@ -1911,7 +1911,7 @@ export const TaskDetailsModal: React.FC<Props> = ({
 
           {/* Archive button at bottom of sidebar */}
 		          {task && onArchive && !isReadOnly && (
-		            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+		            <div className="min-w-0">
 		              <button
 		                onClick={handleArchive}
 		                title="Move this task off the board into the archive"

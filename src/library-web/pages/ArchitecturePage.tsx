@@ -205,7 +205,7 @@ function ArchitectureInner({ project }: { project: LibraryProject }) {
 		<>
 			<button
 				type="button"
-				className="h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white disabled:opacity-50"
+				className="h-10 rounded-lg bg-[#2F3530] px-4 text-[15px] font-medium text-white disabled:opacity-50"
 				disabled={saving}
 				onClick={() => save(editing.content, editing.baseVersion)}
 			>
@@ -213,7 +213,7 @@ function ArchitectureInner({ project }: { project: LibraryProject }) {
 			</button>
 			<button
 				type="button"
-				className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124] disabled:opacity-50"
+				className="h-10 rounded-lg border border-[#A8AEA4]/40 px-4 text-[15px] font-medium text-[#242724] disabled:opacity-50"
 				disabled={saving}
 				onClick={cancelEdit}
 			>
@@ -224,7 +224,7 @@ function ArchitectureInner({ project }: { project: LibraryProject }) {
 		<>
 			<button
 				type="button"
-				className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124]"
+				className="h-10 rounded-lg border border-[#A8AEA4]/40 px-4 text-[15px] font-medium text-[#242724]"
 				onClick={startEdit}
 			>
 				编辑
@@ -232,7 +232,7 @@ function ArchitectureInner({ project }: { project: LibraryProject }) {
 			{record.content.trim() ? (
 				<button
 					type="button"
-					className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124]"
+					className="h-10 rounded-lg border border-[#A8AEA4]/40 px-4 text-[15px] font-medium text-[#242724]"
 					onClick={openZoom}
 				>
 					放大
@@ -243,18 +243,18 @@ function ArchitectureInner({ project }: { project: LibraryProject }) {
 
 	const conflictPanel =
 		editing && compareOpen && newer ? (
-			<section className="mb-8 rounded-xl border border-[#E5E7EB] bg-white p-4">
+			<section className="mb-8 rounded-xl border border-[#DDDFD9] bg-white p-4">
 				<h2 className="mb-3 text-[16px] font-semibold leading-6">内容已更新</h2>
-				<p className="mb-3 text-[14px] leading-[22px] text-[#555B65]">
+				<p className="mb-3 text-[14px] leading-[22px] text-[#595F59]">
 					另一方已保存了新版本。以下是当前最新内容，你可以用自己的修改覆盖，或放弃本次修改。
 				</p>
-				<div className="max-h-72 overflow-y-auto rounded-lg bg-[#FAFAF8] p-3">
+				<div className="max-h-72 overflow-y-auto rounded-lg bg-[#F7F7F4] p-3">
 					<Markdown source={newer.content || "（空）"} />
 				</div>
 				<div className="mt-4 flex flex-wrap gap-3">
 					<button
 						type="button"
-						className="h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white disabled:opacity-50"
+						className="h-10 rounded-lg bg-[#2F3530] px-4 text-[15px] font-medium text-white disabled:opacity-50"
 						disabled={saving}
 						onClick={() => save(editing.content, newer.version)}
 					>
@@ -262,7 +262,7 @@ function ArchitectureInner({ project }: { project: LibraryProject }) {
 					</button>
 					<button
 						type="button"
-						className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124] disabled:opacity-50"
+						className="h-10 rounded-lg border border-[#A8AEA4]/40 px-4 text-[15px] font-medium text-[#242724] disabled:opacity-50"
 						disabled={saving}
 						onClick={cancelEdit}
 					>
@@ -270,7 +270,7 @@ function ArchitectureInner({ project }: { project: LibraryProject }) {
 					</button>
 					<button
 						type="button"
-						className="h-10 px-2 text-[15px] font-medium text-[#3B57D0]"
+						className="h-10 px-2 text-[15px] font-medium text-[#315DAD]"
 						onClick={() => setCompareOpen(false)}
 					>
 						继续编辑
@@ -280,13 +280,13 @@ function ArchitectureInner({ project }: { project: LibraryProject }) {
 		) : null;
 
 	return (
-		<div>
+		<div className="@container">
 			<PageHeader title="项目架构" actions={headerActions} />
 
 			{editing ? (
 				<>
 					{newer ? (
-						<div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-[#88550D]/30 bg-[#FFF6E4] px-3 py-2 text-[15px] leading-6 text-[#88550D]">
+						<div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg border border-[#805719]/30 bg-[#FFF6E4] px-3 py-2 text-[15px] leading-6 text-[#805719]">
 							<span>内容已更新。</span>
 							<button type="button" className="font-medium underline" onClick={() => setCompareOpen(true)}>
 								查看最新内容
@@ -294,29 +294,35 @@ function ArchitectureInner({ project }: { project: LibraryProject }) {
 						</div>
 					) : null}
 					{conflictPanel}
-					<GrowingTextarea
-						value={editing.content}
-						onChange={changeContent}
-						aria-label="项目架构 Markdown"
-						placeholder="# 项目架构&#10;&#10;```mermaid&#10;flowchart LR&#10;  a[组成甲] --> b[组成乙]&#10;```"
-					/>
-					<ErrorNote error={saveError} className="my-4" />
-					<h2 className="mb-3 mt-8 text-[20px] font-semibold leading-7">预览</h2>
-					<div ref={containerRef} onClick={onDiagramClick}>
-						<ArchitectureDocument
-							source={content}
-							projectId={projectId}
-							selectedId={selectedId}
-							tasks={tasks}
-							taskError={taskError}
-							p0TaskIds={p0TaskIds}
-							onShowDetails={() => void ensureTasks()}
-						/>
+					<div className="grid items-start gap-8 @min-[1040px]:grid-cols-2">
+						<div>
+							<GrowingTextarea
+								value={editing.content}
+								onChange={changeContent}
+								aria-label="项目架构 Markdown"
+								placeholder="# 项目架构&#10;&#10;```mermaid&#10;flowchart LR&#10;  a[组成甲] --> b[组成乙]&#10;```"
+							/>
+							<ErrorNote error={saveError} className="my-4" />
+						</div>
+						<div>
+							<h2 className="mb-3 text-[20px] font-semibold leading-7">预览</h2>
+							<div ref={containerRef} onClick={onDiagramClick}>
+								<ArchitectureDocument
+									source={content}
+									projectId={projectId}
+									selectedId={selectedId}
+									tasks={tasks}
+									taskError={taskError}
+									p0TaskIds={p0TaskIds}
+									onShowDetails={() => void ensureTasks()}
+								/>
+							</div>
+						</div>
 					</div>
 					<div className="mt-6 flex gap-3">
 						<button
 							type="button"
-							className="h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white disabled:opacity-50"
+							className="h-10 rounded-lg bg-[#2F3530] px-4 text-[15px] font-medium text-white disabled:opacity-50"
 							disabled={saving}
 							onClick={() => save(editing.content, editing.baseVersion)}
 						>
@@ -324,7 +330,7 @@ function ArchitectureInner({ project }: { project: LibraryProject }) {
 						</button>
 						<button
 							type="button"
-							className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124] disabled:opacity-50"
+							className="h-10 rounded-lg border border-[#A8AEA4]/40 px-4 text-[15px] font-medium text-[#242724] disabled:opacity-50"
 							disabled={saving}
 							onClick={cancelEdit}
 						>
@@ -338,12 +344,12 @@ function ArchitectureInner({ project }: { project: LibraryProject }) {
 					<div className="mt-4 flex items-center gap-3">
 						<button
 							type="button"
-							className="h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white"
+							className="h-10 rounded-lg bg-[#2F3530] px-4 text-[15px] font-medium text-white"
 							onClick={startEdit}
 						>
 							编辑
 						</button>
-						<span className="text-[15px] leading-6 text-[#555B65]">也可以在聊天里让 Agent 整理</span>
+						<span className="text-[15px] leading-6 text-[#595F59]">也可以在聊天里让 Agent 整理</span>
 					</div>
 				</div>
 			) : (

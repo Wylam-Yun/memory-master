@@ -32,17 +32,18 @@ function SetupPage({ defaultRoot, onDone }: { defaultRoot: string; onDone: () =>
 		}
 	};
 	return (
-		<div className="min-h-screen bg-[#FAFAF8] text-[#202124]">
+		<div className="min-h-screen bg-[#F7F7F4] text-[#242724]">
 			<header className="px-4 py-3 text-[16px] font-semibold leading-7 min-[640px]:px-6">Memory Master</header>
 			<main className="mx-auto max-w-[560px] px-4 pb-16 pt-16 min-[640px]:px-6">
 				<h1 className="text-[24px] font-semibold leading-8 min-[640px]:text-[28px] min-[640px]:leading-9">
 					选择项目记忆的保存位置
 				</h1>
-				<label className="mt-8 block">
+				<p className="mt-4 text-[15px] leading-6 text-[#595F59]">一个位置保存各项目的独立记录。</p>
+                <label className="mt-6 block">
 					<span className="sr-only">保存位置</span>
 					<input
 						ref={inputRef}
-						className="h-10 w-full rounded-lg border border-[#8A9099]/50 bg-white px-3 font-mono text-[13px] leading-5 focus:border-[#3B57D0] focus:outline-none"
+						className="h-10 w-full rounded-lg border border-[#A8AEA4]/50 bg-white px-3 font-mono text-[13px] leading-5 focus:border-[#315DAD] focus:outline-none"
 						value={root}
 						onChange={(e) => setRoot(e.target.value)}
 					/>
@@ -51,7 +52,7 @@ function SetupPage({ defaultRoot, onDone }: { defaultRoot: string; onDone: () =>
 				<div className="mt-4 flex items-center gap-4">
 					<button
 						type="button"
-						className="h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white disabled:opacity-50"
+						className="h-10 rounded-lg bg-[#2F3530] px-4 text-[15px] font-medium text-white disabled:opacity-50"
 						disabled={busy || !root.trim()}
 						onClick={() => void submit()}
 					>
@@ -59,13 +60,13 @@ function SetupPage({ defaultRoot, onDone }: { defaultRoot: string; onDone: () =>
 					</button>
 					<button
 						type="button"
-						className="text-[15px] font-medium text-[#3B57D0]"
+						className="text-[15px] font-medium text-[#315DAD]"
 						onClick={() => inputRef.current?.focus()}
 					>
 						更改位置
 					</button>
 				</div>
-				<p className="mt-8 text-[15px] leading-6 text-[#555B65]">一个位置保存各项目的独立记录。</p>
+
 			</main>
 		</div>
 	);
@@ -110,11 +111,11 @@ export default function App() {
 	}, [load]);
 
 	if (!state.loaded) {
-		return <div className="min-h-screen bg-[#FAFAF8] p-8 text-[15px] text-[#555B65]">加载中…</div>;
+		return <div className="min-h-screen bg-[#F7F7F4] p-8 text-[15px] text-[#595F59]">加载中…</div>;
 	}
 	if (state.error) {
 		return (
-			<div className="flex min-h-screen items-center justify-center bg-[#FAFAF8] px-4">
+			<div className="flex min-h-screen items-center justify-center bg-[#F7F7F4] px-4">
 				<div className="max-w-[480px]">
 					<ErrorNote error={`无法连接 Memory Master 服务：${state.error}`} onRetry={() => load().catch(() => {})} />
 				</div>

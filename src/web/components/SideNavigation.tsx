@@ -263,17 +263,17 @@ interface SideNavigationProps {
 	onRefreshData: () => Promise<void>;
 }
 
-const SideNavigation = memo(function SideNavigation({ 
+const SideNavigation = memo(function SideNavigation({
 	taskCount,
-	docs, 
-	decisions, 
+	docs,
+	decisions,
 	isLoading,
 	error,
 	onRetry
 }: SideNavigationProps) {
 	const [isCollapsed, setIsCollapsed] = useState(() => {
 		const saved = localStorage.getItem('sideNavCollapsed');
-		return saved ? JSON.parse(saved) : false;
+		return (typeof window !== 'undefined' && window.innerWidth <= 720) || (saved ? JSON.parse(saved) : false);
 	});
 	const [searchQuery, setSearchQuery] = useState('');
 	const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -322,7 +322,15 @@ const SideNavigation = memo(function SideNavigation({
 		localStorage.setItem('sideNavCollapsed', JSON.stringify(isCollapsed));
 	}, [isCollapsed]);
 
-	// Fetch version on mount
+	// Keep the narrow navigation in the document flow and collapse after selecting a page.
+    useEffect(() => {
+        const narrow = window.matchMedia?.('(max-width: 720px)');
+        const collapseOnNarrow = () => { if (narrow?.matches) setIsCollapsed(true); };
+        narrow?.addEventListener('change', collapseOnNarrow);
+        return () => narrow?.removeEventListener('change', collapseOnNarrow);
+    }, []);
+
+    // Fetch version on mount
 	useEffect(() => {
 		getWebVersion().then(setVersion).catch(() => setVersion(''));
 	}, []);
@@ -466,19 +474,21 @@ const SideNavigation = memo(function SideNavigation({
 
 	return (
 		<ErrorBoundary>
-			<div className={`relative bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 flex flex-col min-h-full z-10 ${isCollapsed ? 'w-16' : 'w-80 min-w-80'}`}>
+			<div onClickCapture={(event) => {
+                if (window.innerWidth <= 720 && (event.target as HTMLElement).closest('a[href]')) setIsCollapsed(true);
+            }} className={`relative bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 transition-all duration-300 flex flex-col min-h-full z-10 ${isCollapsed ? 'w-16 min-w-16 shrink-0' : 'navigation-expanded w-[min(272px,70vw)] shrink-0'}`}>
 			{/* Search Bar */}
-			<div className={`${isCollapsed ? 'px-2' : 'px-4'} border-b border-gray-200 dark:border-gray-700 h-18 flex items-center relative`}>
+			<div className={`${isCollapsed ? 'px-2' : 'px-4'} border-b border-gray-200 dark:border-gray-700 h-14 shrink-0 flex items-center relative`}>
 				{/* Collapse Toggle Button - Always positioned on the border */}
 				<button
 					onClick={toggleCollapse}
-					className="absolute -right-3 top-1/2 transform -translate-y-1/2 z-10 flex items-center justify-center w-6 h-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-circle shadow-sm hover:shadow-md text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-all duration-200"
+					className="absolute -right-3 top-1/2 transform -translate-y-1/2 z-10 flex items-center justify-center w-6 h-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-circle shadow-sm hover:shadow-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-all duration-200"
 					aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
 					title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
 				>
 					{isCollapsed ? <Icons.ChevronRight /> : <Icons.ChevronLeft />}
 				</button>
-				
+
 				{!isCollapsed ? (
 					<div className="flex items-center w-full">
 						<div className="relative flex-1">
@@ -628,7 +638,7 @@ const SideNavigation = memo(function SideNavigation({
 						</div>
 					</div>
 				)}
-				
+
 				{/* Task loading only changes the count; navigation remains stable. */}
 				{!isCollapsed && (
 					<div className="px-4 py-4">
@@ -727,7 +737,7 @@ const SideNavigation = memo(function SideNavigation({
 					<>
 						{/* Divider between Tasks and Documents */}
 						<div className="mx-4 my-2 border-t border-gray-200 dark:border-gray-700"></div>
-						
+
 						{/* Documents Section */}
 						<div className="px-4 py-4">
 							<div className="flex items-center justify-between mb-4">
@@ -755,7 +765,7 @@ const SideNavigation = memo(function SideNavigation({
 									</svg>
 								</button>
 							</div>
-							
+
 							{/* Document List */}
 							{!isDocsCollapsed && (
 								<div className="space-y-1">
@@ -823,7 +833,7 @@ const SideNavigation = memo(function SideNavigation({
 								{/*	</button>*/}
 								{/*)}*/}
 							</div>
-							
+
 							{/* Decision List */}
 							{!isDecisionsCollapsed && (
 								<div className="space-y-1">
@@ -862,7 +872,7 @@ const SideNavigation = memo(function SideNavigation({
 						<NavLink
 							to="/board"
 							data-tooltip-id="sidebar-tooltip"
-							data-tooltip-content="Kanban Board"
+							data-tooltip-content="Kanban Board" aria-label="Kanban Board"
 							className={({ isActive }) =>
 								`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
 									isActive
@@ -878,7 +888,7 @@ const SideNavigation = memo(function SideNavigation({
 						<NavLink
 							to="/tasks"
 							data-tooltip-id="sidebar-tooltip"
-							data-tooltip-content="All Tasks"
+							data-tooltip-content="All Tasks" aria-label="All Tasks"
 							className={({ isActive }) =>
 								`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
 									isActive
@@ -895,7 +905,7 @@ const SideNavigation = memo(function SideNavigation({
 						<NavLink
 							to="/drafts"
 							data-tooltip-id="sidebar-tooltip"
-							data-tooltip-content="Drafts"
+							data-tooltip-content="Drafts" aria-label="Drafts"
 							className={({ isActive }) =>
 								`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
 									isActive
@@ -912,7 +922,7 @@ const SideNavigation = memo(function SideNavigation({
 						<NavLink
 							to="/milestones"
 							data-tooltip-id="sidebar-tooltip"
-							data-tooltip-content="Milestones"
+							data-tooltip-content="Milestones" aria-label="Milestones"
 							className={({ isActive }) =>
 								`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
 									isActive
@@ -929,7 +939,7 @@ const SideNavigation = memo(function SideNavigation({
 						<NavLink
 							to="/statistics"
 							data-tooltip-id="sidebar-tooltip"
-							data-tooltip-content="Statistics"
+							data-tooltip-content="Statistics" aria-label="Statistics"
 							className={({ isActive }) =>
 								`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
 									isActive
@@ -948,7 +958,7 @@ const SideNavigation = memo(function SideNavigation({
 								setIsDocsCollapsed(false);
 							}}
 								data-tooltip-id="sidebar-tooltip"
-								data-tooltip-content="Documentation"
+								data-tooltip-content="Documentation" aria-label="Documentation"
 								className={`flex items-center justify-center p-3 rounded-md transition-colors duration-200 w-full ${
 									location.pathname.startsWith('/documentation')
 										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400'
@@ -965,7 +975,7 @@ const SideNavigation = memo(function SideNavigation({
 								setIsDecisionsCollapsed(false);
 							}}
 								data-tooltip-id="sidebar-tooltip"
-								data-tooltip-content="Decisions"
+								data-tooltip-content="Decisions" aria-label="Decisions"
 								className={`flex items-center justify-center p-3 rounded-md transition-colors duration-200 w-full ${
 									location.pathname.startsWith('/decisions')
 										? 'bg-blue-50 dark:bg-blue-600/20 text-blue-700 dark:text-blue-400'
@@ -979,7 +989,7 @@ const SideNavigation = memo(function SideNavigation({
 					</div>
 				)}
 			</nav>
-			
+
 			{/* Settings Button - Bottom Left */}
 			<div className={`border-t border-gray-200 dark:border-gray-700 ${isCollapsed ? 'px-2 py-2' : 'px-4 py-4'}`}>
 				{!isCollapsed ? (
@@ -1003,7 +1013,7 @@ const SideNavigation = memo(function SideNavigation({
 					<NavLink
 						to="/settings"
 						data-tooltip-id="sidebar-tooltip"
-						data-tooltip-content="Settings"
+						data-tooltip-content="Settings" aria-label="Settings"
 						className={({ isActive }) =>
 							`flex items-center justify-center p-3 rounded-md transition-colors duration-200 ${
 								isActive
@@ -1018,7 +1028,7 @@ const SideNavigation = memo(function SideNavigation({
 					</NavLink>
 				)}
 			</div>
-			
+
 			<Tooltip id="sidebar-tooltip" place="right" />
 			</div>
 		</ErrorBoundary>

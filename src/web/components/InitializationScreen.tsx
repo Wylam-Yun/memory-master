@@ -219,7 +219,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 						<div
 							className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
 								index <= currentIndex
-									? "bg-blue-500 dark:bg-blue-600 text-white"
+									? "bg-[#2F3530] dark:bg-gray-200 text-white dark:text-gray-900"
 									: "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
 							}`}
 						>
@@ -928,7 +928,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 
 	return (
 		<div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 transition-colors duration-200 p-4">
-			<div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 max-w-2xl w-full">
+			<div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-5 sm:p-8 max-w-2xl w-full">
 				{/* Header */}
 				<div className="text-center mb-6">
 					<div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-3">
@@ -978,7 +978,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 								type="button"
 								onClick={handleInitialize}
 								disabled={isInitializing}
-								className="px-6 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200 font-medium"
+								className="px-6 py-2 bg-[#2F3530] dark:bg-gray-200 text-white dark:text-gray-900 rounded-lg hover:bg-[#424A43] dark:hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200 font-medium"
 							>
 								{isInitializing ? (
 									<span className="flex items-center">
@@ -1001,7 +1001,7 @@ const InitializationScreen: React.FC<InitializationScreenProps> = ({ onInitializ
 								type="button"
 								onClick={handleNext}
 								disabled={!canProceed()}
-								className="px-6 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200 font-medium"
+								className="px-6 py-2 bg-[#2F3530] dark:bg-gray-200 text-white dark:text-gray-900 rounded-lg hover:bg-[#424A43] dark:hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200 font-medium"
 							>
 								Next
 							</button>

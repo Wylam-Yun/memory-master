@@ -21,10 +21,10 @@ const stripIdPrefix = (id: string): string => {
 };
 
 // Custom MDEditor wrapper for proper height handling
-const MarkdownEditor = memo(function MarkdownEditor({ 
-	value, 
-	onChange, 
-	isEditing 
+const MarkdownEditor = memo(function MarkdownEditor({
+	value,
+	onChange,
+	isEditing
 }: {
 	value: string;
 	onChange?: (val: string | undefined) => void;
@@ -35,7 +35,7 @@ const MarkdownEditor = memo(function MarkdownEditor({
 	if (!isEditing) {
 		// Preview mode - just show the rendered markdown without editor UI
 			return (
-				<div className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden" data-color-mode={theme}>
+				<div className="prose prose-sm !max-w-none w-full bg-transparent min-w-0" data-color-mode={theme}>
 					<MermaidMarkdown source={stripDecisionSectionMarkers(value)} />
 				</div>
 			);
@@ -54,7 +54,7 @@ const MarkdownEditor = memo(function MarkdownEditor({
 					data-color-mode={theme}
 					textareaProps={{
 						placeholder: 'Write your decision documentation here...',
-						style: { 
+						style: {
 							fontSize: '14px',
 							resize: 'none'
 						}
@@ -157,7 +157,7 @@ export default function DecisionDetail({ decisions, onRefreshData, dateFormat }:
 			// Find decision from props using the same identity as the route.
 			const prefixedId = routeIdentity;
 			const decision = decisions.find(d => decisionIdKey(d.id) === routeIdentity);
-			
+
 			// Always try to fetch the decision from API, whether we found it in decisions or not
 			// This ensures deep linking works even before the parent component loads the decisions array
 			try {
@@ -205,7 +205,7 @@ export default function DecisionDetail({ decisions, onRefreshData, dateFormat }:
 			setIsSaving(true);
 			setSaveError(null);
 			setShowSaveSuccess(false);
-			
+
 			if (isNewDecision) {
 				// Create new decision
 				const decision = await apiClient.createDecision(decisionTitle);
@@ -307,7 +307,7 @@ export default function DecisionDetail({ decisions, onRefreshData, dateFormat }:
 			<div className="h-full bg-white dark:bg-gray-900 flex flex-col transition-colors duration-200">
 			{/* Header Section - Confluence/Linear Style */}
 			<div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
-				<div className="max-w-4xl mx-auto px-8 py-6">
+				<div className="w-full max-w-[884px] mx-auto px-4 sm:px-8 py-6">
 					{/* The header and its metadata row wrap, so on a narrow window the buttons stay on the page. */}
 					<div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 mb-6">
 						<div className="flex-1">
@@ -316,11 +316,11 @@ export default function DecisionDetail({ decisions, onRefreshData, dateFormat }:
 									type="text"
 									value={decisionTitle}
 									onChange={(e) => setDecisionTitle(e.target.value)}
-									className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2 w-full bg-transparent border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
+									className="text-[26px] leading-[34px] font-semibold text-gray-900 dark:text-gray-100 mb-2 w-full bg-transparent border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
 									placeholder="Decision title"
 								/>
 							) : (
-								<h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2 transition-colors duration-200">
+								<h1 className="text-[26px] leading-[34px] font-semibold text-gray-900 dark:text-gray-100 mb-2 transition-colors duration-200">
 									{decisionTitle || decision?.title || (title ? decodeURIComponent(title) : `Decision ${id}`)}
 								</h1>
 							)}
@@ -351,7 +351,7 @@ export default function DecisionDetail({ decisions, onRefreshData, dateFormat }:
 										<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
 										</svg>
-										<span 
+										<span
 											className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium border ${getStatusColor(decision.status)}`}
 										>
 											{decision.status.charAt(0).toUpperCase() + decision.status.slice(1)}
@@ -408,7 +408,7 @@ export default function DecisionDetail({ decisions, onRefreshData, dateFormat }:
 
 			{/* Content Section */}
 			<div className="flex-1 bg-gray-50 dark:bg-gray-800 transition-colors duration-200 flex flex-col">
-				<div className="flex-1 p-8 flex flex-col min-h-0">
+				<div className="w-full max-w-[884px] mx-auto flex-1 px-4 sm:px-8 py-6 flex flex-col min-h-0">
 					{isEditing && saveError && <p role="alert" className="mb-4 text-red-700 dark:text-red-300">{saveError}</p>}
 					<MarkdownEditor
 						value={content}
@@ -418,7 +418,7 @@ export default function DecisionDetail({ decisions, onRefreshData, dateFormat }:
 				</div>
 			</div>
 			</div>
-			
+
 		{/* Save Success Toast */}
 		{showSaveSuccess && (
 			<SuccessToast

@@ -8,9 +8,32 @@
 
 @theme {
     --radius-circle: 9999px;
+    --color-gray-50: #f7f7f4;
+    --color-gray-100: #eeefea;
+    --color-gray-200: #dddfd9;
+    --color-gray-300: #b7bdb3;
+    --color-gray-400: #a8b0a3;
+    --color-gray-500: #686f65;
+    --color-gray-600: #595f59;
+    --color-gray-700: #3c443e;
+    --color-gray-800: #292f2b;
+    --color-gray-900: #1d231f;
+    --color-gray-950: #141915;
 }
 
 @layer base {
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #242724;
+    }
+
+    :where(button, a, input, select, textarea, summary):focus-visible {
+        outline: 2px solid #315dad;
+        outline-offset: 3px;
+    }
+
     button {
         cursor: pointer;
     }
@@ -121,6 +144,57 @@
         padding: 1.5rem 1rem;
     }
 
+    @media (min-width: 720px) {
+        .page-shell {
+            padding: 1.5rem;
+        }
+    }
+
+    @media (max-width: 720px) {
+        .workbench:has(.navigation-expanded) {
+            flex-direction: column;
+        }
+
+        .workbench .navigation-expanded {
+            width: 100%;
+            min-height: 0;
+            max-height: 60dvh;
+            overflow-y: auto;
+        }
+    }
+
+    .architecture-document .wmde-markdown > :where(p, ul, ol, h1, h2, h3, h4) {
+        max-width: 760px;
+    }
+
+    .wmde-markdown {
+        font-size: 16px;
+        line-height: 1.75;
+    }
+
+    .wmde-markdown table {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    .settings-page > div > div > .space-y-4 > div {
+        min-width: 0;
+    }
+
+    @media (min-width: 1100px) {
+        .settings-page > .space-y-8 > div > .space-y-4 > div:has(> label[for]) {
+            display: grid;
+            grid-template-columns: 240px minmax(0, 1fr);
+            column-gap: 32px;
+            align-items: start;
+        }
+
+        .settings-page > .space-y-8 > div > .space-y-4 > div:has(> label[for]) > p {
+            grid-column: 2;
+        }
+    }
+
     /* Custom styles that can't be done with Tailwind utilities */
     /* Line clamp utilities for text truncation */
     .line-clamp-2 {
@@ -200,12 +274,12 @@
 
     /* Avoid forcing internal editor heights; use component props instead */
 
-    /* Fix for long content in markdown preview - scope to preview containers only */
+    /* Keep code formatting intact and scroll long lines within the block. */
     .wmde-markdown pre,
     .wmde-markdown .wmde-markdown pre {
-        white-space: pre-wrap !important;
-        word-break: break-word !important;
-        overflow-wrap: break-word !important;
+        white-space: pre !important;
+        word-break: normal !important;
+        overflow-wrap: normal !important;
         overflow-x: auto !important;
         max-width: 100% !important;
     }
@@ -213,9 +287,9 @@
     /* Ensure code blocks don't overflow in preview */
     .wmde-markdown pre code,
     .wmde-markdown code.code-highlight {
-        white-space: pre-wrap !important;
-        word-break: break-word !important;
-        overflow-wrap: break-word !important;
+        white-space: pre !important;
+        word-break: normal !important;
+        overflow-wrap: normal !important;
         display: block !important;
         max-width: 100% !important;
     }
@@ -224,7 +298,7 @@
     .wmde-markdown,
     .wmde-markdown-color {
         max-width: 100% !important;
-        overflow-x: hidden !important;
+        overflow-wrap: anywhere;
     }
 
     /* Restore list styles inside markdown preview (Tailwind preflight resets list-style) */
@@ -254,15 +328,24 @@
         overflow-wrap: break-word !important;
     }
 
-    /* Ensure code lines wrap properly */
+    /* Preserve individual code lines inside the scrolling block. */
     .wmde-markdown .code-line {
-        white-space: pre-wrap !important;
-        word-break: break-word !important;
-        overflow-wrap: break-word !important;
+        white-space: pre !important;
+        word-break: normal !important;
+        overflow-wrap: normal !important;
     }
 
     /* Prevent resizing of the editor's textarea to avoid overlay misalignment */
     .w-md-editor textarea {
         resize: none !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
 }

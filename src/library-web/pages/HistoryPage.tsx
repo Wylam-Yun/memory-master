@@ -143,10 +143,10 @@ function HistoryInner({ project }: { project: LibraryProject }) {
 	};
 
 	const headerActions = (
-		<label className="flex items-center gap-2 text-[15px] leading-6 text-[#555B65]">
+		<label className="flex items-center gap-2 text-[15px] leading-6 text-[#595F59]">
 			时间范围
 			<select
-				className="h-10 rounded-lg border border-[#8A9099]/40 bg-white px-2 text-[15px] text-[#202124]"
+				className="h-10 rounded-lg border border-[#A8AEA4]/40 bg-white px-2 text-[15px] text-[#242724]"
 				value={range}
 				onChange={(e) => setRange(e.target.value as (typeof RANGES)[number]["key"])}
 			>
@@ -160,19 +160,22 @@ function HistoryInner({ project }: { project: LibraryProject }) {
 	);
 
 	return (
-		<div>
-			<PageHeader title="变更记录" actions={headerActions} />
-			<label className="mb-4 flex items-center gap-2 text-[15px] text-[#555B65]">
-				记录范围
-				<select
-					className="h-10 rounded-lg border border-[#8A9099]/40 bg-white px-2"
-					value={progressOnly ? "current" : "all"}
-					onChange={(event) => setParams(event.target.value === "current" ? { field: "current" } : {})}
-				>
-					<option value="all">全部记录</option>
-					<option value="current">历次进展</option>
-				</select>
-			</label>
+		<div className="@container max-w-[1040px]">
+			<PageHeader title="变更记录" />
+			<div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+				{headerActions}
+				<label className="flex items-center gap-2 text-[15px] text-[#595F59]">
+					记录范围
+					<select
+						className="h-10 rounded-lg border border-[#A8AEA4]/40 bg-white px-2"
+						value={progressOnly ? "current" : "all"}
+						onChange={(event) => setParams(event.target.value === "current" ? { field: "current" } : {})}
+					>
+						<option value="all">全部记录</option>
+						<option value="current">历次进展</option>
+					</select>
+				</label>
+			</div>
 			{error && !entries ? (
 				<ErrorNote error={error} onRetry={() => load().catch(setError)} />
 			) : !entries ? (
@@ -184,15 +187,15 @@ function HistoryInner({ project }: { project: LibraryProject }) {
 					{/* entries arrive oldest→newest; the newest `shown` are what the page shows first. */}
 					{groupHistoryByDay(entries.slice(Math.max(0, entries.length - shown))).map((group) => (
 						<section key={group.key} className="mb-8">
-							<h2 className="mb-2 text-[15px] font-medium leading-6 text-[#555B65]">{group.label}</h2>
+							<h2 className="mb-2 text-[15px] font-medium leading-6 text-[#595F59]">{group.label}</h2>
 							<ul>
 								{group.entries.map((e, i) => {
 									const open = openIds.has(e);
 									return (
-										<li key={`${group.key}-${i}`} className="border-b border-[#E5E7EB] last:border-b-0">
+										<li key={`${group.key}-${i}`} className="border-b border-[#DDDFD9] last:border-b-0">
 											<button
 												type="button"
-												className="flex min-h-12 w-full flex-wrap items-baseline gap-x-3 gap-y-1 py-2 text-left"
+												className="grid min-h-14 w-full grid-cols-[48px_minmax(0,1fr)_16px] items-baseline gap-x-3 gap-y-1 py-3 text-left @min-[680px]:grid-cols-[56px_112px_minmax(0,1fr)_16px]"
 												aria-expanded={open}
 												onClick={() =>
 													setOpenIds((prev) => {
@@ -203,34 +206,39 @@ function HistoryInner({ project }: { project: LibraryProject }) {
 													})
 												}
 											>
-												<span className="w-12 shrink-0 font-mono text-[14px] leading-[22px] text-[#555B65]">
+												<span className="w-12 shrink-0 font-mono text-[14px] leading-[22px] text-[#595F59]">
 													{hhmm(e.ts)}
 												</span>
-												<span className="shrink-0 text-[15px] font-medium leading-6 text-[#202124]">
+												<span className="shrink-0 text-[15px] font-medium leading-6 text-[#242724]">
 													{actorLabel(e.actor)}
 												</span>
-												<span className="min-w-0 flex-1 text-[15px] leading-6 text-[#202124]">{summary(e)}</span>
-												<span className="shrink-0 text-[#555B65]" aria-hidden="true">
+												<span className="col-span-2 min-w-0 break-words text-[15px] leading-6 text-[#242724] @min-[680px]:col-span-1">
+													{summary(e)}
+												</span>
+												<span
+													className="col-start-3 row-start-1 text-[#595F59] @min-[680px]:col-start-4"
+													aria-hidden="true"
+												>
 													{open ? "▾" : "▸"}
 												</span>
 											</button>
 											{open ? (
-												<div className="pb-4 pl-12">
+												<div className="pb-5 @min-[680px]:pl-[68px]">
 													{Object.entries(e.changes).map(([field, c]) => (
 														<div key={field} className="mb-4">
-															<p className="mb-1 text-[14px] font-medium leading-[22px] text-[#555B65]">
+															<p className="mb-1 text-[14px] font-medium leading-[22px] text-[#595F59]">
 																字段：{FIELD_LABELS[field] ?? field}
 															</p>
-															<div className="grid gap-3 min-[640px]:grid-cols-2">
+															<div className="grid gap-3 @min-[760px]:grid-cols-2">
 																<div>
-																	<p className="mb-1 text-[13px] leading-5 text-[#555B65]">修改前</p>
-																	<pre className="whitespace-pre-wrap break-all rounded-lg bg-white px-3 py-2 text-[14px] leading-[22px] text-[#202124]">
+																	<p className="mb-1 text-[13px] leading-5 text-[#595F59]">修改前</p>
+																	<pre className="whitespace-pre-wrap [overflow-wrap:anywhere] rounded-lg bg-white px-3 py-2 text-[14px] leading-[22px] text-[#242724]">
 																		{c.from ?? "—"}
 																	</pre>
 																</div>
 																<div>
-																	<p className="mb-1 text-[13px] leading-5 text-[#555B65]">修改后</p>
-																	<pre className="whitespace-pre-wrap break-all rounded-lg bg-white px-3 py-2 text-[14px] leading-[22px] text-[#202124]">
+																	<p className="mb-1 text-[13px] leading-5 text-[#595F59]">修改后</p>
+																	<pre className="whitespace-pre-wrap [overflow-wrap:anywhere] rounded-lg bg-white px-3 py-2 text-[14px] leading-[22px] text-[#242724]">
 																		{c.to ?? "—"}
 																	</pre>
 																</div>
@@ -238,7 +246,7 @@ function HistoryInner({ project }: { project: LibraryProject }) {
 														</div>
 													))}
 													{Object.keys(e.changes).length === 0 ? (
-														<p className="text-[14px] leading-[22px] text-[#555B65]">无字段级变化</p>
+														<p className="text-[14px] leading-[22px] text-[#595F59]">无字段级变化</p>
 													) : null}
 												</div>
 											) : null}
@@ -251,7 +259,7 @@ function HistoryInner({ project }: { project: LibraryProject }) {
 					{entries.length > shown ? (
 						<button
 							type="button"
-							className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124]"
+							className="h-10 rounded-lg border border-[#A8AEA4]/40 px-4 text-[15px] font-medium text-[#242724]"
 							onClick={() => setShown((s) => s + PAGE)}
 						>
 							显示更多

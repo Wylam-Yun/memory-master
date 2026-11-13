@@ -43,7 +43,7 @@ const Settings: React.FC = () => {
 
 	const handleInputChange = (field: keyof MemasterConfig, value: any) => {
 		if (!config) return;
-		
+
 		setConfig({
 			...config,
 			[field]: value
@@ -134,9 +134,26 @@ const Settings: React.FC = () => {
 
 	return (
 		<div className="page-shell transition-colors duration-200">
-			<div className="max-w-4xl mx-auto">
-				<h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-8">Settings</h1>
+			<div className="settings-page max-w-[960px] mx-auto">
+				<h1 className="text-[26px] leading-[34px] font-semibold text-gray-900 dark:text-gray-100 mb-4">Settings</h1>
 
+					{/* Save/Cancel Buttons */}
+						<div className="sticky top-0 z-10 flex flex-wrap items-center justify-end gap-4 border-b border-gray-200 dark:border-gray-700 bg-[#F7F7F4] dark:bg-gray-900 py-4">
+							<button
+								onClick={handleCancel}
+								disabled={!hasUnsavedChanges || saving}
+								className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 disabled:opacity-50 transition-colors duration-200"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={handleSave}
+								disabled={!hasUnsavedChanges || saving}
+								className="px-4 py-2 bg-[#2F3530] dark:bg-gray-200 text-white dark:text-gray-900 rounded-lg hover:bg-[#424A43] dark:hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200"
+							>
+								{saving ? 'Saving...' : 'Save Changes'}
+							</button>
+						</div>
 				{error && (
 					<div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
 						<p className="text-sm text-red-700 dark:text-red-400">{error}</p>
@@ -145,7 +162,7 @@ const Settings: React.FC = () => {
 
 				<div className="space-y-8">
 					{/* Project Settings */}
-					<div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+					<div className="border-b border-gray-200 dark:border-gray-700 pb-8">
 						<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Project Settings</h2>
 						<div className="space-y-4">
 							<div>
@@ -158,8 +175,8 @@ const Settings: React.FC = () => {
 									value={config.projectName}
 									onChange={(e) => handleInputChange('projectName', e.target.value)}
 									className={`w-full px-3 py-2 border rounded-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 transition-colors duration-200 ${
-										validationErrors.projectName 
-											? 'border-red-500 dark:border-red-400' 
+										validationErrors.projectName
+											? 'border-red-500 dark:border-red-400'
 											: 'border-gray-300 dark:border-gray-600'
 									}`}
 								/>
@@ -190,7 +207,7 @@ const Settings: React.FC = () => {
 					</div>
 
 					{/* Workflow Settings */}
-					<div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+					<div className="border-b border-gray-200 dark:border-gray-700 pb-8">
 						<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Workflow Settings</h2>
 						<div className="space-y-4">
 							<div>
@@ -272,7 +289,7 @@ const Settings: React.FC = () => {
 					</div>
 
 					{/* Definition of Done Defaults */}
-					<div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+					<div className="border-b border-gray-200 dark:border-gray-700 pb-8">
 						<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Definition of Done Defaults</h2>
 						<p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
 							These checklist items are added to new tasks by default.
@@ -314,7 +331,7 @@ const Settings: React.FC = () => {
 					</div>
 
 					{/* Web UI Settings */}
-					<div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+					<div className="border-b border-gray-200 dark:border-gray-700 pb-8">
 						<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Web UI Settings</h2>
 						<div className="space-y-4">
 							<div>
@@ -329,8 +346,8 @@ const Settings: React.FC = () => {
 									value={config.defaultPort || 6420}
 									onChange={(e) => handleInputChange('defaultPort', parseInt(e.target.value) || 6420)}
 									className={`w-full px-3 py-2 border rounded-lg text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 transition-colors duration-200 ${
-										validationErrors.defaultPort 
-											? 'border-red-500 dark:border-red-400' 
+										validationErrors.defaultPort
+											? 'border-red-500 dark:border-red-400'
 											: 'border-gray-300 dark:border-gray-600'
 									}`}
 								/>
@@ -382,7 +399,7 @@ const Settings: React.FC = () => {
 					</div>
 
 					{/* Advanced Settings */}
-					<div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+					<div className="border-b border-gray-200 dark:border-gray-700 pb-8">
 						<h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Advanced Settings</h2>
 						<div className="space-y-4">
 							<div>
@@ -456,23 +473,7 @@ const Settings: React.FC = () => {
 						</div>
 					</div>
 
-					{/* Save/Cancel Buttons */}
-						<div className="flex items-center justify-end space-x-4">
-							<button
-								onClick={handleCancel}
-								disabled={!hasUnsavedChanges || saving}
-								className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 disabled:opacity-50 transition-colors duration-200"
-							>
-								Cancel
-							</button>
-							<button
-								onClick={handleSave}
-								disabled={!hasUnsavedChanges || saving}
-								className="px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-lg hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 disabled:opacity-50 transition-colors duration-200"
-							>
-								{saving ? 'Saving...' : 'Save Changes'}
-							</button>
-						</div>
+
 				</div>
 			</div>
 

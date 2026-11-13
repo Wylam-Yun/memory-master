@@ -115,7 +115,7 @@ export function ArchiveButton({ onClick, disabled }: { onClick: () => void; disa
 			onClick={onClick}
 			disabled={disabled}
 			aria-busy={disabled}
-			className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-red-500 dark:bg-red-600 hover:bg-red-600 dark:hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-red-400 dark:focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
+			className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 bg-transparent hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-red-400 dark:focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 transition-colors duration-200"
 		>
 			<svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
 				<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
@@ -137,7 +137,7 @@ export function ArchivedLabel() {
 /** The server's message when it refused the archive, under the header, until dismissed. */
 export function ArchiveRefusal({ message, onDismiss }: { message: string; onDismiss: () => void }) {
 	return (
-		<div role="alert" className="max-w-4xl mx-auto px-8 pb-4">
+		<div role="alert" className="max-w-[884px] mx-auto px-4 sm:px-8 pb-4">
 			<div className="flex items-start gap-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 px-4 py-3">
 				<span className="flex-1 text-sm text-red-700 dark:text-red-200 break-words">{message}</span>
 				<button

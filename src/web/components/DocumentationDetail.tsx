@@ -29,7 +29,7 @@ const MarkdownEditor = memo(function MarkdownEditor({
         // Preview mode - just show the rendered markdown without editor UI
         return (
             <div
-                className="prose prose-sm !max-w-none w-full p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+                className="prose prose-sm !max-w-none w-full bg-transparent min-w-0"
                 data-color-mode={theme}>
                 <MermaidMarkdown source={value} />
             </div>
@@ -162,7 +162,7 @@ export default function DocumentationDetail({docs, onRefreshData, dateFormat}: D
             // Find document from props using the same identity as the route.
             const prefixedId = routeIdentity;
             const doc = docs.find(d => documentIdKey(d.id) === routeIdentity);
-            
+
             // Always try to fetch the document from API, whether we found it in docs or not
             // This ensures deep linking works even before the parent component loads the docs array
             try {
@@ -335,7 +335,7 @@ export default function DocumentationDetail({docs, onRefreshData, dateFormat}: D
             <div className="h-full bg-white dark:bg-gray-900 flex flex-col transition-colors duration-200">
                 {/* Header Section - Confluence/Linear Style */}
                 <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 transition-colors duration-200">
-                    <div className="max-w-4xl mx-auto px-8 py-6">
+                    <div className="w-full max-w-[884px] mx-auto px-4 sm:px-8 py-6">
                         {/* The header and its metadata row wrap, so on a narrow window the buttons stay on the page. */}
                         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 mb-6">
                             <div className="flex-1">
@@ -345,7 +345,7 @@ export default function DocumentationDetail({docs, onRefreshData, dateFormat}: D
                                             type="text"
                                             value={docTitle}
                                             onChange={(e) => setDocTitle(e.target.value)}
-                                            className="text-3xl font-bold text-gray-900 dark:text-gray-100 w-full bg-transparent border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
+                                            className="text-[26px] leading-[34px] font-semibold text-gray-900 dark:text-gray-100 w-full bg-transparent border border-gray-300 dark:border-gray-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-colors duration-200"
                                             placeholder="Document title"
                                         />
                                         <input
@@ -357,7 +357,7 @@ export default function DocumentationDetail({docs, onRefreshData, dateFormat}: D
                                         />
                                     </div>
                                 ) : (
-                                    <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2 transition-colors duration-200">
+                                    <h1 className="text-[26px] leading-[34px] font-semibold text-gray-900 dark:text-gray-100 mb-2 transition-colors duration-200">
                                         {docTitle || document?.title || (title ? decodeURIComponent(title) : `Document ${id}`)}
                                     </h1>
                                 )}
@@ -450,7 +450,7 @@ export default function DocumentationDetail({docs, onRefreshData, dateFormat}: D
 
                 {/* Content Section */}
                 <div className="flex-1 bg-gray-50 dark:bg-gray-800 transition-colors duration-200 flex flex-col">
-                    <div className="flex-1 p-8 flex flex-col min-h-0">
+                    <div className="w-full max-w-[884px] mx-auto flex-1 px-4 sm:px-8 py-6 flex flex-col min-h-0">
                         <MarkdownEditor
                             value={content}
                             onChange={(val) => setContent(val || '')}

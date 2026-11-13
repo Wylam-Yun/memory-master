@@ -58,9 +58,15 @@ export default function WorkingDirectory({ projectId }: { projectId: string }) {
 		}
 	};
 	return (
-		<div className="mt-3 text-[14px] leading-6 text-[#555B65]">
-			<p className="break-all">本地文件夹 · {project?.workingDir ?? "尚未关联"}</p>
-			<button type="button" className="font-medium text-[#3B57D0]" onClick={() => void edit()}>
+		<div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[13px] leading-6 text-[#595F59]">
+			<p className="min-w-0 [overflow-wrap:anywhere]">
+				本地文件夹 · <span className="font-mono">{project?.workingDir ?? "尚未关联"}</span>
+			</p>
+			<button
+				type="button"
+				className="shrink-0 font-medium text-[#595F59] underline-offset-4 hover:text-[#315DAD] hover:underline"
+				onClick={() => void edit()}
+			>
 				{project?.workingDir ? "修改关联" : "关联本地文件夹"}
 			</button>
 			{!editing ? <ErrorNote error={error} /> : null}
@@ -81,13 +87,13 @@ export default function WorkingDirectory({ projectId }: { projectId: string }) {
 						placeholder="/Users/你的用户名/项目目录"
 					/>
 				</label>
-				<p className="mt-2 text-[14px] leading-6 text-[#555B65]">
+				<p className="mt-2 text-[14px] leading-6 text-[#595F59]">
 					填写已有文件夹的完整路径，Agent 打开项目后可读取此位置。清空路径并保存可解除关联。
 				</p>
 				<ErrorNote error={error} />
 				<div className="mt-4 flex flex-wrap justify-end gap-3">
 					{error ? (
-						<button type="button" className="text-[#3B57D0]" disabled={busy} onClick={() => void edit()}>
+						<button type="button" className="text-[#315DAD]" disabled={busy} onClick={() => void edit()}>
 							重新读取关联
 						</button>
 					) : null}
@@ -96,7 +102,7 @@ export default function WorkingDirectory({ projectId }: { projectId: string }) {
 					</button>
 					<button
 						type="button"
-						className="rounded-lg bg-[#3B57D0] px-4 py-2 text-white disabled:opacity-50"
+						className="rounded-lg bg-[#2F3530] px-4 py-2 text-white disabled:opacity-50"
 						disabled={busy || !baseVersion}
 						onClick={() => void save()}
 					>

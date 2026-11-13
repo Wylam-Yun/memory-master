@@ -137,12 +137,12 @@ test("点击图节点定位并突出说明，重复点击仍定位同一部分",
 	node.setAttribute("id", "flowchart-signup-0");
 	container.querySelector("pre")!.append(node);
 	await act(async () => node.dispatchEvent(new dom!.window.MouseEvent("click", { bubbles: true })));
-	expect(row.className).toContain("bg-[#EEF2FF]");
+	expect(row.className).toContain("bg-[#EDF0EA]");
 	await act(async () => node.dispatchEvent(new dom!.window.MouseEvent("click", { bubbles: true })));
-	expect(row.className).toContain("bg-[#EEF2FF]");
+	expect(row.className).toContain("bg-[#EDF0EA]");
 	expect(scrolled).toBe(2);
 	await act(async () => await new Promise((resolve) => setTimeout(resolve, 1850)));
-	expect(row.className).not.toContain("bg-[#EEF2FF]");
+	expect(row.className).not.toContain("bg-[#EDF0EA]");
 	expect(row.textContent).toContain("整理报名信息并确认参与人数。");
 });
 

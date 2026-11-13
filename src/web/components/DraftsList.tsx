@@ -16,12 +16,12 @@ const DraftsList: React.FC<DraftsListProps> = ({ onEditTask, onNewDraft, dateFor
 
   useEffect(() => {
     loadDrafts();
-    
+
     // Listen for draft updates
     const handleDraftsUpdated = () => {
       loadDrafts();
     };
-    
+
     window.addEventListener('drafts-updated', handleDraftsUpdated);
     return () => {
       window.removeEventListener('drafts-updated', handleDraftsUpdated);
@@ -57,11 +57,11 @@ const DraftsList: React.FC<DraftsListProps> = ({ onEditTask, onNewDraft, dateFor
       const response = await fetch(`/api/drafts/${draftId}/promote`, {
         method: 'POST',
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to promote draft: ${response.statusText}`);
       }
-      
+
       // Reload drafts after successful promotion
       await loadDrafts();
     } catch (err) {
@@ -94,9 +94,9 @@ const DraftsList: React.FC<DraftsListProps> = ({ onEditTask, onNewDraft, dateFor
 	    return (
 	      <div className="flex-1 flex items-center justify-center">
 	        <div className="text-red-600 dark:text-red-400">Error: {error}</div>
-	        <button 
+	        <button
 	          onClick={loadDrafts}
-	          className="ml-4 inline-flex items-center px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 transition-colors"
+	          className="ml-4 inline-flex items-center px-4 py-2 bg-[#2F3530] text-white text-sm font-medium rounded-md hover:bg-[#424A43] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 transition-colors"
 	        >
 	          Retry
 	        </button>
@@ -107,13 +107,13 @@ const DraftsList: React.FC<DraftsListProps> = ({ onEditTask, onNewDraft, dateFor
   return (
     <div className="page-shell transition-colors duration-200">
       <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Draft Tasks</h1>
+          <h1 className="text-[26px] leading-[34px] font-semibold text-gray-900 dark:text-white">Draft Tasks</h1>
           <div className="flex items-center space-x-4">
             <div className="text-sm text-gray-600 dark:text-gray-300">
               {drafts.length} draft{drafts.length !== 1 ? 's' : ''}
             </div>
-	            <button 
-	              className="inline-flex items-center px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:focus:ring-offset-gray-900 transition-colors duration-200" 
+	            <button
+	              className="inline-flex items-center px-4 py-2 bg-[#2F3530] text-white text-sm font-medium rounded-md hover:bg-[#424A43] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:focus:ring-offset-gray-900 transition-colors duration-200"
 	              onClick={onNewDraft}
 	            >
 	              + New Draft
@@ -130,23 +130,23 @@ const DraftsList: React.FC<DraftsListProps> = ({ onEditTask, onNewDraft, dateFor
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Draft tasks will appear here before they're promoted to the main memaster.</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {drafts.map((draft) => (
-              <div 
+              <div
                 key={draft.id}
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
+                className="py-5 hover:bg-white dark:hover:bg-gray-800 transition-colors duration-200"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 cursor-pointer" onClick={() => onEditTask(draft)}>
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">{draft.title}</h3>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1 basis-[280px] cursor-pointer" onClick={() => onEditTask(draft)}>
+                    <div className="flex flex-wrap items-center gap-3 mb-2">
+                      <h3 className="text-[15px] leading-6 font-medium text-gray-900 dark:text-white">{draft.title}</h3>
                       {draft.priority && (
                         <span className={`px-2 py-1 text-xs font-medium rounded-circle ${getPriorityColor(draft.priority)}`}>
                           {formatPriorityLabel(draft.priority)}
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-2">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400 mb-2">
                       <span>{draft.id}</span>
                       <span>Created: <StoredDate value={draft.createdDate} dateFormat={dateFormat} /></span>
                       {draft.updatedDate && (
@@ -181,7 +181,7 @@ const DraftsList: React.FC<DraftsListProps> = ({ onEditTask, onNewDraft, dateFor
                         e.stopPropagation();
                         handlePromoteDraft(draft.id);
                       }}
-                      className="inline-flex items-center px-3 py-1.5 bg-green-500 text-white text-sm font-medium rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 dark:focus:ring-offset-gray-800 transition-colors duration-200"
+                      className="inline-flex items-center px-3 py-1.5 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 dark:focus:ring-offset-gray-800 transition-colors duration-200"
                     >
                       Promote to Task
                     </button>

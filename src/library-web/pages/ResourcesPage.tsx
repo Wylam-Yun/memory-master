@@ -78,10 +78,10 @@ function ResourcesInner({ project }: { project: LibraryProject }) {
 
 	const headerActions = (
 		<div className="flex items-center gap-3">
-			<span className="text-[14px] leading-[22px] text-[#555B65]">每份最多10MB</span>
+			<span className="text-[14px] leading-[22px] text-[#595F59]">每份最多10MB</span>
 			<button
 				type="button"
-				className="h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white"
+				className="h-10 rounded-lg bg-[#2F3530] px-4 text-[15px] font-medium text-white"
 				onClick={() => inputRef.current?.click()}
 			>
 				上传资料
@@ -102,23 +102,23 @@ function ResourcesInner({ project }: { project: LibraryProject }) {
 	);
 
 	return (
-		<div>
+		<div className="@container max-w-[1040px]">
 			<PageHeader title="资料" actions={headerActions} />
 			<ErrorNote error={pickError} className="mb-4" />
 
 			{pendingDuplicate ? (
-				<div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-[#88550D]/30 bg-[#FFF6E4] px-3 py-2 text-[15px] leading-6 text-[#88550D]">
+				<div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-[#805719]/30 bg-[#FFF6E4] px-3 py-2 text-[15px] leading-6 text-[#805719]">
 					<span>已存在同名文件「{pendingDuplicate.name}」，替换还是取消？</span>
 					<button
 						type="button"
-						className="h-9 rounded-lg bg-[#3B57D0] px-3 text-[15px] font-medium text-white"
+						className="h-9 rounded-lg bg-[#2F3530] px-3 text-[15px] font-medium text-white"
 						onClick={() => void upload(pendingDuplicate)}
 					>
 						替换
 					</button>
 					<button
 						type="button"
-						className="h-9 rounded-lg border border-[#8A9099]/40 px-3 text-[15px] font-medium text-[#202124]"
+						className="h-9 rounded-lg border border-[#A8AEA4]/40 px-3 text-[15px] font-medium text-[#242724]"
 						onClick={() => setPendingDuplicate(null)}
 					>
 						取消
@@ -135,7 +135,7 @@ function ResourcesInner({ project }: { project: LibraryProject }) {
 					<EmptyNote>暂无资料</EmptyNote>
 					<button
 						type="button"
-						className="mt-3 h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white"
+						className="mt-3 h-10 rounded-lg bg-[#2F3530] px-4 text-[15px] font-medium text-white"
 						onClick={() => inputRef.current?.click()}
 					>
 						上传资料
@@ -143,23 +143,38 @@ function ResourcesInner({ project }: { project: LibraryProject }) {
 				</div>
 			) : (
 				<ul>
+					<li
+						aria-hidden="true"
+						className="hidden grid-cols-[minmax(0,1fr)_96px_144px_24px] gap-x-4 border-b border-[#DDDFD9] pb-2 pr-[72px] text-[13px] leading-5 text-[#595F59] @min-[680px]:grid"
+					>
+						<span>文件名</span>
+						<span>大小</span>
+						<span>更新日期</span>
+						<span />
+					</li>
 					{resources.map((r) => {
 						const up = uploads[r.name];
 						return (
-							<li key={r.name} className="border-b border-[#E5E7EB] last:border-b-0">
+							<li key={r.name} className="border-b border-[#DDDFD9] last:border-b-0">
 								<div className="flex items-center gap-3">
 									<button
 										type="button"
-										className="flex min-h-14 min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1 py-2 text-left"
+										className="grid min-h-16 min-w-0 flex-1 grid-cols-[minmax(0,1fr)_24px] items-center gap-x-4 gap-y-1 py-3 text-left hover:bg-white @min-[680px]:grid-cols-[minmax(0,1fr)_96px_144px_24px]"
 										onClick={() => navigate(`/projects/${projectId}/resources/${encodeURIComponent(r.name)}`)}
 									>
-										<span className="min-w-0 flex-1 break-all text-[16px] font-medium leading-6 text-[#202124]">
+										<span className="min-w-0 [overflow-wrap:anywhere] text-[16px] font-medium leading-6 text-[#242724]">
 											{r.name}
 										</span>
-										<span className="shrink-0 text-[14px] leading-[22px] text-[#555B65]">
-											{formatBytes(r.size)} · {dayLabel(r.modifiedAt)}
+										<span className="col-start-1 row-start-2 text-[13px] leading-5 text-[#595F59] @min-[680px]:col-start-auto @min-[680px]:row-start-auto">
+											{formatBytes(r.size)}
 										</span>
-										<span className="shrink-0 text-[#555B65]" aria-hidden="true">
+										<span className="col-start-1 row-start-3 text-[13px] leading-5 text-[#595F59] @min-[680px]:col-start-auto @min-[680px]:row-start-auto">
+											{dayLabel(r.modifiedAt)}
+										</span>
+										<span
+											className="col-start-2 row-start-1 text-right text-[#595F59] @min-[680px]:col-start-4"
+											aria-hidden="true"
+										>
 											→
 										</span>
 									</button>
@@ -180,14 +195,14 @@ function ResourcesInner({ project }: { project: LibraryProject }) {
 								</div>
 								{up ? (
 									<p
-										className={`pb-2 pl-1 text-[14px] leading-[22px] ${up.state === "failed" ? "text-[#B42318]" : "text-[#555B65]"}`}
+										className={`pb-2 pl-1 text-[14px] leading-[22px] ${up.state === "failed" ? "text-[#A6312B]" : "text-[#595F59]"}`}
 										role={up.state === "failed" ? "alert" : "status"}
 									>
 										{up.state === "uploading" ? "上传中…" : `上传失败：${up.error ?? ""}`}
 										{up.state === "failed" && up.file ? (
 											<button
 												type="button"
-												className="ml-2 font-medium text-[#3B57D0] underline"
+												className="ml-2 font-medium text-[#315DAD] underline"
 												onClick={() => {
 													if (up.file) void upload(up.file);
 												}}
@@ -204,19 +219,19 @@ function ResourcesInner({ project }: { project: LibraryProject }) {
 					{Object.entries(uploads)
 						.filter(([name]) => !resources.some((r) => r.name === name))
 						.map(([name, up]) => (
-							<li key={`up-${name}`} className="border-b border-[#E5E7EB] py-2 last:border-b-0">
-								<span className="block min-h-14 break-all py-2 text-[16px] font-medium leading-6 text-[#202124]">
+							<li key={`up-${name}`} className="border-b border-[#DDDFD9] py-2 last:border-b-0">
+								<span className="block min-h-14 break-all py-2 text-[16px] font-medium leading-6 text-[#242724]">
 									{name}
 								</span>
 								<p
-									className={`pb-2 pl-1 text-[14px] leading-[22px] ${up.state === "failed" ? "text-[#B42318]" : "text-[#555B65]"}`}
+									className={`pb-2 pl-1 text-[14px] leading-[22px] ${up.state === "failed" ? "text-[#A6312B]" : "text-[#595F59]"}`}
 									role={up.state === "failed" ? "alert" : "status"}
 								>
 									{up.state === "uploading" ? "上传中…" : `上传失败：${up.error ?? ""}`}
 									{up.state === "failed" && up.file ? (
 										<button
 											type="button"
-											className="ml-2 font-medium text-[#3B57D0] underline"
+											className="ml-2 font-medium text-[#315DAD] underline"
 											onClick={() => {
 												if (up.file) void upload(up.file);
 											}}

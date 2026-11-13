@@ -54,10 +54,10 @@ export default function Modal({
 				role="dialog"
 				aria-modal="true"
 				aria-label={title}
-				className={`w-full ${widthClass} rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-xl`}
+				className={`w-full ${widthClass} max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-[10px] border border-[#DDDFD9] bg-white p-6 shadow-xl`}
 				onClick={(e) => e.stopPropagation()}
 			>
-				<h2 className="mb-4 text-[20px] font-semibold leading-7 text-[#202124]">{title}</h2>
+				<h2 className="mb-4 text-[20px] font-semibold leading-7 text-[#242724]">{title}</h2>
 				{children}
 			</div>
 		</div>

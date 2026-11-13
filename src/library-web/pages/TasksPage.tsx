@@ -111,7 +111,7 @@ function TasksInner({ project, requestedId }: { project: LibraryProject; request
 	const headerActions = (
 		<button
 			type="button"
-			className="h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white"
+			className="h-10 rounded-lg bg-[#2F3530] px-4 text-[15px] font-medium text-white"
 			onClick={() => {
 				setAddOpen(true);
 				window.setTimeout(() => document.getElementById("new-task-input")?.focus(), 0);
@@ -151,12 +151,12 @@ function TasksInner({ project, requestedId }: { project: LibraryProject; request
 				key={t.id}
 				id={`task-row-${t.id}`}
 				tabIndex={linkedId === t.id ? -1 : undefined}
-				className={`min-h-14 border-b border-[#E5E7EB] py-2 last:border-b-0 ${linkedId === t.id ? "rounded-lg bg-[#EEF2FF] px-3" : ""}`}
+				className={`min-h-14 border-b border-[#DDDFD9] py-2 last:border-b-0 ${linkedId === t.id ? "rounded-lg bg-[#EDF0EA] px-3" : ""}`}
 			>
-				<div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1">
+				<div className="grid min-h-14 grid-cols-[20px_minmax(0,1fr)] items-center gap-x-3 gap-y-2 min-[640px]:grid-cols-[20px_minmax(0,1fr)_144px]">
 					<input
 						type="checkbox"
-						className="h-5 w-5 accent-[#3B57D0]"
+						className="h-5 w-5 accent-[#315DAD]"
 						checked={done_}
 						disabled={meta.doneStatus === null}
 						aria-label={`完成「${t.title}」`}
@@ -167,17 +167,17 @@ function TasksInner({ project, requestedId }: { project: LibraryProject; request
 					{hasDesc ? (
 						<button
 							type="button"
-							className="min-w-0 flex-1 text-left text-[16px] font-medium leading-6 text-[#202124]"
+							className="min-w-0 break-words text-left text-[16px] font-medium leading-6 text-[#242724]"
 							aria-expanded={expanded}
 							onClick={() => toggleExpanded(t)}
 						>
 							{t.title}
 						</button>
 					) : (
-						<span className="min-w-0 flex-1 text-[16px] font-medium leading-6">{t.title}</span>
+						<span className="min-w-0 break-words text-[16px] font-medium leading-6">{t.title}</span>
 					)}
 					<select
-						className="h-10 rounded-lg border border-[#8A9099]/40 bg-white px-2 text-[15px] leading-6 text-[#202124]"
+						className="col-start-2 h-9 w-full rounded-md border border-[#A8AEA4]/40 bg-white px-2 text-[14px] leading-[22px] text-[#242724] min-[640px]:col-start-auto"
 						value={t.status}
 						aria-label={`「${t.title}」状态`}
 						onChange={(e) => void setStatus(t, e.target.value)}
@@ -191,10 +191,10 @@ function TasksInner({ project, requestedId }: { project: LibraryProject; request
 					</select>
 				</div>
 				{expanded ? (
-					<p className="whitespace-pre-wrap py-2 pl-8 text-[15px] leading-6 text-[#555B65]">{t.description}</p>
+					<p className="whitespace-pre-wrap py-2 pl-8 text-[15px] leading-6 text-[#595F59]">{t.description}</p>
 				) : null}
 				{rowErrors[t.id] ? (
-					<p className="pl-8 text-[14px] leading-[22px] text-[#B42318]" role="alert">
+					<p className="pl-8 text-[14px] leading-[22px] text-[#A6312B]" role="alert">
 						{rowErrors[t.id]?.text}
 						<button
 							type="button"
@@ -214,11 +214,11 @@ function TasksInner({ project, requestedId }: { project: LibraryProject; request
 
 	return (
 		<div>
-			<Link to={`/projects/${projectId}`} className="text-[15px] font-medium text-[#3B57D0] hover:underline">
+			<Link to={`/projects/${projectId}`} className="text-[15px] font-medium text-[#315DAD] hover:underline">
 				← 返回概览
 			</Link>
 			<PageHeader title="任务" actions={headerActions} />
-			<p className="mb-4 text-[15px] font-medium leading-6 text-[#555B65]">P0 · 当前重点</p>
+			<p className="mb-4 text-[15px] font-medium leading-6 text-[#595F59]">P0 · 当前重点</p>
 
 			{p0Tasks.length === 0 ? (
 				<div className="mb-6">
@@ -237,7 +237,7 @@ function TasksInner({ project, requestedId }: { project: LibraryProject; request
 					<div className="flex gap-2">
 						<input
 							id="new-task-input"
-							className="h-10 min-w-0 flex-1 rounded-lg border border-[#8A9099]/50 bg-white px-3 text-[15px] leading-6 text-[#202124] focus:border-[#3B57D0] focus:outline-none"
+							className="h-10 min-w-0 flex-1 rounded-lg border border-[#A8AEA4]/50 bg-white px-3 text-[15px] leading-6 text-[#242724] focus:border-[#315DAD] focus:outline-none"
 							placeholder="新任务名称"
 							value={newTitle}
 							{...ime.compositionProps}
@@ -250,7 +250,7 @@ function TasksInner({ project, requestedId }: { project: LibraryProject; request
 						/>
 						<button
 							type="button"
-							className="h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white disabled:opacity-50"
+							className="h-10 rounded-lg bg-[#2F3530] px-4 text-[15px] font-medium text-white disabled:opacity-50"
 							disabled={!newTitle.trim() || adding}
 							onClick={() => void addTask()}
 						>
@@ -278,7 +278,7 @@ function DoneGroup({
 		<section className="mt-2">
 			<button
 				type="button"
-				className="flex items-center gap-2 text-[15px] font-medium leading-6 text-[#555B65]"
+				className="flex items-center gap-2 text-[15px] font-medium leading-6 text-[#595F59]"
 				aria-expanded={open}
 				onClick={() => setOpen((o) => !o)}
 			>

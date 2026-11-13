@@ -18,7 +18,7 @@ export function ErrorNote({
 	if (!error) return null;
 	return (
 		<div
-			className={`rounded-lg border border-[#B42318]/30 bg-[#FFF1F0] px-3 py-2 text-[15px] leading-6 text-[#B42318] ${className}`}
+			className={`rounded-lg border border-[#A6312B]/30 bg-[#FFF1F0] px-3 py-2 text-[15px] leading-6 text-[#A6312B] ${className}`}
 			role="alert"
 		>
 			{errorText(error)}
@@ -40,9 +40,9 @@ export function SuccessNote({ children }: { children: ReactNode }) {
 }
 
 export function EmptyNote({ children }: { children: ReactNode }) {
-	return <p className="text-[15px] leading-6 text-[#555B65]">{children}</p>;
+	return <p className="text-[15px] leading-6 text-[#595F59]">{children}</p>;
 }
 
 export function LoadingNote({ text = "加载中…" }: { text?: string }) {
-	return <p className="py-8 text-[15px] leading-6 text-[#555B65]">{text}</p>;
+	return <p className="py-8 text-[15px] leading-6 text-[#595F59]">{text}</p>;
 }

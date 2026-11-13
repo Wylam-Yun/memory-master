@@ -13,7 +13,7 @@ export default function OverviewContent({
 	source: string;
 }) {
 	if (!source.trim())
-		return <p className="text-[16px] leading-7 text-[#555B65]">还没有填写{PROJECT_CONTENT_NAMES[field]}。</p>;
+		return <p className="text-[16px] leading-7 text-[#595F59]">还没有填写{PROJECT_CONTENT_NAMES[field]}。</p>;
 	if (field === "features") return <FeaturesContent source={source} />;
 	if (field === "agreements" || field === "criticalPaths")
 		return (
@@ -65,7 +65,7 @@ function FeaturesContent({ source }: { source: string }) {
 						{outline.map((item) => (
 							<li key={item.id}>
 								<a
-									className="block py-2 text-[15px] leading-6 text-[#555B65] underline-offset-4 hover:text-[#3B57D0] hover:underline focus-visible:text-[#3B57D0]"
+									className="block py-2 text-[15px] leading-6 text-[#595F59] underline-offset-4 hover:text-[#315DAD] hover:underline focus-visible:text-[#315DAD]"
 									href={`${route}#${encodeURIComponent(item.id)}`}
 								>
 									{item.title}
@@ -100,11 +100,14 @@ export function CurrentContent({ source }: { source: string }) {
 	const ordered = [...sections].sort((a, b) => order.indexOf(a.title) - order.indexOf(b.title));
 	const readable = (body: string) => (progress.definitions ? `${body}\n\n${progress.definitions}` : body);
 	return (
-		<article aria-label={PROJECT_CONTENT_NAMES.current} className="overview-current space-y-3 text-[15px] leading-6">
+		<article
+			aria-label={PROJECT_CONTENT_NAMES.current}
+			className="overview-current max-w-[760px] space-y-5 text-[15px] leading-[26px] text-[#242724]"
+		>
 			{excerpt ? (
 				<details className="group">
-					<summary className="cursor-pointer list-none py-1 text-[14px] text-[#555B65] hover:text-[#3B57D0] [&::-webkit-details-marker]:hidden">
-						<span className="mb-2 line-clamp-3 break-words text-[15px] leading-6 text-[#202124] group-open:hidden">
+					<summary className="cursor-pointer list-none py-1 text-[14px] text-[#595F59] hover:text-[#315DAD] [&::-webkit-details-marker]:hidden">
+						<span className="mb-2 line-clamp-3 break-words text-[15px] leading-6 text-[#242724] group-open:hidden">
 							{excerpt}
 						</span>
 						<span className="inline-flex items-center gap-1">
@@ -122,7 +125,7 @@ export function CurrentContent({ source }: { source: string }) {
 				<Markdown source={readable(progress.introduction)} />
 			) : null}
 			{ordered.length ? (
-				<dl className="space-y-3">
+				<dl className="space-y-5">
 					{ordered.map(({ title, body }, index) => {
 						const key = `${title}:${index}`;
 						if (title === "未完成或未验证" && prominent) {
@@ -131,7 +134,7 @@ export function CurrentContent({ source }: { source: string }) {
 									<dt className="sr-only">{title}</dt>
 									<dd>
 										<details>
-											<summary className="w-fit cursor-pointer py-1 text-[14px] text-[#555B65] hover:text-[#3B57D0]">
+											<summary className="w-fit cursor-pointer py-1 text-[14px] text-[#595F59] hover:text-[#315DAD]">
 												{title}
 											</summary>
 											<div className="pt-2">
@@ -142,19 +145,29 @@ export function CurrentContent({ source }: { source: string }) {
 								</div>
 							);
 						}
-						const focus = title === "下一步" || title === "需要你决定";
+						const needsDecision = title === "需要你决定";
+						const nextStep = title === "下一步";
 						return (
-							<div key={key} className={focus ? "rounded-md bg-[#EEF2FF] px-3 py-2.5" : ""}>
+							<div
+								key={key}
+								className={
+									needsDecision
+										? "rounded-md bg-[#FBF4E5] px-4 py-3"
+										: nextStep
+											? "border-l-2 border-[#687A68] pl-4"
+											: ""
+								}
+							>
 								<dt
 									className={
-										focus
-											? "mb-0.5 text-[14px] font-semibold text-[#283D91]"
-											: "mb-0.5 text-[14px] font-medium text-[#555B65]"
+										needsDecision
+											? "mb-2 text-[14px] font-semibold text-[#805719]"
+											: "mb-2 text-[14px] font-semibold text-[#595F59]"
 									}
 								>
 									{title}
 								</dt>
-								<dd className="min-w-0 [&_.wmde-markdown]:text-[15px] [&_.wmde-markdown]:leading-6 [&_.wmde-markdown>p:last-child]:mb-0">
+								<dd className="min-w-0 [&_.wmde-markdown]:text-[15px] [&_.wmde-markdown]:leading-[26px] [&_.wmde-markdown>p:last-child]:mb-0">
 									<Markdown source={readable(body)} />
 								</dd>
 							</div>
@@ -162,7 +175,7 @@ export function CurrentContent({ source }: { source: string }) {
 					})}
 				</dl>
 			) : !progress.introduction.trim() ? (
-				<p className="text-[#555B65]">暂无当前进展。</p>
+				<p className="text-[#595F59]">暂无当前进展。</p>
 			) : null}
 		</article>
 	);

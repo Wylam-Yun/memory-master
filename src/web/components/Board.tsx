@@ -47,7 +47,7 @@ interface BoardProps {
 }
 
 const BOARD_FILTER_SELECT_CLASS =
-  'min-w-[140px] h-10 py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 transition-colors duration-200';
+  'min-w-0 w-full @min-[640px]:w-auto @min-[640px]:min-w-[140px] h-10 py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-stone-500 dark:focus:ring-stone-400 transition-colors duration-200';
 
 const BOARD_FILTER_BUTTON_CLASS =
   'h-10 py-2 px-3 text-sm border border-gray-300 dark:border-gray-600 rounded-lg whitespace-nowrap transition-colors duration-200 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700';
@@ -652,7 +652,7 @@ const Board: React.FC<BoardProps> = ({
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: Escape already clears the selection for keyboard users.
     <div
-      className="w-full"
+      className="@container w-full"
       onClick={(event) => {
         if (selectedTaskIds.length > 0 && event.target === event.currentTarget) clearSelection();
       }}
@@ -664,9 +664,9 @@ const Board: React.FC<BoardProps> = ({
       )}
       <div className="mb-6 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 transition-colors duration-200">Kanban Board</h2>
+          <h2 className="text-[26px] leading-[34px] font-semibold text-gray-900 dark:text-gray-100 transition-colors duration-200">Kanban Board</h2>
           <button
-            className="inline-flex items-center px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-colors duration-200"
+            className="inline-flex items-center px-4 py-2 bg-[#2F3530] dark:bg-gray-200 text-white dark:text-gray-900 text-sm font-medium rounded-md hover:bg-[#424A43] dark:hover:bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-colors duration-200"
             onClick={onNewTask}
           >
             + New Task
@@ -740,7 +740,7 @@ const Board: React.FC<BoardProps> = ({
               </button>
             </div>
             {onFiltersChange && (
-              <div className="flex flex-wrap items-center gap-3" aria-label="Board filters">
+              <div className="grid w-full grid-cols-2 gap-2 @min-[640px]:flex @min-[640px]:w-auto @min-[640px]:flex-wrap @min-[640px]:items-center @min-[640px]:gap-3" aria-label="Board filters">
                 <select
                   aria-label="Filter board by assignee"
                   value={filterAssignee}
@@ -759,7 +759,7 @@ const Board: React.FC<BoardProps> = ({
                   selectedLabels={normalizedFilterLabels}
                   onChange={labels => onFiltersChange({ assignee: filterAssignee, labels, priority: filterPriority, taskType: filterType, project: filterProject })}
                   menuId="board-labels-filter-menu"
-                  className="min-w-[200px]"
+                  className="min-w-0 w-full @min-[640px]:w-auto @min-[640px]:min-w-[180px]"
                 />
 
                 <select
@@ -879,8 +879,8 @@ const Board: React.FC<BoardProps> = ({
 
                 {/* Lane content - columns */}
                 {!isCollapsed && (
-                  <div className="p-4">
-                    <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${visibleStatuses.length}, minmax(0, 1fr))` }}>
+                  <div className="overflow-x-auto p-3">
+                    <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${visibleStatuses.length}, minmax(256px, 1fr))` }}>
                       {visibleStatuses.map((status) => (
                         <div key={`${lane.key}-${status}`} className="min-w-0">
                           <TaskColumn

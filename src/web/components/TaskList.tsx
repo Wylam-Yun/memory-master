@@ -54,11 +54,11 @@ const SHARED_SORTS: Partial<Record<`${TaskSortColumn}:${SortDirection}`, string>
 // Column widths in rem, in render order: ID, Title, Status, Priority, Ordinal, Labels,
 // Assignee, Milestone, Created. Each metadata column is sized to the wider of its header
 // label and its cell content; Title is the one flexible column (null) and absorbs whatever
-// the content area has left, so the table fits a laptop viewport instead of overflowing it.
-const TASK_COLUMN_WIDTHS_REM: readonly (number | null)[] = [6, null, 6.5, 6.5, 6, 8, 6.5, 8, 6];
+// the content area has left. Narrow viewports scroll to keep titles and metadata readable.
+const TASK_COLUMN_WIDTHS_REM: readonly (number | null)[] = [5.5, null, 6.5, 5, 4.5, 6, 5.5, 6.5, 6];
 
 // Below this the table scrolls horizontally rather than crushing the columns.
-const TASK_TITLE_MIN_WIDTH_REM = 12;
+const TASK_TITLE_MIN_WIDTH_REM = 20;
 const TASK_TABLE_MIN_WIDTH_REM = TASK_COLUMN_WIDTHS_REM.reduce<number>(
 	(total, width) => total + (width ?? TASK_TITLE_MIN_WIDTH_REM),
 	0,
@@ -587,13 +587,13 @@ const TaskList: React.FC<TaskListProps> = ({
 		const isActive = sortColumn === column;
 		if (!isActive) {
 			return (
-				<span className="text-[10px] text-gray-300 dark:text-gray-600 select-none" aria-hidden="true">
+				<span className="text-[12px] text-gray-300 dark:text-gray-600 select-none" aria-hidden="true">
 					↕
 				</span>
 			);
 		}
 		return (
-			<span className="text-[10px] text-gray-600 dark:text-gray-300 select-none" aria-hidden="true">
+			<span className="text-[12px] text-gray-600 dark:text-gray-300 select-none" aria-hidden="true">
 				{sortDirection === "asc" ? "▲" : "▼"}
 			</span>
 		);
@@ -730,9 +730,9 @@ const TaskList: React.FC<TaskListProps> = ({
 		<div className="page-shell transition-colors duration-200">
 			<div className="flex flex-col gap-4 mb-6">
 				<div className="flex items-center justify-between gap-3">
-						<h1 className="text-2xl font-bold text-gray-900 dark:text-white">All Tasks</h1>
+						<h1 className="text-[26px] leading-[34px] font-semibold text-gray-900 dark:text-white">All Tasks</h1>
 						<button
-							className="inline-flex items-center px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:focus:ring-offset-gray-900 transition-colors duration-200"
+							className="inline-flex items-center px-4 py-2 bg-[#2F3530] text-white text-sm font-medium rounded-md hover:bg-[#424A43] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:focus:ring-offset-gray-900 transition-colors duration-200"
 							onClick={onNewTask}
 						>
 							+ New Task
@@ -902,7 +902,7 @@ const TaskList: React.FC<TaskListProps> = ({
 											<td className="px-3 py-2.5">
 												<div className="flex items-center gap-2 min-w-0">
 													{progressSlotDigits > 0 && (
-														<span className="flex min-w-12 shrink-0 text-[10px] font-medium tabular-nums" style={{ width: progressSlotWidth }}>
+														<span className="flex min-w-12 shrink-0 text-[12px] font-medium tabular-nums" style={{ width: progressSlotWidth }}>
 															<AcceptanceCriteriaProgress task={task} density="list" />
 														</span>
 													)}
@@ -924,7 +924,7 @@ const TaskList: React.FC<TaskListProps> = ({
 													</button>
 													{isFromOtherBranch && task.branch && (
 														<span
-															className="inline-flex shrink-0 items-center rounded-circle bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+															className="inline-flex shrink-0 items-center rounded-circle bg-amber-100 px-2 py-0.5 text-[12px] font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
 															title={`Read-only task from ${task.branch} branch`}
 														>
 															{task.branch}
@@ -938,14 +938,14 @@ const TaskList: React.FC<TaskListProps> = ({
 												)}
 											</td>
 											<td className="px-3 py-2.5">
-												<span className={`inline-flex rounded-circle px-2 py-0.5 text-[11px] font-medium ${getStatusColor(task.status)}`}>
+												<span className={`inline-flex rounded-circle px-2 py-0.5 text-[13px] font-medium ${getStatusColor(task.status)}`}>
 													{task.status}
 												</span>
 											</td>
 											<td className="px-3 py-2.5">
 												{task.priority ? (
 													<span
-														className={`inline-flex rounded-circle px-2 py-0.5 text-[11px] font-medium ${getPriorityColor(task.priority)}`}
+														className={`inline-flex rounded-circle px-2 py-0.5 text-[13px] font-medium ${getPriorityColor(task.priority)}`}
 													>
 														{formatPriorityLabel(task.priority, availablePriorities)}
 													</span>
@@ -962,14 +962,14 @@ const TaskList: React.FC<TaskListProps> = ({
 														{visibleLabels.map((label) => (
 															<span
 																key={label}
-																className="inline-flex max-w-[7rem] truncate rounded-circle bg-gray-100 px-2 py-0.5 text-[11px] text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+																className="inline-flex max-w-[7rem] truncate rounded-circle bg-gray-100 px-2 py-0.5 text-[13px] text-gray-700 dark:bg-gray-700 dark:text-gray-200"
 																title={label}
 															>
 																{label}
 															</span>
 														))}
 														{labelOverflow > 0 && (
-															<span className="text-[11px] text-gray-500 dark:text-gray-400">+{labelOverflow}</span>
+															<span className="text-[13px] text-gray-500 dark:text-gray-400">+{labelOverflow}</span>
 														)}
 													</div>
 												) : (
@@ -983,13 +983,13 @@ const TaskList: React.FC<TaskListProps> = ({
 															<span
 																key={assignee}
 																title={assignee}
-																className="inline-flex h-6 w-6 items-center justify-center rounded-circle bg-blue-100 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/50 dark:text-blue-200"
+																className="inline-flex h-6 w-6 items-center justify-center rounded-circle bg-blue-100 text-[12px] font-semibold text-blue-700 dark:bg-blue-900/50 dark:text-blue-200"
 															>
 																{getAssigneeInitials(assignee)}
 															</span>
 														))}
 														{assigneeOverflow > 0 && (
-															<span className="text-[11px] text-gray-500 dark:text-gray-400">+{assigneeOverflow}</span>
+															<span className="text-[13px] text-gray-500 dark:text-gray-400">+{assigneeOverflow}</span>
 														)}
 													</div>
 												) : (

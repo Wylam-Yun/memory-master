@@ -114,14 +114,14 @@ const Modal: React.FC<ModalProps> = ({
 		>
 			<div
 				ref={dialogRef}
-				className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 shadow-2xl ${maxWidthClass} w-full max-h-[94vh] overflow-y-auto transition-colors duration-200`}
+				className={`bg-white dark:bg-gray-800 rounded-[10px] border border-gray-200 dark:border-gray-600 shadow-xl ${maxWidthClass} w-full max-h-[calc(100dvh-2rem)] overflow-y-auto transition-colors duration-200`}
 				onClick={(event) => event.stopPropagation()}
 				role="dialog"
 				tabIndex={-1}
 				aria-modal="true"
 				aria-labelledby="modal-title"
 			>
-				<div className="sticky top-0 z-10 flex flex-wrap items-start gap-3 px-6 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-800/95 backdrop-blur supports-[backdrop-filter]:bg-white/75 supports-[backdrop-filter]:dark:bg-gray-800/75">
+				<div className="sticky top-0 z-10 flex flex-wrap items-start gap-3 px-6 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
 					<h2 id="modal-title" className="min-w-0 flex-1 basis-full break-words text-base font-semibold text-gray-900 dark:text-gray-100 sm:basis-auto">
 						{title}
 					</h2>

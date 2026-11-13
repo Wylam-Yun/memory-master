@@ -43,7 +43,7 @@ const ProjectBadge: React.FC<ProjectBadgeProps> = ({ project, availableProjects,
     <span
       data-task-project={label}
       title={`Project: ${label}`}
-      className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-semibold leading-4 ${PROJECT_BADGE_PALETTES[getPaletteIndex(label, availableProjects)]} ${className}`}
+      className={`inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[12px] font-semibold leading-4 ${PROJECT_BADGE_PALETTES[getPaletteIndex(label, availableProjects)]} ${className}`}
     >
       <span className="truncate">{label}</span>
     </span>

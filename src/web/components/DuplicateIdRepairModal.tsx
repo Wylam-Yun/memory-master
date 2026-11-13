@@ -69,8 +69,8 @@ export function DuplicateIdRepairModal({ isOpen, plan, onClose, onRepaired }: Du
 										<span className="break-all font-mono text-blue-700 dark:text-blue-300">{change.newId}</span>
 										<span className="truncate text-gray-600 dark:text-gray-400">{change.title}</span>
 									</div>
-									<p className="break-all font-mono text-xs text-gray-500 dark:text-gray-400">{change.sourcePath}</p>
-									<p className="break-all font-mono text-xs text-gray-500 dark:text-gray-400">{change.targetPath}</p>
+									<p className="break-all font-mono text-[13px] leading-5 text-gray-500 dark:text-gray-400">{change.sourcePath}</p>
+									<p className="break-all font-mono text-[13px] leading-5 text-gray-500 dark:text-gray-400">{change.targetPath}</p>
 								</li>
 							))}
 						</ul>

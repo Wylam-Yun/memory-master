@@ -101,7 +101,7 @@ export default function OverviewFieldEditor({
 		<div className="flex items-center gap-2">
 			<button
 				type="button"
-				className="min-h-9 rounded-md bg-[#3B57D0] px-3 text-[14px] font-medium text-white disabled:opacity-50"
+				className="min-h-9 rounded-md bg-[#2F3530] px-3 text-[14px] font-medium text-white hover:bg-[#242A25] disabled:opacity-50"
 				disabled={saving}
 				onClick={() => void save(editing.baseVersion)}
 			>
@@ -109,7 +109,7 @@ export default function OverviewFieldEditor({
 			</button>
 			<button
 				type="button"
-				className="min-h-9 px-2 text-[14px] text-[#555B65] disabled:opacity-50"
+				className="min-h-9 px-2 text-[14px] text-[#595F59] disabled:opacity-50"
 				disabled={saving}
 				onClick={cancelEdit}
 			>
@@ -119,7 +119,7 @@ export default function OverviewFieldEditor({
 	) : (
 		<button
 			type="button"
-			className="min-h-9 rounded-md border border-[#D6DAE2] bg-white px-3 text-[14px] font-medium text-[#283D91] hover:border-[#3B57D0]"
+			className="min-h-9 rounded-md px-2 text-[13px] font-medium text-[#595F59] underline-offset-4 hover:text-[#315DAD] hover:underline"
 			onClick={() => {
 				setSaved(false);
 				updateDraft({ value: overview[field] ?? "", baseVersion: overview.version });
@@ -133,7 +133,7 @@ export default function OverviewFieldEditor({
 		editing ? (
 			<div className="mt-3">
 				{newer ? (
-					<div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg bg-[#FFF6E4] px-3 py-2 text-[15px] leading-6 text-[#88550D]">
+					<div className="mb-6 flex flex-wrap items-center gap-3 rounded-lg bg-[#FFF6E4] px-3 py-2 text-[15px] leading-6 text-[#805719]">
 						<span>内容已更新。</span>
 						<button type="button" className="font-medium underline" onClick={() => setCompareOpen(true)}>
 							查看最新内容
@@ -141,7 +141,7 @@ export default function OverviewFieldEditor({
 					</div>
 				) : null}
 				{compareOpen && newer ? (
-					<section className="mb-6 space-y-4 rounded-xl border border-[#E5E7EB] bg-white p-4">
+					<section className="mb-6 space-y-4 rounded-xl border border-[#DDDFD9] bg-white p-4">
 						<h2 className="text-[18px] font-semibold">最新的{label}</h2>
 						<div className="text-[16px] leading-7">
 							<Markdown source={newer[field] ?? ""} />
@@ -150,7 +150,7 @@ export default function OverviewFieldEditor({
 						<div className="flex flex-wrap gap-3">
 							<button
 								type="button"
-								className="min-h-10 rounded-lg bg-[#3B57D0] px-4 py-2 text-[15px] font-medium text-white disabled:opacity-50"
+								className="min-h-10 rounded-lg bg-[#2F3530] px-4 py-2 text-[15px] font-medium text-white disabled:opacity-50"
 								disabled={saving}
 								onClick={() => save(newer.version)}
 							>
@@ -158,7 +158,7 @@ export default function OverviewFieldEditor({
 							</button>
 							<button
 								type="button"
-								className="min-h-10 px-2 text-[15px] font-medium text-[#3B57D0]"
+								className="min-h-10 px-2 text-[15px] font-medium text-[#315DAD]"
 								onClick={() => setCompareOpen(false)}
 							>
 								继续编辑
@@ -175,7 +175,7 @@ export default function OverviewFieldEditor({
 					</section>
 				) : null}
 				{field === "criticalPaths" ? (
-					<p className="mb-3 text-[15px] text-[#555B65]">{CRITICAL_PATHS_GUIDANCE}</p>
+					<p className="mb-3 text-[15px] text-[#595F59]">{CRITICAL_PATHS_GUIDANCE}</p>
 				) : null}
 				<GrowingTextarea
 					value={editing.value}

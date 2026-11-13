@@ -140,7 +140,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
       return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 transition-colors duration-200';
     }
     if (statusLower.includes('progress') || statusLower.includes('doing')) {
-      return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 transition-colors duration-200';
+      return 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 transition-colors duration-200';
     }
     if (statusLower.includes('blocked') || statusLower.includes('stuck')) {
       return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 transition-colors duration-200';
@@ -152,10 +152,10 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
     e.preventDefault();
     setIsDragOver(false);
     setDropPosition(null);
-    
+
     const droppedTaskId = e.dataTransfer.getData('text/plain');
     const sourceStatus = e.dataTransfer.getData('text/status');
-    
+
     if (!droppedTaskId) return;
 
     // Dragging one card of a selection moves the whole selection, so the drop skips reordering.
@@ -222,7 +222,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
       setDropPosition(null);
     }
   };
-  
+
   const handleDragOverColumn = (e: React.DragEvent) => {
     e.preventDefault();
     // Clear drop position if dragging in empty space
@@ -236,14 +236,14 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
 
   return (
     <div
-      className={`rounded-lg p-4 transition-colors duration-200 h-full ${
+      className={`rounded-lg p-3 transition-colors duration-200 h-full ${
         isEmpty ? 'min-h-24' : 'min-h-96'
       } ${
         isDragOver && (dragSourceStatus !== title || (dragSourceLane ?? null) !== (laneId ?? null))
           ? 'bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-600 border-dashed'
           : isEmpty
-            ? 'bg-gray-50/50 dark:bg-gray-800/30 border border-gray-200/50 dark:border-gray-700/50'
-            : 'bg-white border border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700'
+            ? 'bg-[#EEEFEA]/60 dark:bg-gray-800/30 border border-transparent'
+            : 'bg-[#EEEFEA] border border-transparent dark:bg-gray-800/50 dark:border-transparent'
       }`}
       onDrop={handleDrop}
       onDragOver={handleDragOverColumn}
@@ -257,7 +257,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
             {tasks.length}
           </span>
         </div>
-        
+
         {canReorderColumn && (
           <div className="relative" ref={menuRef}>
             <button
@@ -274,7 +274,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
                 <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
               </svg>
             </button>
-            
+
             {showMenu && (
               <div
                 id={columnActionsId}
@@ -319,11 +319,11 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
           </div>
         )}
       </div>
-      
+
       <div className="space-y-3">
         {tasks.map((task, index) => (
-          <div 
-            key={task.id} 
+          <div
+            key={task.id}
             className="relative"
             onDragOver={(e) => {
               if (!onTaskReorder || !draggedTaskId) return;
@@ -345,7 +345,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
               const rect = e.currentTarget.getBoundingClientRect();
               const y = e.clientY - rect.top;
               const height = rect.height;
-              
+
               // Determine if we're in the top or bottom half
               if (y < height / 2) {
                 setDropPosition({ index, position: 'before' });
@@ -358,7 +358,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
             {dropPosition?.index === index && dropPosition.position === 'before' && (
               <div className="h-1 bg-blue-500 rounded-full mb-2 animate-pulse" />
             )}
-            
+
             <TaskCard
               task={task}
               onUpdate={onTaskUpdate}
@@ -404,14 +404,14 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
               availableProjects={availableProjects}
               dateFormat={dateFormat}
             />
-            
+
             {/* Drop indicator for after this task */}
             {dropPosition?.index === index && dropPosition.position === 'after' && (
               <div className="h-1 bg-blue-500 rounded-full mt-2 animate-pulse" />
             )}
           </div>
         ))}
-        
+
         {/* Drop zone indicator - only show in different columns */}
         {isDragOver && dragSourceStatus !== title && (
           <div className="border-2 border-green-400 dark:border-green-500 border-dashed rounded-md bg-green-50 dark:bg-green-900/20 p-4 text-center transition-colors duration-200">
@@ -420,7 +420,7 @@ const TaskColumn: React.FC<TaskColumnProps> = ({
             </div>
           </div>
         )}
-        
+
         {isEmpty && !isDragOver && (
           <div className="text-center py-2 text-gray-400 dark:text-gray-500 text-xs transition-colors duration-200">
             {dragSourceStatus && dragSourceStatus !== title

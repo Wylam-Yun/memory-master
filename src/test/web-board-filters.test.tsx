@@ -233,7 +233,8 @@ const expectBoardFiltersInHeader = (container: HTMLElement) => {
 	expect(container.querySelector("select[aria-label='Filter board by label']")).toBeNull();
 	const labelsButton = getBoardLabelsButton(container);
 	expect(toolbar?.contains(labelsButton)).toBe(true);
-	expect(labelsButton.className).toContain("min-w-[200px]");
+	expect(labelsButton.className).toContain("@min-[640px]:min-w-[180px]");
+	expect(labelsButton.className).toContain("min-w-0");
 	expect(labelsButton.className).toContain("rounded-lg");
 	expect(labelsButton.className).toContain("border-gray-300");
 	expect(labelsButton.className).toContain("focus:ring-stone-500");

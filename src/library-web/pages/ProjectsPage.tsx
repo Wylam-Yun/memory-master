@@ -45,23 +45,23 @@ export default function ProjectsPage({ projects, reload }: { projects: LibraryPr
 		: projects;
 
 	return (
-		<div className="min-h-screen bg-[#FAFAF8] text-[#202124]">
-			<header className="border-b border-[#E5E7EB] bg-white">
-				<div className="mx-auto flex max-w-[1160px] items-center justify-between px-4 py-3 min-[640px]:px-6 min-[960px]:px-8 min-[1200px]:px-10">
+		<div className="min-h-screen bg-[#F7F7F4] text-[#242724]">
+			<header className="border-b border-[#DDDFD9] bg-white">
+				<div className="mx-auto flex max-w-[1040px] items-center justify-between px-4 py-3 min-[640px]:px-6 min-[960px]:px-8 min-[1200px]:px-10">
 					<span className="text-[16px] font-semibold leading-7">Memory Master</span>
-					<Link to="/settings" className="text-[15px] font-medium leading-6 text-[#202124] hover:text-[#3B57D0]">
+					<Link to="/settings" className="text-[15px] font-medium leading-6 text-[#242724] hover:text-[#315DAD]">
 						设置
 					</Link>
 				</div>
 			</header>
-			<main className="mx-auto max-w-[1160px] px-4 py-6 min-[640px]:px-6 min-[960px]:px-8 min-[960px]:py-8 min-[1200px]:px-10">
-				<div className="mb-6 flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-2">
-					<h1 className="text-[24px] font-semibold leading-8 min-[640px]:text-[28px] min-[640px]:leading-9">
+			<main className="mx-auto max-w-[1040px] px-4 py-6 min-[640px]:px-6 min-[960px]:px-8 min-[960px]:py-8 min-[1200px]:px-10">
+				<div className="mb-6 flex min-h-[60px] flex-wrap items-center justify-between gap-x-4 gap-y-2">
+					<h1 className="text-[26px] font-semibold leading-[34px]">
 						所有项目
 					</h1>
 					<button
 						type="button"
-						className="h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white"
+						className="h-10 rounded-lg bg-[#2F3530] px-4 text-[15px] font-medium text-white"
 						onClick={() => setModalOpen(true)}
 					>
 						＋ 新建项目
@@ -70,7 +70,7 @@ export default function ProjectsPage({ projects, reload }: { projects: LibraryPr
 
 				{projects.length > 12 ? (
 					<input
-						className="mb-4 h-10 w-full max-w-[320px] rounded-lg border border-[#8A9099]/50 bg-white px-3 text-[15px] leading-6 focus:border-[#3B57D0] focus:outline-none"
+						className="mb-4 h-10 w-full max-w-[320px] rounded-lg border border-[#A8AEA4]/50 bg-white px-3 text-[15px] leading-6 focus:border-[#315DAD] focus:outline-none"
 						placeholder="查找项目"
 						aria-label="查找项目"
 						value={filter}
@@ -83,7 +83,7 @@ export default function ProjectsPage({ projects, reload }: { projects: LibraryPr
 						<EmptyNote>还没有项目</EmptyNote>
 						<button
 							type="button"
-							className="mt-3 h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white"
+							className="mt-3 h-10 rounded-lg bg-[#2F3530] px-4 text-[15px] font-medium text-white"
 							onClick={() => setModalOpen(true)}
 						>
 							＋ 新建项目
@@ -94,13 +94,13 @@ export default function ProjectsPage({ projects, reload }: { projects: LibraryPr
 				) : (
 					<ul>
 						{shown.map((p) => (
-							<li key={p.id} className="flex items-center gap-3 border-b border-[#E5E7EB] last:border-b-0">
+							<li key={p.id} className="flex items-center gap-3 border-b border-[#DDDFD9] last:border-b-0">
 								<Link
 									to={`/projects/${p.id}`}
-									className="flex min-h-16 min-w-0 flex-1 items-center justify-between gap-4 py-3 text-[16px] font-medium leading-6 text-[#202124] hover:text-[#3B57D0]"
+									className="flex min-h-[60px] min-w-0 flex-1 items-center justify-between gap-4 py-3 text-[16px] font-medium leading-6 text-[#242724] hover:bg-white hover:text-[#315DAD]"
 								>
 									<span className="min-w-0 break-all">{p.name}</span>
-									<span className="shrink-0 text-[#555B65]" aria-hidden="true">
+									<span className="shrink-0 text-[#595F59]" aria-hidden="true">
 										→
 									</span>
 								</Link>
@@ -123,9 +123,9 @@ export default function ProjectsPage({ projects, reload }: { projects: LibraryPr
 					}}
 				>
 					<label className="mb-4 block">
-						<span className="mb-1 block text-[15px] font-medium leading-6 text-[#202124]">项目名称</span>
+						<span className="mb-1 block text-[15px] font-medium leading-6 text-[#242724]">项目名称</span>
 						<input
-							className="h-10 w-full rounded-lg border border-[#8A9099]/50 bg-white px-3 text-[15px] leading-6 focus:border-[#3B57D0] focus:outline-none"
+							className="h-10 w-full rounded-lg border border-[#A8AEA4]/50 bg-white px-3 text-[15px] leading-6 focus:border-[#315DAD] focus:outline-none"
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							required
@@ -133,7 +133,7 @@ export default function ProjectsPage({ projects, reload }: { projects: LibraryPr
 					</label>
 					<button
 						type="button"
-						className="mb-2 text-[15px] font-medium leading-6 text-[#3B57D0]"
+						className="mb-2 text-[15px] font-medium leading-6 text-[#315DAD]"
 						aria-expanded={dirOpen}
 						onClick={() => setDirOpen((o) => !o)}
 					>
@@ -141,7 +141,7 @@ export default function ProjectsPage({ projects, reload }: { projects: LibraryPr
 					</button>
 					{dirOpen ? (
 						<input
-							className="mb-2 h-10 w-full rounded-lg border border-[#8A9099]/50 bg-white px-3 font-mono text-[13px] leading-5 focus:border-[#3B57D0] focus:outline-none"
+							className="mb-2 h-10 w-full rounded-lg border border-[#A8AEA4]/50 bg-white px-3 font-mono text-[13px] leading-5 focus:border-[#315DAD] focus:outline-none"
 							placeholder="/绝对/路径（可选）"
 							value={workingDir}
 							onChange={(e) => setWorkingDir(e.target.value)}
@@ -151,14 +151,14 @@ export default function ProjectsPage({ projects, reload }: { projects: LibraryPr
 					<div className="mt-4 flex justify-end gap-3">
 						<button
 							type="button"
-							className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124]"
+							className="h-10 rounded-lg border border-[#A8AEA4]/40 px-4 text-[15px] font-medium text-[#242724]"
 							onClick={closeModal}
 						>
 							取消
 						</button>
 						<button
 							type="submit"
-							className="h-10 rounded-lg bg-[#3B57D0] px-4 text-[15px] font-medium text-white disabled:opacity-50"
+							className="h-10 rounded-lg bg-[#2F3530] px-4 text-[15px] font-medium text-white disabled:opacity-50"
 							disabled={!name.trim() || busy}
 						>
 							{busy ? "创建中…" : "创建项目"}

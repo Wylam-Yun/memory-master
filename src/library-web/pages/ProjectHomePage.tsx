@@ -14,8 +14,8 @@ import { featurePreview, introductionSubtitle, progressSections } from "../overv
 import { type OverviewField, overviewPagePath } from "../overview-pages.ts";
 import { isDoneStatus, isP0Task } from "../utils.ts";
 
-const linkStyle = "text-[15px] font-medium text-[#3B57D0] hover:underline";
-const headingStyle = "text-[20px] font-semibold leading-7";
+const linkStyle = "text-[14px] font-medium text-[#315DAD] underline-offset-4 hover:underline";
+const headingStyle = "text-[18px] font-semibold leading-7 text-[#242724]";
 
 export default function ProjectHomePage({ section, reload }: { section?: OverviewField; reload: () => Promise<void> }) {
 	const project = useProject();
@@ -23,35 +23,13 @@ export default function ProjectHomePage({ section, reload }: { section?: Overvie
 	const { hash } = useLocation();
 	const active = section ?? (hash.startsWith("#mm-feature-") ? "features" : undefined);
 	return (
-		<ProjectHome
-			key={`${project.id}:${section ?? ""}`}
-			projectId={project.id}
-			name={project.name}
-			section={active}
-			deleteAction={
-				<DeleteProject
-					project={project}
-					onDeleted={async () => {
-						navigate("/", { replace: true });
-						await reload();
-					}}
-				/>
-			}
+		<ProjectHome key={`${project.id}:${section ?? ""}`} projectId={project.id} name={project.name} section={active}
+			deleteAction={<DeleteProject project={project} onDeleted={async () => { navigate("/", { replace: true }); await reload(); }} />}
 		/>
 	);
 }
 
-function ProjectHome({
-	projectId,
-	name,
-	section,
-	deleteAction,
-}: {
-	projectId: string;
-	name: string;
-	section?: OverviewField;
-	deleteAction: ReactNode;
-}) {
+function ProjectHome({ projectId, name, section, deleteAction }: { projectId: string; name: string; section?: OverviewField; deleteAction: ReactNode }) {
 	const [overview, setOverview] = useState<ProjectOverview | null>(null);
 	const [error, setError] = useState<unknown>(null);
 	const latestRead = useRef(0);
@@ -96,16 +74,16 @@ function ProjectHome({
 	const path = (location: string) => overviewPagePath(projectId, location);
 
 	return (
-		<div className="max-w-[1000px] space-y-6 min-[720px]:space-y-8">
-			<header id="overview-description" className="scroll-mt-4">
+		<div className="@container max-w-[1000px] space-y-8 min-[720px]:space-y-10">
+			<header id="overview-description" className="scroll-mt-4 border-b border-[#DDDFD9] pb-6">
 				<div className="flex flex-wrap items-center justify-between gap-3">
-					<h1 className="min-w-0 break-words text-[28px] font-semibold leading-9">{name}</h1>
+					<h1 className="min-w-0 break-words text-[28px] font-semibold leading-9 text-[#242724]">{name}</h1>
 					{deleteAction}
 				</div>
-				<WorkingDirectory projectId={projectId} />
 				{subtitle ? (
-					<p className="mt-1 line-clamp-3 break-words text-[14px] leading-6 text-[#555B65]">{subtitle}</p>
+					<p className="mt-2 max-w-[760px] break-words text-[15px] leading-6 text-[#595F59]">{subtitle}</p>
 				) : null}
+				<WorkingDirectory projectId={projectId} />
 				{overview ? (
 					<Disclosure label="完整简介" initiallyOpen={section === "description"} quiet>
 						<OverviewFieldEditor
@@ -133,41 +111,44 @@ function ProjectHome({
 				)
 			) : (
 				<>
-					<section
-						id="overview-current"
-						className="min-w-0 scroll-mt-4 rounded-xl border border-[#DDE3EF] bg-white p-4 min-[720px]:px-6 min-[720px]:py-5"
-						aria-labelledby="latest-progress"
-					>
-						<OverviewFieldEditor
-							projectId={projectId}
-							field="current"
-							overview={overview}
-							onSaved={applyOverview}
-							editLabel="编辑进展"
-							source={<CurrentContent source={current} />}
-						>
-							{(actions, content) => (
-								<>
-									<div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-										<h2 id="latest-progress" className="text-[22px] font-semibold leading-8">
-											最新进展
-										</h2>
-										{actions}
-									</div>
-									{content}
-								</>
-							)}
-						</OverviewFieldEditor>
-						<div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-[#555B65]">
-							{overview.currentUpdatedAt ? <span>更新于 {dateLabel(overview.currentUpdatedAt)}</span> : null}
-							<Link className="hover:text-[#3B57D0] hover:underline" to={path("history?field=current")}>
-								历次进展
-							</Link>
-						</div>
-					</section>
-					<div className="grid gap-6 min-[720px]:grid-cols-2 min-[720px]:gap-8">
-						<Goals projectId={projectId} overview={overview} onChanged={load} />
+					<div className="grid items-start gap-8 @min-[960px]:grid-cols-[minmax(0,1fr)_288px] @min-[960px]:gap-10">
+						<section id="overview-current" className="min-w-0 scroll-mt-4" aria-labelledby="latest-progress">
+							<OverviewFieldEditor
+								projectId={projectId}
+								field="current"
+								overview={overview}
+								onSaved={applyOverview}
+								editLabel="编辑进展"
+								source={<CurrentContent source={current} />}
+							>
+								{(actions, content) => (
+									<>
+										<div className="mb-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+											<h2 id="latest-progress" className={headingStyle}>
+												最新进展
+											</h2>
+											{actions}
+										</div>
+										{content}
+										<div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-[#DDDFD9] pt-3">
+											<div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] leading-5 text-[#595F59]">
+												{overview.currentUpdatedAt ? <span>更新于 {dateLabel(overview.currentUpdatedAt)}</span> : null}
+												<Link
+													className="underline-offset-4 hover:text-[#315DAD] hover:underline"
+													to={path("history?field=current")}
+												>
+													历次进展
+												</Link>
+											</div>
+										</div>
+									</>
+								)}
+							</OverviewFieldEditor>
+						</section>
 						<CurrentTasks projectId={projectId} />
+					</div>
+					<div className="border-t border-[#DDDFD9] pt-6">
+						<Goals projectId={projectId} overview={overview} onChanged={load} />
 					</div>
 					<FeatureSection
 						projectId={projectId}
@@ -175,7 +156,7 @@ function ProjectHome({
 						onSaved={applyOverview}
 						initiallyOpen={section === "features"}
 					/>
-					<div className="divide-y divide-[#E5E7EB] border-y border-[#E5E7EB]">
+					<div className="divide-y divide-[#DDDFD9] border-y border-[#DDDFD9]">
 						<Disclosure label="最近完成">
 							{completed ? (
 								<Markdown source={[completed, progress.definitions].filter(Boolean).join("\n\n")} />
@@ -241,14 +222,14 @@ function CurrentTasks({ projectId }: { projectId: string }) {
 	}, [load]);
 	const path = overviewPagePath(projectId, "tasks");
 	return (
-		<section className="min-w-0" aria-labelledby="current-tasks">
-			<div className="mb-3 flex min-h-9 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+		<section
+			className="min-w-0 border-t border-[#DDDFD9] pt-6 @min-[960px]:border-l @min-[960px]:border-t-0 @min-[960px]:pl-6 @min-[960px]:pt-0"
+			aria-labelledby="current-tasks"
+		>
+			<div className="mb-4">
 				<h2 id="current-tasks" className={headingStyle}>
 					当前任务
 				</h2>
-				<Link className={linkStyle} to={path}>
-					查看全部任务
-				</Link>
 			</div>
 			<ErrorNote error={error} onRetry={() => void load()} />
 			{!tasks ? (
@@ -256,19 +237,25 @@ function CurrentTasks({ projectId }: { projectId: string }) {
 					<LoadingNote />
 				)
 			) : tasks.length ? (
-				<ul className="divide-y divide-[#E5E7EB]">
+				<ul className="divide-y divide-[#DDDFD9]">
 					{tasks.map((task) => (
-						<li key={task.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2">
-							<Link className={`min-w-0 break-words ${linkStyle}`} to={`${path}?task=${encodeURIComponent(task.id)}`}>
+						<li key={task.id} className="py-3 first:pt-0">
+							<Link
+								className="block break-words text-[15px] font-medium leading-6 text-[#242724] underline-offset-4 hover:text-[#315DAD] hover:underline"
+								to={`${path}?task=${encodeURIComponent(task.id)}`}
+							>
 								{task.title}
 							</Link>
-							<span className="text-[14px] text-[#555B65]">{task.status}</span>
+							<span className="mt-1 block text-[13px] leading-5 text-[#595F59]">{task.status}</span>
 						</li>
 					))}
 				</ul>
 			) : (
-				<p className="text-[15px] text-[#555B65]">暂无进行中的重点任务。</p>
+				<p className="text-[15px] text-[#595F59]">暂无进行中的重点任务。</p>
 			)}
+			<Link className={`mt-4 inline-flex min-h-9 items-center ${linkStyle}`} to={path}>
+				查看全部任务
+			</Link>
 		</section>
 	);
 }
@@ -314,7 +301,7 @@ function FeatureSection({
 	return (
 		<section
 			id="overview-features"
-			className="scroll-mt-4 border-t border-[#E5E7EB] pt-4"
+			className="scroll-mt-4 border-t border-[#DDDFD9] pt-6 [&_.wmde-markdown]:max-w-[760px]"
 			aria-labelledby="feature-overview"
 		>
 			<OverviewFieldEditor
@@ -367,7 +354,7 @@ function Disclosure({
 			<summary
 				className={
 					quiet
-						? "w-fit cursor-pointer py-1 text-[14px] text-[#555B65] hover:text-[#3B57D0]"
+						? "w-fit cursor-pointer py-1 text-[14px] text-[#595F59] hover:text-[#315DAD]"
 						: "w-fit cursor-pointer py-2.5 text-[15px] font-medium"
 				}
 			>
@@ -405,7 +392,7 @@ function LatestStage({ projectId }: { projectId: string }) {
 	return (
 		<div className="space-y-2">
 			<p className="font-medium">{record.title}</p>
-			<p className="text-[14px] text-[#555B65]">完成于 {dateLabel(record.completedAt)}</p>
+			<p className="text-[14px] text-[#595F59]">完成于 {dateLabel(record.completedAt)}</p>
 			<Markdown source={record.summary} />
 		</div>
 	);

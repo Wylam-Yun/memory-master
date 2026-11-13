@@ -485,7 +485,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 		return (
 			<div
 				key={bucket.key}
-				className={`rounded-lg border-2 transition-all duration-200 ${
+				className={`rounded-lg border transition-all duration-200 ${
 					isDropTarget
 						? "border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-[1.01]"
 						: isDragging
@@ -498,7 +498,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 			>
 				<div className="px-5 py-4">
 					{/* Header row */}
-					<div className="flex items-center justify-between gap-4">
+					<div className="flex flex-wrap items-center justify-between gap-4">
 						<div className="min-w-0">
 							<h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">{bucket.label}</h3>
 							{milestoneEntity?.dueDate && (
@@ -516,7 +516,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 								<span className="text-sm text-gray-500 dark:text-gray-400">
 									{bucket.total} task{bucket.total === 1 ? "" : "s"}
 								</span>
-								<span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+								<span className="text-base font-semibold text-gray-700 dark:text-gray-200">
 									{progress}%
 								</span>
 							</div>
@@ -525,7 +525,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 
 					{/* Progress bar - only for non-empty */}
 					{!isEmpty && (
-						<div className="mt-3 w-full h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+						<div className="mt-3 w-full h-1 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
 							<div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${progress}%` }} />
 						</div>
 					)}
@@ -548,7 +548,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 
 					{/* Actions */}
 					<div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 dark:border-gray-700 pt-4">
-						<div className="flex items-center gap-2">
+						<div className="flex flex-wrap items-center gap-2">
 							<Link
 								to={`/?lane=milestone&milestone=${encodeURIComponent(bucket.milestone ?? "")}`}
 								className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -662,8 +662,8 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 			<div className="mb-8 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 transition-colors duration-200">
 				<div className="px-5 py-4">
 					{/* Header */}
-					<div className="flex items-center justify-between gap-4">
-						<div className="flex items-center gap-2">
+					<div className="flex flex-wrap items-center justify-between gap-4">
+						<div className="flex flex-wrap items-center gap-2">
 							<svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
 							</svg>
@@ -762,7 +762,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 			{/* Header */}
 			<div className="flex flex-wrap items-center justify-between gap-4 mb-6">
 				<div className="flex flex-wrap items-center gap-4">
-					<h1 className="text-2xl font-bold text-gray-900 dark:text-white">Milestones</h1>
+					<h1 className="text-[26px] leading-[34px] font-semibold text-gray-900 dark:text-white">Milestones</h1>
 					<div className="relative w-full min-w-[240px] max-w-[420px]">
 						<span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400 dark:text-gray-500">
 							<svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -815,7 +815,7 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 					<button
 						type="button"
 						onClick={() => setShowAddModal(true)}
-						className="inline-flex items-center px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:focus:ring-offset-gray-900 transition-colors"
+						className="inline-flex items-center px-4 py-2 bg-[#2F3530] text-white text-sm font-medium rounded-md hover:bg-[#424A43] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 dark:focus:ring-offset-gray-900 transition-colors"
 					>
 						+ Add milestone
 					</button>

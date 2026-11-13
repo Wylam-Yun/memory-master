@@ -134,7 +134,7 @@ const CleanupModal: React.FC<CleanupModalProps> = ({ isOpen, onClose, onSuccess,
 								disabled={isExecuting}
 								className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
 									selectedAge === option.value
-										? "bg-blue-500 dark:bg-blue-600 text-white"
+										? "bg-[#2F3530] dark:bg-gray-200 text-white dark:text-gray-900"
 										: "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
 								} disabled:opacity-50`}
 							>
@@ -230,7 +230,7 @@ const CleanupModal: React.FC<CleanupModalProps> = ({ isOpen, onClose, onSuccess,
 										if (selection.phase === "preview") setSelection({ ...selection, phase: "confirm" });
 									}}
 									disabled={isLoadingPreview || isExecuting}
-									className="px-4 py-2 text-sm font-medium text-white bg-blue-500 dark:bg-blue-600 rounded-md hover:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-50 transition-colors duration-200"
+									className="px-4 py-2 text-sm font-medium text-white dark:text-gray-900 bg-[#2F3530] dark:bg-gray-200 rounded-md hover:bg-[#424A43] dark:hover:bg-white disabled:opacity-50 transition-colors duration-200"
 								>
 									Continue
 								</button>

@@ -28,7 +28,7 @@ const DIRECTIONS: Array<{ direction: DependencyDirection; heading: string }> = [
   { direction: 'dependents', heading: 'Dependents' },
 ];
 
-const BADGE_CLASS = 'shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium';
+const BADGE_CLASS = 'shrink-0 rounded-md px-1.5 py-0.5 text-[13px] font-medium';
 
 const NodeBadge: React.FC<{ node: DependencyGraphNode }> = ({ node }) => {
   if (node.state === 'missing') {

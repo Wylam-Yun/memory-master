@@ -177,9 +177,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
 
       <div
         className={`bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md p-3 mb-2 transition-all duration-200 ${
-          isFromOtherBranch 
-            ? 'opacity-75 cursor-not-allowed border-dashed' 
-            : 'cursor-pointer hover:shadow-md dark:hover:shadow-lg hover:border-stone-500 dark:hover:border-stone-400'
+          isFromOtherBranch
+            ? 'cursor-not-allowed border-dashed'
+            : 'cursor-pointer hover:shadow-sm dark:hover:shadow-sm hover:border-stone-500 dark:hover:border-stone-400'
         } ${getPriorityClass(task.priority)} ${
           isDragging || (isSelected && isSelectionDragging) ? 'opacity-50 transform rotate-2 scale-105' : ''
         } ${
@@ -240,7 +240,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
             <div className="ml-auto flex shrink-0 items-center gap-2">
               <AcceptanceCriteriaProgress task={task} density="card" />
               {priorityBadge && (
-                <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded ${priorityBadge.bg} ${priorityBadge.text} transition-colors duration-200`}>
+                <span className={`px-1.5 py-0.5 text-[12px] font-semibold rounded ${priorityBadge.bg} ${priorityBadge.text} transition-colors duration-200`}>
                   {priorityBadge.label}
                 </span>
               )}
@@ -263,13 +263,13 @@ const TaskCard: React.FC<TaskCardProps> = ({
             {task.labels.slice(0, 3).map(label => (
               <span
                 key={label}
-                className="inline-block px-1.5 py-0.5 text-[10px] bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded transition-colors duration-200"
+                className="inline-block px-1.5 py-0.5 text-[12px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200 rounded transition-colors duration-200"
               >
                 {label}
               </span>
             ))}
             {task.labels.length > 3 && (
-              <span className="inline-block px-1.5 py-0.5 text-[10px] text-gray-400 dark:text-gray-500">
+              <span className="inline-block px-1.5 py-0.5 text-[12px] text-gray-400 dark:text-gray-500">
                 +{task.labels.length - 3}
               </span>
             )}
@@ -277,7 +277,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
         )}
 
         {/* Footer with dates and assignee */}
-        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[10px] text-gray-400 dark:text-gray-500 mt-2 pt-1.5 border-t border-gray-100 dark:border-gray-600/50 transition-colors duration-200">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[12px] text-gray-400 dark:text-gray-500 mt-2 pt-1.5 border-t border-gray-100 dark:border-gray-600/50 transition-colors duration-200">
           {/* Grouped so the updated date sits beside the created date on every card, whatever else the footer shows.
               The group uses the same gaps as the footer row (gap-x-2 gap-y-1), so change the two together.
               A new labelled date in the compact style belongs inside this group. */}

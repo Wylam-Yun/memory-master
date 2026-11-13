@@ -6,9 +6,9 @@ import { clearDraft, getDraft, setDraft } from "./drafts.ts";
 import Markdown from "./Markdown.tsx";
 import { ErrorNote, LoadingNote } from "./StatusMessage.tsx";
 
-const button = "min-h-10 rounded-lg border border-[#8A9099]/40 px-3 py-2 text-[15px] font-medium disabled:opacity-50";
-const primary = "min-h-10 rounded-lg bg-[#3B57D0] px-4 py-2 text-[15px] font-medium text-white disabled:opacity-50";
-const inputClass = "min-h-10 w-full rounded-lg border border-[#8A9099]/50 bg-white px-3 py-2 text-[16px] leading-6";
+const button = "min-h-10 rounded-lg border border-[#A8AEA4]/40 px-3 py-2 text-[15px] font-medium disabled:opacity-50";
+const primary = "min-h-10 rounded-lg bg-[#2F3530] px-4 py-2 text-[15px] font-medium text-white disabled:opacity-50";
+const inputClass = "min-h-10 w-full rounded-lg border border-[#A8AEA4]/50 bg-white px-3 py-2 text-[16px] leading-6";
 type Mode = "create-goal" | "complete" | "adjust" | "record" | "edit-progress";
 interface Editor {
 	mode: Mode;
@@ -180,7 +180,7 @@ function RecordEditor({
 	const isProgress = editor.mode === "record" || editor.mode === "edit-progress";
 	return (
 		<form
-			className="my-5 space-y-4 border-l-2 border-[#3B57D0] pl-4"
+			className="my-5 space-y-4 border-l-2 border-[#315DAD] pl-4"
 			{...guard.compositionProps}
 			onKeyDown={(e) => {
 				if (e.key === "Enter" && guard.inComposition(e)) e.preventDefault();
@@ -250,7 +250,7 @@ function RecordEditor({
 						{editor.mode === "adjust" ? "调整日期" : "完成日期"}
 						<input
 							type="date"
-							className="ml-2 min-h-10 rounded-lg border border-[#8A9099]/40 px-2"
+							className="ml-2 min-h-10 rounded-lg border border-[#A8AEA4]/40 px-2"
 							value={editor.date}
 							max={today()}
 							disabled={editor.unknown}
@@ -312,7 +312,7 @@ function ProgressResult({
 			<details onToggle={(e) => setOpen(e.currentTarget.open)}>
 				<summary className="cursor-pointer py-2 text-[16px] leading-7">
 					<span className="font-medium">{record.title}</span>
-					<span className="ml-3 text-[14px] text-[#555B65]">完成于 {dateLabel(record.completedAt)}</span>
+					<span className="ml-3 text-[14px] text-[#595F59]">完成于 {dateLabel(record.completedAt)}</span>
 				</summary>
 				{open ? (
 					<div className="space-y-3 py-3 text-[16px] leading-7">
@@ -320,7 +320,7 @@ function ProgressResult({
 						{onEdit ? (
 							<button
 								type="button"
-								className="min-h-10 text-[15px] font-medium text-[#3B57D0]"
+								className="min-h-10 text-[15px] font-medium text-[#315DAD]"
 								onClick={() => onEdit?.(record, version)}
 							>
 								修正记录
@@ -409,7 +409,7 @@ function Archive({
 			{open ? (
 				<div className="space-y-4 pb-4">
 					{actions}
-					{count === 0 ? <p className="text-[15px] text-[#555B65]">暂无阶段成果。</p> : null}
+					{count === 0 ? <p className="text-[15px] text-[#595F59]">暂无阶段成果。</p> : null}
 					{rows.map((r) =>
 						"summary" in r ? (
 							<ProgressResult key={r.id} record={r} version={version} onEdit={onEdit} />
@@ -417,7 +417,7 @@ function Archive({
 							<article key={r.id} className="space-y-2">
 								<div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 									<h3 className="text-[16px] font-medium">{r.title}</h3>
-									<span className="text-[14px] text-[#555B65]">
+									<span className="text-[14px] text-[#595F59]">
 										{kind === "adjusted" ? "调整于" : "完成于"}{" "}
 										{dateLabel(kind === "adjusted" && "adjustedAt" in r ? r.adjustedAt : r.completedAt)}
 									</span>
@@ -425,7 +425,7 @@ function Archive({
 								{onGoalEdit ? (
 									<button
 										type="button"
-										className="text-[15px] font-medium text-[#3B57D0]"
+										className="text-[15px] font-medium text-[#315DAD]"
 										onClick={() => onGoalEdit?.(r, version)}
 									>
 										修正日期
@@ -463,35 +463,35 @@ export function Goals({
 	return (
 		<section className="min-w-0" aria-labelledby="current-goals">
 			<div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-				<h2 id="current-goals" className="text-[20px] font-semibold leading-7">
+				<h2 id="current-goals" className="text-[18px] font-semibold leading-7 text-[#242724]">
 					当前目标
 				</h2>
 				<button
 					type="button"
 					aria-expanded={managing}
-					className="min-h-9 text-[14px] text-[#555B65] hover:text-[#3B57D0]"
+					className="min-h-9 text-[14px] text-[#595F59] hover:text-[#315DAD]"
 					onClick={() => setManaging((open) => !open)}
 				>
 					{managing ? "收起管理" : "管理目标"}
 				</button>
 			</div>
 			{goals.length ? (
-				<ul className="space-y-2.5">
+				<ul className="max-w-[800px] divide-y divide-[#DDDFD9]">
 					{goals.map((g) => (
-						<li key={g.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+						<li key={g.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-2 py-3 first:pt-0">
 							<p className="min-w-0 flex-1 text-[15px] leading-6">{g.title}</p>
 							{managing ? (
 								<>
 									<button
 										type="button"
-										className="text-[15px] font-medium text-[#3B57D0]"
+										className="text-[15px] font-medium text-[#315DAD]"
 										onClick={() => setEditor(freshEditor("complete", overview.version, g))}
 									>
 										完成
 									</button>
 									<button
 										type="button"
-										className="text-[15px] text-[#555B65]"
+										className="text-[15px] text-[#595F59]"
 										onClick={() => setEditor({ ...freshEditor("adjust", overview.version, g), title: "" })}
 									>
 										调整
@@ -502,7 +502,7 @@ export function Goals({
 					))}
 				</ul>
 			) : (
-				<p className="text-[15px] text-[#555B65]">暂无正在推进的目标</p>
+				<p className="text-[15px] text-[#595F59]">暂无正在推进的目标</p>
 			)}
 			{managing ? (
 				<div className="mt-3 space-y-3">
@@ -526,7 +526,7 @@ export function Goals({
 			) : null}
 			{legacy || counts.completed + counts.adjusted > 0 ? (
 				<details className="mt-2">
-					<summary className="w-fit cursor-pointer py-2 text-[14px] text-[#555B65]">历史目标</summary>
+					<summary className="w-fit cursor-pointer py-2 text-[14px] text-[#595F59]">历史目标</summary>
 					{legacy ? (
 						<details className="my-2">
 							<summary className="w-fit cursor-pointer py-2 text-[15px] font-medium">原有目标</summary>
@@ -577,7 +577,7 @@ export function StageProgress({
 				<>
 					<button
 						type="button"
-						className="min-h-9 text-[15px] font-medium text-[#3B57D0]"
+						className="min-h-9 text-[15px] font-medium text-[#315DAD]"
 						onClick={() => setEditor(freshEditor("record", overview.version))}
 					>
 						记录阶段成果

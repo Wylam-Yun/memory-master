@@ -12,14 +12,14 @@ const NAV_ITEMS = [
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 	`block rounded-lg px-3 py-2 text-[15px] font-medium leading-6 ${
-		isActive ? "bg-[#EEF2FF] text-[#3B57D0]" : "text-[#202124] hover:bg-[#EEF2FF]/60"
+		isActive ? "bg-[#EDF0EA] text-[#242724]" : "text-[#242724] hover:bg-[#EDF0EA]/60"
 	}`;
 
 /** 页头：页面标题（28px，窄屏24）+ 右侧当前页主操作位。 */
 export function PageHeader({ title, actions }: { title: string; actions?: ReactNode }) {
 	return (
-		<div className="mb-6 flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-2">
-			<h1 className="text-[24px] font-semibold leading-8 text-[#202124] min-[640px]:text-[28px] min-[640px]:leading-9">
+		<div className="mb-7 flex min-h-10 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+			<h1 className="min-w-0 break-words text-[26px] font-semibold leading-[34px] text-[#242724]">
 				{title}
 			</h1>
 			{actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
@@ -50,7 +50,7 @@ export function GrowingTextarea({
 	return (
 		<textarea
 			ref={ref}
-			className="w-full resize-none overflow-hidden rounded-lg border border-[#8A9099]/50 bg-white px-3 py-2 text-[16px] leading-7 text-[#202124] focus:border-[#3B57D0] focus:outline-none"
+			className="w-full resize-none overflow-hidden rounded-lg border border-[#A8AEA4]/50 bg-white px-3 py-2 text-[16px] leading-7 text-[#242724] focus:border-[#315DAD] focus:outline-none"
 			style={{ minHeight: "7.5rem" }}
 			value={value}
 			placeholder={placeholder}
@@ -89,7 +89,7 @@ function Dropdown({
 		<div className={`relative ${className}`}>
 			<button
 				type="button"
-				className="flex w-full items-center justify-between gap-2 rounded-lg border border-[#8A9099]/40 bg-white px-3 py-2 text-left text-[15px] font-medium leading-6 text-[#202124]"
+				className="flex w-full items-center justify-between gap-2 rounded-lg border border-[#A8AEA4]/40 bg-white px-3 py-2 text-left text-[15px] font-medium leading-6 text-[#242724]"
 				aria-expanded={open}
 				aria-haspopup="menu"
 				onClick={() => setOpen((o) => !o)}
@@ -107,7 +107,7 @@ function Dropdown({
 						onClick={() => setOpen(false)}
 					/>
 					<div
-						className={`absolute z-30 mt-1 rounded-xl border border-[#E5E7EB] bg-white py-1 shadow-lg ${menuClassName}`}
+						className={`absolute z-30 mt-1 rounded-xl border border-[#DDDFD9] bg-white py-1 shadow-lg ${menuClassName}`}
 					>
 						{children(close)}
 					</div>
@@ -155,9 +155,9 @@ export default function AppShell({ projects }: { projects: LibraryProject[] }) {
 
 	if (!project) {
 		return (
-			<div className="flex min-h-screen flex-col items-center justify-center bg-[#FAFAF8] px-4 text-[#202124]">
+			<div className="flex min-h-screen flex-col items-center justify-center bg-[#F7F7F4] px-4 text-[#242724]">
 				<p className="text-[20px] font-semibold leading-7">项目不存在</p>
-				<Link to="/" className="mt-4 text-[15px] font-medium text-[#3B57D0]">
+				<Link to="/" className="mt-4 text-[15px] font-medium text-[#315DAD]">
 					← 返回所有项目
 				</Link>
 			</div>
@@ -173,7 +173,7 @@ export default function AppShell({ projects }: { projects: LibraryProject[] }) {
 							key={p.id}
 							type="button"
 							className={`block w-full px-3 py-2 text-left text-[15px] leading-6 ${
-								p.id === project.id ? "bg-[#EEF2FF] font-medium text-[#3B57D0]" : "text-[#202124] hover:bg-[#EEF2FF]/60"
+								p.id === project.id ? "bg-[#EDF0EA] font-medium text-[#315DAD]" : "text-[#242724] hover:bg-[#EDF0EA]/60"
 							}`}
 							onClick={() => {
 								close();
@@ -185,7 +185,7 @@ export default function AppShell({ projects }: { projects: LibraryProject[] }) {
 					))}
 					<Link
 						to="/"
-						className="block border-t border-[#E5E7EB] px-3 py-2 text-[15px] leading-6 text-[#202124] hover:bg-[#EEF2FF]/60"
+						className="block border-t border-[#DDDFD9] px-3 py-2 text-[15px] leading-6 text-[#242724] hover:bg-[#EDF0EA]/60"
 						onClick={close}
 					>
 						所有项目
@@ -196,24 +196,24 @@ export default function AppShell({ projects }: { projects: LibraryProject[] }) {
 	);
 
 	return (
-		<div className="min-h-screen bg-[#FAFAF8] text-[#202124]">
+		<div className="min-h-screen bg-[#F7F7F4] text-[#242724]">
 			<a
 				href="#main-content"
-				className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:text-[#3B57D0] focus:shadow"
+				className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:text-[#315DAD] focus:shadow"
 			>
 				跳到正文
 			</a>
 			<div className="flex">
 				{/* ≥960px 常驻侧栏 */}
-				<aside className="sticky top-0 hidden h-screen w-[200px] shrink-0 flex-col overflow-y-auto border-r border-[#E5E7EB] bg-white px-3 py-4 min-[960px]:flex min-[1200px]:w-[224px]">
-					<Link to="/" className="px-2 text-[16px] font-semibold leading-7 text-[#202124]">
+				<aside className="sticky top-0 hidden h-screen w-[200px] shrink-0 flex-col overflow-y-auto border-r border-[#DDDFD9] bg-white px-3 py-4 min-[960px]:flex min-[1200px]:w-[224px]">
+					<Link to="/" className="px-2 text-[16px] font-semibold leading-7 text-[#242724]">
 						Memory Master
 					</Link>
 					<div className="mt-4 px-1">{switcher}</div>
 					<div className="mt-4">
 						<ProjectNav />
 					</div>
-					<div className="mt-auto flex flex-col gap-0.5 border-t border-[#E5E7EB] pt-3">
+					<div className="mt-auto flex flex-col gap-0.5 border-t border-[#DDDFD9] pt-3">
 						<Link to="/" className={navLinkClass({ isActive: false })}>
 							所有项目
 						</Link>
@@ -225,7 +225,7 @@ export default function AppShell({ projects }: { projects: LibraryProject[] }) {
 
 				<div className="min-w-0 flex-1">
 					{/* <960px 顶栏：当前项目 + 项目导航菜单 */}
-					<header className="flex items-center justify-between gap-3 border-b border-[#E5E7EB] bg-white px-4 py-3 min-[960px]:hidden">
+					<header className="flex items-center justify-between gap-3 border-b border-[#DDDFD9] bg-white px-4 py-3 min-[960px]:hidden">
 						<span className="min-w-0 truncate text-[16px] font-medium leading-7">{project.name}</span>
 						<Dropdown label="项目导航" className="w-40 shrink-0" menuClassName="right-0 w-44">
 							{(close) => (
@@ -233,14 +233,14 @@ export default function AppShell({ projects }: { projects: LibraryProject[] }) {
 									<ProjectNav onNavigate={close} />
 									<Link
 										to="/"
-										className="mt-1 block border-t border-[#E5E7EB] px-3 py-2 text-[15px] leading-6 text-[#202124] hover:bg-[#EEF2FF]/60"
+										className="mt-1 block border-t border-[#DDDFD9] px-3 py-2 text-[15px] leading-6 text-[#242724] hover:bg-[#EDF0EA]/60"
 										onClick={close}
 									>
 										所有项目
 									</Link>
 									<Link
 										to="/settings"
-										className="block px-3 py-2 text-[15px] leading-6 text-[#202124] hover:bg-[#EEF2FF]/60"
+										className="block px-3 py-2 text-[15px] leading-6 text-[#242724] hover:bg-[#EDF0EA]/60"
 										onClick={close}
 									>
 										设置
@@ -254,7 +254,7 @@ export default function AppShell({ projects }: { projects: LibraryProject[] }) {
 						id="main-content"
 						className="px-4 py-6 min-[640px]:px-6 min-[960px]:px-8 min-[960px]:py-8 min-[1200px]:px-10"
 					>
-						<div className="max-w-[1160px]">
+						<div className="max-w-[1120px]">
 							<Outlet context={{ project }} />
 						</div>
 					</main>

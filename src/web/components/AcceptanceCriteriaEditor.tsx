@@ -121,7 +121,7 @@ const AcceptanceCriteriaEditor: React.FC<Props> = ({
           <button
             type="button"
             onClick={handleAdd}
-            className="px-2 py-1 text-sm bg-blue-500 dark:bg-blue-600 text-white rounded-md hover:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 focus:ring-blue-400 dark:focus:ring-blue-500 transition-colors duration-200"
+            className="px-2 py-1 text-sm bg-[#2F3530] dark:bg-gray-200 text-white dark:text-gray-900 rounded-md hover:bg-[#424A43] dark:hover:bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 focus:ring-blue-400 dark:focus:ring-blue-500 transition-colors duration-200"
           >
             Add
           </button>

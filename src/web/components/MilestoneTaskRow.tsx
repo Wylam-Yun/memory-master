@@ -57,12 +57,12 @@ const MilestoneTaskRow: React.FC<MilestoneTaskRowProps> = ({
 		</div>
 
 		<div className="w-24 flex justify-center">
-			<span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${statusBadgeClass}`}>{task.status}</span>
+			<span className={`text-[13px] px-2 py-0.5 rounded-full font-medium ${statusBadgeClass}`}>{task.status}</span>
 		</div>
 
 		<div className="w-20 flex justify-center">
 			{task.priority ? (
-				<span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${priorityBadgeClass}`}>
+				<span className={`text-[13px] px-2 py-0.5 rounded-full font-medium ${priorityBadgeClass}`}>
 					{task.priority}
 				</span>
 			) : (

@@ -34,9 +34,9 @@ export default function Layout({
 	duplicateRepairPlan = null,
 }: LayoutProps) {
 	return (
-		<div className="h-screen bg-gray-50 dark:bg-gray-900 flex overflow-hidden transition-colors duration-200">
+		<div className="workbench h-dvh bg-[#F7F7F4] dark:bg-gray-900 flex overflow-hidden transition-colors duration-200">
 			<HealthIndicator />
-			<SideNavigation 
+			<SideNavigation
 				taskCount={tasks.length}
 				docs={docs}
 				decisions={decisions}
