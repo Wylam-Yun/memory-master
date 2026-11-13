@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-11-13T02:30:00Z'
-updated_date: '2026-11-13T02:32:00Z'
+updated_date: '2026-11-13T03:38:00Z'
 labels: []
 dependencies: []
 type: docs
@@ -34,6 +34,8 @@ ordinal: 10000
 
 <!-- SECTION:NOTES:BEGIN -->
 已在中文 README 快速开始后增加 Agent 部署和使用章节及导航。包含首次下载与安装、复用服务、持续进程与日志、实际端口与 HTTP 验证、打开前端、任务工作台、客户端接入和聊天项目管理示例。命令与 CLI 帮助及实现核对，MCP 工具名和版本字段核对，README 本地链接和代码块检查通过，git diff --check 通过。独立文档审查未发现阻塞问题。
+
+根据用户反馈，将 Agent 使用章节精简为五个一句话示例，覆盖部署、打开前端、建立与关联项目、相似项目确认及继续工作，仅保留首次接入提示。
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
