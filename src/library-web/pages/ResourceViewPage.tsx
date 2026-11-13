@@ -1,7 +1,8 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { ApiError, api, type ResourceContent } from "../api.ts";
 import { PageHeader, useProject } from "../components/AppShell.tsx";
+import DeleteResource from "../components/DeleteResource.tsx";
 import Markdown from "../components/Markdown.tsx";
 import { LoadingNote } from "../components/StatusMessage.tsx";
 import { formatBytes } from "../utils.ts";
@@ -29,6 +30,7 @@ function download(content: ResourceContent) {
 
 export default function ResourceViewPage() {
 	const project = useProject();
+	const navigate = useNavigate();
 	const { name = "" } = useParams();
 	const [content, setContent] = useState<ResourceContent | null>(null);
 	const [error, setError] = useState<unknown>(null);
@@ -54,13 +56,16 @@ export default function ResourceViewPage() {
 	const backLink = `/projects/${project.id}/resources`;
 
 	const headerActions = content ? (
-		<button
-			type="button"
-			className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124]"
-			onClick={() => download(content)}
-		>
-			下载原件
-		</button>
+		<div className="flex items-center gap-3">
+			<button
+				type="button"
+				className="h-10 rounded-lg border border-[#8A9099]/40 px-4 text-[15px] font-medium text-[#202124]"
+				onClick={() => download(content)}
+			>
+				下载原件
+			</button>
+			<DeleteResource projectId={project.id} resource={content} onDeleted={() => navigate(backLink)} />
+		</div>
 	) : null;
 
 	const notFound = error instanceof ApiError && error.status === 404;

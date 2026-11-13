@@ -126,7 +126,7 @@ function HistoryInner({ project }: { project: LibraryProject }) {
 
 	const summary = (e: HistoryEntry): string => {
 		const fields = Object.keys(e.changes).map((f) => FIELD_LABELS[f] ?? f);
-		let verb = e.action === "create" ? "创建" : "更新";
+		let verb = e.action === "delete" ? "删除" : e.action === "create" ? "创建" : "更新";
 		// 唯一变化是状态→完成状态时，读作「完成」（蓝图摘要语义）。
 		if (
 			e.action === "update" &&

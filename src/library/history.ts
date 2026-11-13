@@ -34,7 +34,7 @@ export interface HistoryEntry {
 	ts: string;
 	actor: Actor;
 	target: HistoryTarget;
-	action: "create" | "update";
+	action: "create" | "update" | "delete";
 	changes: Record<string, FieldChange>;
 	/** Record version after the write (content hash). */
 	version: string;

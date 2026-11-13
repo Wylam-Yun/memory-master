@@ -23,6 +23,8 @@ import {
 	createProject,
 	getProjectById,
 	listProjects,
+	projectDeletionVersion,
+	recycleProject,
 	resolveProject,
 	searchProjects,
 	validateWorkingDir,
@@ -150,10 +152,11 @@ export class LibraryService {
 	}
 
 	private storeFor(project: LibraryProject): ProjectStore {
-		let store = this.stores.get(project.dir);
+		const key = `${project.dir}:${project.id}`;
+		let store = this.stores.get(key);
 		if (!store) {
 			store = new ProjectStore(project);
-			this.stores.set(project.dir, store);
+			this.stores.set(key, store);
 		}
 		return store;
 	}
@@ -747,6 +750,51 @@ export class LibraryService {
 		return json({ ...(await this.projectWithVersion(project)), ...(await this.storeFor(project).projectMeta()) });
 	}
 
+	private async handleProjectDeletion(projectId: string): Promise<Response> {
+		const project = await this.projectFor(projectId);
+		return this.storeFor(project).withWriteLock(async () =>
+			json({ ...project, version: await projectDeletionVersion(project.dir) }),
+		);
+	}
+
+	private async handleDeleteProject(req: Request, projectId: string): Promise<Response> {
+		const body = await parseBody(req);
+		checkFields(body, ["baseVersion"]);
+		if (!optionalString(body.baseVersion))
+			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "baseVersion is required.", 400);
+		const libraryRoot = await this.requireLibraryRoot();
+		const project = await getProjectById(libraryRoot, projectId);
+		const store = this.storeFor(project);
+		return store.withWriteLock(async () => {
+			await this.holds.waitIfAny();
+			this.assertRunning();
+			const version = await projectDeletionVersion(project.dir);
+			if (version !== body.baseVersion) throw versionConflictError(project, version);
+			const recoveryPath = await recycleProject(libraryRoot, project, async (path) => {
+				const historyPath = join(path, "memaster", "changelog.jsonl");
+				const historyFile = Bun.file(historyPath);
+				const existed = await historyFile.exists();
+				const before = existed ? await historyFile.bytes() : null;
+				try {
+					this.holds.throwIfHistoryFailpoint();
+					await appendHistory(path, {
+						ts: new Date().toISOString(),
+						actor: { type: "user" },
+						target: { type: "project", id: project.id, title: project.name },
+						action: "delete",
+						changes: diffFields({ name: project.name }, {}),
+						version,
+					});
+				} catch (error) {
+					if (before) await Bun.write(historyFile, before);
+					else if (await historyFile.exists()) await unlink(historyPath);
+					throw error;
+				}
+			});
+			return json({ deleted: project.id, recoveryPath });
+		});
+	}
+
 	private async handlePutProject(
 		req: Request,
 		projectId: string,
@@ -1237,6 +1285,43 @@ export class LibraryService {
 		return json(await readResource(project.dir, name));
 	}
 
+	private async handleDeleteResource(req: Request, projectId: string, name: string): Promise<Response> {
+		const body = await parseBody(req);
+		checkFields(body, ["baseVersion"]);
+		const baseVersion = optionalString(body.baseVersion);
+		if (!baseVersion)
+			throw new LibraryError(LIBRARY_ERROR_CODES.VALIDATION, "baseVersion is required — read the resource first.", 400);
+		const project = await this.projectFor(projectId);
+		const store = this.storeFor(project);
+		const safe = assertSafeResourceName(name);
+		const path = join(resourcesDir(project.dir), safe);
+		return store.withWriteLock(async () => {
+			await this.holds.waitIfAny();
+			this.assertRunning();
+			// readResource rejects symlinks before reading bytes.
+			const current = await readResource(project.dir, safe);
+			if (current.version !== baseVersion)
+				throw versionConflictError({ name: safe, size: current.size, version: current.version }, current.version);
+			const bytes = current.base64 !== undefined ? Buffer.from(current.base64, "base64") : await Bun.file(path).bytes();
+			await unlink(path);
+			try {
+				this.holds.throwIfHistoryFailpoint();
+				await appendHistory(project.dir, {
+					ts: new Date().toISOString(),
+					actor: { type: "user" },
+					target: { type: "resource", id: safe, title: safe },
+					action: "delete",
+					changes: diffFields({ name: safe, size: String(current.size) }, {}),
+					version: contentVersion(""),
+				});
+			} catch (error) {
+				await Bun.write(path, bytes);
+				throw error;
+			}
+			return json({ deleted: safe });
+		});
+	}
+
 	/** The short instructions + skill agents should operate under — one source. */
 	private async handleAgentInstructions(): Promise<Response> {
 		return json({
@@ -1384,6 +1469,12 @@ export class LibraryService {
 						this.withRoute(req, () => this.handleGetProject(req.params.id)),
 					PUT: async (req: Request & { params: { id: string } }) =>
 						this.withRoute(req, () => this.handlePutProject(req, req.params.id, null)),
+					DELETE: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handleDeleteProject(req, req.params.id)),
+				},
+				"/api/projects/:id/deletion": {
+					GET: async (req: Request & { params: { id: string } }) =>
+						this.withRoute(req, () => this.handleProjectDeletion(req.params.id)),
 				},
 				"/api/projects/:id/overview": {
 					GET: async (req: Request & { params: { id: string } }) =>
@@ -1494,6 +1585,8 @@ export class LibraryService {
 				"/api/projects/:id/resources/:name": {
 					GET: async (req: Request & { params: { id: string; name: string } }) =>
 						this.withRoute(req, () => this.handleGetResource(req.params.id, req.params.name)),
+					DELETE: async (req: Request & { params: { id: string; name: string } }) =>
+						this.withRoute(req, () => this.handleDeleteResource(req, req.params.id, req.params.name)),
 				},
 				"/api/clients": { GET: async (req: Request) => this.withRoute(req, () => this.handleListClients()) },
 				"/api/clients/:id": {

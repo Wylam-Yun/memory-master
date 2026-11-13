@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, type LibraryProject } from "../api.ts";
 import Modal from "../components/Modal.tsx";
+import DeleteProject from "../components/DeleteProject.tsx";
 import { EmptyNote, ErrorNote } from "../components/StatusMessage.tsx";
 import { useImeGuard } from "../useImeGuard.ts";
 
@@ -93,16 +94,17 @@ export default function ProjectsPage({ projects, reload }: { projects: LibraryPr
 				) : (
 					<ul>
 						{shown.map((p) => (
-							<li key={p.id} className="border-b border-[#E5E7EB] last:border-b-0">
+							<li key={p.id} className="flex items-center gap-3 border-b border-[#E5E7EB] last:border-b-0">
 								<Link
 									to={`/projects/${p.id}`}
-									className="flex min-h-16 items-center justify-between gap-4 py-3 text-[16px] font-medium leading-6 text-[#202124] hover:text-[#3B57D0]"
+									className="flex min-h-16 min-w-0 flex-1 items-center justify-between gap-4 py-3 text-[16px] font-medium leading-6 text-[#202124] hover:text-[#3B57D0]"
 								>
 									<span className="min-w-0 break-all">{p.name}</span>
 									<span className="shrink-0 text-[#555B65]" aria-hidden="true">
 										→
 									</span>
 								</Link>
+								<DeleteProject project={p} onDeleted={reload} />
 							</li>
 						))}
 					</ul>

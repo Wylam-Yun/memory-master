@@ -1,3 +1,4 @@
+import { basename } from "node:path";
 import { Core } from "../core/memaster.ts";
 import type { FileSystem } from "../file-system/operations.ts";
 import type { MemasterConfig, Task } from "../types/index.ts";
@@ -43,7 +44,19 @@ export class ProjectStore {
 	 * service writer can interleave between the state change and its record.
 	 */
 	async withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
-		const run = this.writeChain.catch(() => {}).then(fn);
+		const run = this.writeChain
+			.catch(() => {})
+			.then(async () => {
+				const file = Bun.file(this.filesystem.configFilePath);
+				if (!(await file.exists())) {
+					throw new LibraryError(LIBRARY_ERROR_CODES.PROJECT_NOT_FOUND, "Project has been deleted.", 404);
+				}
+				const config = this.filesystem.parseConfig(await file.text());
+				if ((config.projectId ?? `dir-${basename(this.project.dir)}`) !== this.project.id) {
+					throw new LibraryError(LIBRARY_ERROR_CODES.PROJECT_NOT_FOUND, "Project has been replaced.", 404);
+				}
+				return fn();
+			});
 		this.writeChain = run.catch(() => {});
 		return run;
 	}

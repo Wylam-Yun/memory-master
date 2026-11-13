@@ -45,7 +45,7 @@ export interface HistoryEntry {
 		id?: string;
 		title?: string;
 	};
-	action: "create" | "update";
+	action: "create" | "update" | "delete";
 	changes: Record<string, { from?: string; to?: string }>;
 	version: string;
 }
@@ -70,6 +70,7 @@ export interface ArchitectureRecord {
 export interface ResourceContent {
 	name: string;
 	size: number;
+	version: string;
 	contentType: string;
 	text?: string;
 	base64?: string;
@@ -93,6 +94,7 @@ export interface ResourceInfo {
 	name: string;
 	size: number;
 	modifiedAt: string;
+	version: string;
 }
 
 export type ClientConnection = "none" | "configured" | "connected";
@@ -166,6 +168,12 @@ export const api = {
 	createProject: (name: string, workingDir?: string) =>
 		request<LibraryProject>("/api/projects", { method: "POST", body: { name, workingDir } }),
 	getProject: (id: string) => request<ProjectMeta>(`/api/projects/${id}`),
+	getProjectDeletion: (id: string) => request<LibraryProject & { version: string }>(`/api/projects/${id}/deletion`),
+	deleteProject: (id: string, baseVersion: string) =>
+		request<{ deleted: string; recoveryPath: string }>(`/api/projects/${id}`, {
+			method: "DELETE",
+			body: { baseVersion },
+		}),
 	putProject: (id: string, workingDir: string | null, baseVersion: string) =>
 		request<ProjectMeta>(`/api/projects/${id}`, { method: "PUT", body: { workingDir, baseVersion } }),
 	getOverview: (id: string) => request<ProjectOverview>(`/api/projects/${id}/overview`),
@@ -228,6 +236,11 @@ export const api = {
 		request<ResourceInfo>(`/api/projects/${id}/resources`, { method: "POST", body: { name, base64 } }),
 	getResource: (id: string, name: string) =>
 		request<ResourceContent>(`/api/projects/${id}/resources/${encodeURIComponent(name)}`),
+	deleteResource: (id: string, name: string, baseVersion: string) =>
+		request<{ deleted: string }>(`/api/projects/${id}/resources/${encodeURIComponent(name)}`, {
+			method: "DELETE",
+			body: { baseVersion },
+		}),
 	getArchitecture: (id: string) => request<ArchitectureRecord>(`/api/projects/${id}/architecture`),
 	putArchitecture: (id: string, content: string, baseVersion: string) =>
 		request<ArchitectureRecord>(`/api/projects/${id}/architecture`, {

@@ -254,6 +254,52 @@ describe("phase 3+4: questions, resources, client setup", () => {
 		expect(upload.actor).toEqual({ type: "user" });
 	});
 
+	test("resource deletion checks the viewed version, records history, and rolls back failures", async () => {
+		const project = await createProject("资料删除");
+		const path = `/api/projects/${project.id}/resources`;
+		const upload = async (content: string) =>
+			req(path, { method: "POST", body: { name: "50%说明.md", base64: Buffer.from(content).toString("base64") } });
+		await upload("第一版");
+		const first = (await json(await req(path)))[0];
+		expect(first.version).toStartWith("sha256:");
+		const fileUrl = `${path}/${encodeURIComponent(first.name)}`;
+		expect((await json(await req(fileUrl))).version).toBe(first.version);
+		expect((await req(fileUrl, { method: "DELETE", body: {} })).status).toBe(400);
+		await upload("第二版");
+		const stale = await req(fileUrl, { method: "DELETE", body: { baseVersion: first.version } });
+		expect(stale.status).toBe(409);
+		const current = (await json(stale)).current;
+		expect(await Bun.file(join(project.dir, "资料", first.name)).text()).toBe("第二版");
+		const historyBefore = await json(await req(`/api/projects/${project.id}/history`));
+		service.holds.armHistoryFailure();
+		expect((await req(fileUrl, { method: "DELETE", body: { baseVersion: current.version } })).status).toBe(500);
+		expect(await Bun.file(join(project.dir, "资料", first.name)).text()).toBe("第二版");
+		expect((await json(await req(`/api/projects/${project.id}/history`))).length).toBe(historyBefore.length);
+		expect((await req(fileUrl, { method: "DELETE", body: { baseVersion: current.version } })).status).toBe(200);
+		expect(await Bun.file(join(project.dir, "资料", first.name)).exists()).toBe(false);
+		expect(await json(await req(path))).toEqual([]);
+		expect((await req(fileUrl)).status).toBe(404);
+		const history = await json(await req(`/api/projects/${project.id}/history`));
+		const deleted = history.find((entry: { action: string }) => entry.action === "delete");
+		expect(deleted.actor).toEqual({ type: "user" });
+		expect(deleted.target.id).toBe(first.name);
+		expect((await req(fileUrl, { method: "DELETE", body: { baseVersion: current.version } })).status).toBe(404);
+	});
+
+	test("deletion refuses symlinks and traversal without touching unrelated files", async () => {
+		const project = await createProject("安全删除");
+		const outside = join(home, "outside.txt");
+		await Bun.write(outside, "保留");
+		const { symlink } = await import("node:fs/promises");
+		await symlink(outside, join(project.dir, "资料", "linked.txt"));
+		const path = `/api/projects/${project.id}/resources`;
+		expect((await req(`${path}/linked.txt`, { method: "DELETE", body: { baseVersion: "unused" } })).status).toBe(404);
+		expect(
+			(await req(`${path}/..%2F..%2Foutside.txt`, { method: "DELETE", body: { baseVersion: "unused" } })).status,
+		).toBe(400);
+		expect(await Bun.file(outside).text()).toBe("保留");
+	});
+
 	test("a disable landing mid-install is not undone by the late completion", async () => {
 		// ensureToken bumps the generation; the disable bumps it again — the
 		// install's markConfigured with the stale generation must no-op.

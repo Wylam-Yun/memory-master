@@ -1,8 +1,9 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { Progress } from "../../library/tracking.ts";
 import { api, type ProjectOverview, type Task } from "../api.ts";
 import { useProject } from "../components/AppShell.tsx";
+import DeleteProject from "../components/DeleteProject.tsx";
 import { dateLabel, Goals, StageProgress } from "../components/GoalProgress.tsx";
 import Markdown from "../components/Markdown.tsx";
 import OverviewContent, { CurrentContent } from "../components/OverviewContent.tsx";
@@ -16,16 +17,41 @@ import { isDoneStatus, isP0Task } from "../utils.ts";
 const linkStyle = "text-[15px] font-medium text-[#3B57D0] hover:underline";
 const headingStyle = "text-[20px] font-semibold leading-7";
 
-export default function ProjectHomePage({ section }: { section?: OverviewField }) {
+export default function ProjectHomePage({ section, reload }: { section?: OverviewField; reload: () => Promise<void> }) {
 	const project = useProject();
+	const navigate = useNavigate();
 	const { hash } = useLocation();
 	const active = section ?? (hash.startsWith("#mm-feature-") ? "features" : undefined);
 	return (
-		<ProjectHome key={`${project.id}:${section ?? ""}`} projectId={project.id} name={project.name} section={active} />
+		<ProjectHome
+			key={`${project.id}:${section ?? ""}`}
+			projectId={project.id}
+			name={project.name}
+			section={active}
+			deleteAction={
+				<DeleteProject
+					project={project}
+					onDeleted={async () => {
+						navigate("/", { replace: true });
+						await reload();
+					}}
+				/>
+			}
+		/>
 	);
 }
 
-function ProjectHome({ projectId, name, section }: { projectId: string; name: string; section?: OverviewField }) {
+function ProjectHome({
+	projectId,
+	name,
+	section,
+	deleteAction,
+}: {
+	projectId: string;
+	name: string;
+	section?: OverviewField;
+	deleteAction: ReactNode;
+}) {
 	const [overview, setOverview] = useState<ProjectOverview | null>(null);
 	const [error, setError] = useState<unknown>(null);
 	const latestRead = useRef(0);
@@ -72,7 +98,10 @@ function ProjectHome({ projectId, name, section }: { projectId: string; name: st
 	return (
 		<div className="max-w-[1000px] space-y-6 min-[720px]:space-y-8">
 			<header id="overview-description" className="scroll-mt-4">
-				<h1 className="break-words text-[28px] font-semibold leading-9">{name}</h1>
+				<div className="flex flex-wrap items-center justify-between gap-3">
+					<h1 className="min-w-0 break-words text-[28px] font-semibold leading-9">{name}</h1>
+					{deleteAction}
+				</div>
 				<WorkingDirectory projectId={projectId} />
 				{subtitle ? (
 					<p className="mt-1 line-clamp-3 break-words text-[14px] leading-6 text-[#555B65]">{subtitle}</p>

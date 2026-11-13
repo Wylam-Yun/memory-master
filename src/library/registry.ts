@@ -1,10 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { mkdir, mkdtemp, readdir, rename, rm, rmdir, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readlink, rename, rm, rmdir, stat } from "node:fs/promises";
 import { basename, isAbsolute, join } from "node:path";
 import Fuse from "fuse.js";
 import lockfile from "proper-lockfile";
 import { initializeProject } from "../core/init.ts";
 import { Core } from "../core/memaster.ts";
+import { contentVersion } from "./history.ts";
 import { initialOverviewContent, overviewFilePath, readOverview } from "./overview.ts";
 import {
 	LIBRARY_ERROR_CODES,
@@ -133,6 +134,57 @@ export async function getProjectById(libraryRoot: string, id: string): Promise<L
 	const found = projects.find((p) => p.id === id);
 	if (!found) throw projectNotFoundError(id);
 	return found;
+}
+
+/** Hash the complete stored memory so confirmation becomes stale after any edit. */
+export async function projectDeletionVersion(projectDir: string): Promise<string> {
+	const records: string[] = [];
+	const scan = async (dir: string, prefix: string) => {
+		const entries = await readdir(dir, { withFileTypes: true });
+		entries.sort((a, b) => a.name.localeCompare(b.name));
+		for (const entry of entries) {
+			const relative = `${prefix}${entry.name}`;
+			if (relative === "memaster/.locks") continue;
+			const path = join(dir, entry.name);
+			if (entry.isDirectory()) {
+				records.push(JSON.stringify([relative, "directory"]));
+				await scan(path, `${relative}/`);
+			} else if (entry.isSymbolicLink()) {
+				records.push(JSON.stringify([relative, "symlink", await readlink(path)]));
+			} else if (entry.isFile()) {
+				records.push(JSON.stringify([relative, contentVersion(await Bun.file(path).bytes())]));
+			}
+		}
+	};
+	await scan(projectDir, "");
+	return contentVersion(records.join("\n"));
+}
+
+/** Publish removal atomically, keeping a complete recoverable directory in the library. */
+export async function recycleProject(
+	libraryRoot: string,
+	project: LibraryProject,
+	onMoved: (recoveryPath: string) => Promise<void>,
+): Promise<string> {
+	const release = await lockfile.lock(libraryRoot, { retries: { retries: 30, minTimeout: 10, maxTimeout: 100 } });
+	try {
+		await mkdir(join(libraryRoot, ".trash"), { recursive: true });
+		const slot = await mkdtemp(join(libraryRoot, ".trash", `${project.id}-`));
+		const recoveryPath = join(slot, basename(project.dir));
+		let moved = false;
+		try {
+			await rename(project.dir, recoveryPath);
+			moved = true;
+			await onMoved(recoveryPath);
+			return recoveryPath;
+		} catch (error) {
+			if (moved) await rename(recoveryPath, project.dir);
+			await rmdir(slot);
+			throw error;
+		}
+	} finally {
+		await release();
+	}
 }
 
 /**

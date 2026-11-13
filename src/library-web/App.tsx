@@ -131,9 +131,9 @@ export default function App() {
 				<Route path="/projects" element={<Navigate to="/" replace />} />
 				<Route path="/settings" element={<SettingsPage libraryRoot={state.libraryRoot} reload={load} />} />
 				<Route path="/projects/:id" element={<AppShell projects={state.projects} />}>
-					<Route index element={<ProjectHomePage />} />
+					<Route index element={<ProjectHomePage reload={load} />} />
 					{OVERVIEW_PAGES.map((page) => (
-						<Route key={page.field} path={page.path} element={<ProjectHomePage section={page.field} />} />
+						<Route key={page.field} path={page.path} element={<ProjectHomePage section={page.field} reload={load} />} />
 					))}
 					<Route path="tasks" element={<TasksPage />} />
 					<Route path="architecture" element={<ArchitecturePage />} />

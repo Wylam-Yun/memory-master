@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type LibraryProject, type ResourceInfo } from "../api.ts";
 import { PageHeader, useProject } from "../components/AppShell.tsx";
+import DeleteResource from "../components/DeleteResource.tsx";
 import { EmptyNote, ErrorNote, LoadingNote, errorText } from "../components/StatusMessage.tsx";
 import { dayLabel, formatBytes } from "../utils.ts";
 
@@ -146,21 +147,37 @@ function ResourcesInner({ project }: { project: LibraryProject }) {
 						const up = uploads[r.name];
 						return (
 							<li key={r.name} className="border-b border-[#E5E7EB] last:border-b-0">
-								<button
-									type="button"
-									className="flex min-h-14 w-full flex-wrap items-center gap-x-4 gap-y-1 py-2 text-left"
-									onClick={() => navigate(`/projects/${projectId}/resources/${encodeURIComponent(r.name)}`)}
-								>
-									<span className="min-w-0 flex-1 break-all text-[16px] font-medium leading-6 text-[#202124]">
-										{r.name}
-									</span>
-									<span className="shrink-0 text-[14px] leading-[22px] text-[#555B65]">
-										{formatBytes(r.size)} · {dayLabel(r.modifiedAt)}
-									</span>
-									<span className="shrink-0 text-[#555B65]" aria-hidden="true">
-										→
-									</span>
-								</button>
+								<div className="flex items-center gap-3">
+									<button
+										type="button"
+										className="flex min-h-14 min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1 py-2 text-left"
+										onClick={() => navigate(`/projects/${projectId}/resources/${encodeURIComponent(r.name)}`)}
+									>
+										<span className="min-w-0 flex-1 break-all text-[16px] font-medium leading-6 text-[#202124]">
+											{r.name}
+										</span>
+										<span className="shrink-0 text-[14px] leading-[22px] text-[#555B65]">
+											{formatBytes(r.size)} · {dayLabel(r.modifiedAt)}
+										</span>
+										<span className="shrink-0 text-[#555B65]" aria-hidden="true">
+											→
+										</span>
+									</button>
+									<DeleteResource
+										projectId={projectId}
+										resource={r}
+										disabled={up?.state === "uploading"}
+										onDeleted={async () => {
+											setResources((items) => items?.filter((item) => item.name !== r.name) ?? []);
+											setUploads((items) => {
+												const next = { ...items };
+												delete next[r.name];
+												return next;
+											});
+											await load().catch(setLoadError);
+										}}
+									/>
+								</div>
 								{up ? (
 									<p
 										className={`pb-2 pl-1 text-[14px] leading-[22px] ${up.state === "failed" ? "text-[#B42318]" : "text-[#555B65]"}`}
