@@ -50,7 +50,7 @@ export default function ProjectsPage({ projects, reload }: { projects: LibraryPr
 				<div className="mx-auto flex max-w-[1040px] items-center justify-between px-4 py-3 min-[640px]:px-6 min-[960px]:px-8 min-[1200px]:px-10">
 					<span className="text-[16px] font-semibold leading-7">Memory Master</span>
 					<Link to="/settings" className="text-[15px] font-medium leading-6 text-[#242724] hover:text-[#315DAD]">
-						设置
+						全局设置
 					</Link>
 				</div>
 			</header>

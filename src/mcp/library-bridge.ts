@@ -15,7 +15,8 @@ import { getVersion } from "../utils/version.ts";
  * service over HTTP using the client's bearer credential. All authorization
  * decisions happen service-side on every request — the bridge holds no
  * authority of its own, so revocation and service shutdown take effect here
- * immediately. The selected project is session state held by this process.
+ * immediately. Project data routes take an explicit ID. Session selection is
+ * kept only for project_current.
  */
 
 export interface BridgeOptions {
@@ -33,7 +34,25 @@ const fail = (message: string): ToolResult => ({
 	isError: true,
 });
 
+const DISCOVERY_TOOLS = new Set([
+	"project_list",
+	"project_open",
+	"project_current",
+	"project_search",
+	"project_create",
+]);
+
+function projectApiPath(id: unknown): string {
+	if (typeof id !== "string" || !id.trim() || id !== id.trim() || id === "." || id === "..") {
+		throw new Error(
+			"Pass project_id at the top level using the exact ID returned by project_open or project_list. [PROJECT_ID_REQUIRED]",
+		);
+	}
+	return `/api/agent/projects/${encodeURIComponent(id)}`;
+}
+
 export class LibraryBridge {
+	private static readonly tools = LibraryBridge.buildTools();
 	private readonly options: BridgeOptions;
 	private selectedProject: { id: string; name: string; dir: string } | null = null;
 
@@ -81,13 +100,6 @@ export class LibraryBridge {
 		return data;
 	}
 
-	private requireProject(): { id: string; name: string } {
-		if (!this.selectedProject) {
-			throw new Error("No project selected. Call project_open (or project_list to see candidates) first.");
-		}
-		return this.selectedProject;
-	}
-
 	/**
 	 * Agents sometimes wrap the payload in a `data` field (object or JSON string).
 	 * Unwrap it — then refuse anything unrecognized. Silently dropping unknown
@@ -127,8 +139,11 @@ export class LibraryBridge {
 		return version;
 	}
 
-	async callTool(name: string, args: Record<string, unknown>): Promise<ToolResult> {
+	async callTool(name: string, input: Record<string, unknown>): Promise<ToolResult> {
 		try {
+			if (!LibraryBridge.tools.some((tool) => tool.name === name)) return fail(`Unknown tool: ${name}`);
+			const { project_id, ...args } = input;
+			const projectPath = DISCOVERY_TOOLS.has(name) ? "" : projectApiPath(project_id);
 			switch (name) {
 				case "project_list":
 					return ok(await this.api("/api/agent/projects"));
@@ -152,11 +167,10 @@ export class LibraryBridge {
 				}
 				case "project_update": {
 					const fields = this.writeArgs(args, ["working_dir", "base_version"]);
-					const project = (await this.api(`/api/agent/projects/${this.requireProject().id}`, {
+					const project = (await this.api(projectPath, {
 						method: "PUT",
 						body: { workingDir: fields.working_dir, baseVersion: this.requireBaseVersion(fields) },
 					})) as { id: string; name: string; dir: string };
-					this.selectedProject = project;
 					return ok({ project });
 				}
 				case "project_open": {
@@ -167,16 +181,12 @@ export class LibraryBridge {
 					this.selectedProject = project;
 					return ok({ opened: project });
 				}
-				case "project_current":
-					if (!this.selectedProject) return ok({ project: null });
-					this.selectedProject = (await this.api(`/api/agent/projects/${this.selectedProject.id}`)) as {
-						id: string;
-						name: string;
-						dir: string;
-					};
-					return ok({ project: this.selectedProject });
+				case "project_current": {
+					const selected = this.selectedProject;
+					return ok({ project: selected ? await this.api(projectApiPath(selected.id)) : null });
+				}
 				case "overview_read":
-					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/overview`));
+					return ok(await this.api(`${projectPath}/overview`));
 				case "overview_write": {
 					const writable = ["description", "goal", "current", "features", "agreements", "criticalPaths"] as const;
 					const fields = this.writeArgs(args, ["base_version", ...writable]);
@@ -186,7 +196,7 @@ export class LibraryBridge {
 						if (fields[key] !== undefined) body[key] = fields[key];
 					}
 					return ok(
-						await this.api(`/api/agent/projects/${this.requireProject().id}/overview`, {
+						await this.api(`${projectPath}/overview`, {
 							method: "PUT",
 							body,
 						}),
@@ -198,11 +208,7 @@ export class LibraryBridge {
 					const fields = this.writeArgs(args, ["status", "offset", "limit"]);
 					const params = new URLSearchParams();
 					for (const [key, value] of Object.entries(fields)) params.set(key, String(value));
-					return ok(
-						await this.api(
-							`/api/agent/projects/${this.requireProject().id}/${name === "goal_list" ? "goals" : "progress"}?${params}`,
-						),
-					);
+					return ok(await this.api(`${projectPath}/${name === "goal_list" ? "goals" : "progress"}?${params}`));
 				}
 				case "goal_create":
 				case "goal_update":
@@ -247,14 +253,14 @@ export class LibraryBridge {
 					if (update && !id) throw new Error("The record ID is required.");
 					return ok(
 						await this.api(
-							`/api/agent/projects/${this.requireProject().id}/${goal ? "goals" : "progress"}${update ? `/${encodeURIComponent(id)}` : ""}`,
+							`${projectPath}/${goal ? "goals" : "progress"}${update ? `/${encodeURIComponent(id)}` : ""}`,
 							{ method: update ? "PUT" : "POST", body },
 						),
 					);
 				}
 
 				case "architecture_read":
-					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/architecture`));
+					return ok(await this.api(`${projectPath}/architecture`));
 				case "architecture_write": {
 					const fields = this.writeArgs(args, ["base_version", "content"]);
 					const baseVersion = this.requireBaseVersion(fields);
@@ -264,7 +270,7 @@ export class LibraryBridge {
 						throw new Error("content is required — pass the full architecture Markdown document.");
 					}
 					return ok(
-						await this.api(`/api/agent/projects/${this.requireProject().id}/architecture`, {
+						await this.api(`${projectPath}/architecture`, {
 							method: "PUT",
 							body: { content: fields.content, baseVersion },
 						}),
@@ -272,18 +278,14 @@ export class LibraryBridge {
 				}
 				case "task_list": {
 					const query = args.status ? `?status=${encodeURIComponent(String(args.status))}` : "";
-					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/tasks${query}`));
+					return ok(await this.api(`${projectPath}/tasks${query}`));
 				}
 				case "task_get":
-					return ok(
-						await this.api(
-							`/api/agent/projects/${this.requireProject().id}/tasks/${encodeURIComponent(String(args.task_id ?? ""))}`,
-						),
-					);
+					return ok(await this.api(`${projectPath}/tasks/${encodeURIComponent(String(args.task_id ?? ""))}`));
 				case "task_create": {
 					const fields = this.writeArgs(args, ["title", "status", "description", "priority"]);
 					return ok(
-						await this.api(`/api/agent/projects/${this.requireProject().id}/tasks`, {
+						await this.api(`${projectPath}/tasks`, {
 							method: "POST",
 							body: {
 								title: fields.title,
@@ -308,10 +310,10 @@ export class LibraryBridge {
 						if (fields[key] !== undefined) body[key] = fields[key];
 					}
 					return ok(
-						await this.api(
-							`/api/agent/projects/${this.requireProject().id}/tasks/${encodeURIComponent(String(fields.task_id ?? ""))}`,
-							{ method: "PUT", body },
-						),
+						await this.api(`${projectPath}/tasks/${encodeURIComponent(String(fields.task_id ?? ""))}`, {
+							method: "PUT",
+							body,
+						}),
 					);
 				}
 				case "history_list": {
@@ -319,11 +321,11 @@ export class LibraryBridge {
 					if (args.since !== undefined) params.set("since", String(args.since));
 					if (args.until !== undefined) params.set("until", String(args.until));
 					const query = params.size ? `?${params}` : "";
-					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/history${query}`));
+					return ok(await this.api(`${projectPath}/history${query}`));
 				}
 				case "question_ask":
 					return ok(
-						await this.api(`/api/agent/projects/${this.requireProject().id}/questions`, {
+						await this.api(`${projectPath}/questions`, {
 							method: "POST",
 							body: {
 								title: args.title,
@@ -334,29 +336,21 @@ export class LibraryBridge {
 					);
 				case "question_list": {
 					const query = args.status ? `?status=${encodeURIComponent(String(args.status))}` : "";
-					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/questions${query}`));
+					return ok(await this.api(`${projectPath}/questions${query}`));
 				}
 				case "question_get":
-					return ok(
-						await this.api(
-							`/api/agent/projects/${this.requireProject().id}/questions/${encodeURIComponent(String(args.question_id ?? ""))}`,
-						),
-					);
+					return ok(await this.api(`${projectPath}/questions/${encodeURIComponent(String(args.question_id ?? ""))}`));
 				case "question_answer":
 					return ok(
-						await this.api(
-							`/api/agent/projects/${this.requireProject().id}/questions/${encodeURIComponent(String(args.question_id ?? ""))}`,
-							{ method: "PUT", body: { answer: args.answer } },
-						),
+						await this.api(`${projectPath}/questions/${encodeURIComponent(String(args.question_id ?? ""))}`, {
+							method: "PUT",
+							body: { answer: args.answer },
+						}),
 					);
 				case "resource_list":
-					return ok(await this.api(`/api/agent/projects/${this.requireProject().id}/resources`));
+					return ok(await this.api(`${projectPath}/resources`));
 				case "resource_read":
-					return ok(
-						await this.api(
-							`/api/agent/projects/${this.requireProject().id}/resources/${encodeURIComponent(String(args.name ?? ""))}`,
-						),
-					);
+					return ok(await this.api(`${projectPath}/resources/${encodeURIComponent(String(args.name ?? ""))}`));
 				case "resource_write": {
 					const fields = this.writeArgs(args, ["name", "content", "encoding"]);
 					if (typeof fields.content !== "string") {
@@ -365,7 +359,7 @@ export class LibraryBridge {
 					const base64 =
 						fields.encoding === "base64" ? fields.content : Buffer.from(fields.content, "utf8").toString("base64");
 					return ok(
-						await this.api(`/api/agent/projects/${this.requireProject().id}/resources`, {
+						await this.api(`${projectPath}/resources`, {
 							method: "POST",
 							body: { name: fields.name, base64 },
 						}),
@@ -380,6 +374,10 @@ export class LibraryBridge {
 	}
 
 	listTools() {
+		return LibraryBridge.tools;
+	}
+
+	private static buildTools() {
 		const str = (description: string) => ({ type: "string" as const, description });
 		const date = {
 			type: ["string", "null"],
@@ -421,7 +419,7 @@ export class LibraryBridge {
 			{
 				name: "project_update",
 				description:
-					"Set or unlink the selected project's associated working directory. Read project_current or project_open first and use that project's version, not the overview version. Only change the directory on the user's instruction.",
+					"Set or unlink the specified project's associated working directory. Read project_current or project_open first and use that project's version, not the overview version. Only change the directory on the user's instruction.",
 				inputSchema: {
 					type: "object" as const,
 					properties: {
@@ -436,13 +434,13 @@ export class LibraryBridge {
 			},
 			{
 				name: "project_list",
-				description: "List all projects in the Memory Master library.",
+				description: "List projects visible to this Agent in the Memory Master library.",
 				inputSchema: { type: "object" as const, properties: {} },
 			},
 			{
 				name: "project_open",
 				description:
-					"Open a project by name (exact, display, or directory name). Ambiguous names return candidates — reopen with the project ID. The selection persists for this session.",
+					"Open a project by name (exact, display, or directory name). Ambiguous names return candidates — reopen with the project ID. Use the returned opened.id as project_id on every project data call.",
 				inputSchema: {
 					type: "object" as const,
 					properties: { name: str("Project name or ID") },
@@ -451,7 +449,7 @@ export class LibraryBridge {
 			},
 			{
 				name: "project_current",
-				description: "Show which project this session has open.",
+				description: "Show the last project opened in this session. Data calls use their own project_id.",
 				inputSchema: { type: "object" as const, properties: {} },
 			},
 			{
@@ -462,11 +460,11 @@ export class LibraryBridge {
 			{
 				name: "overview_write",
 				description:
-					"Update the selected project's overview sections. Requires base_version from a preceding overview_read — the write conflicts if the record changed since that read.",
+					"Update the specified project's overview sections. Requires base_version from a preceding overview_read — the write conflicts if the record changed since that read.",
 				inputSchema: {
 					type: "object" as const,
 					properties: {
-						base_version: str("The `version` value returned by your last overview_read (required)"),
+						base_version: str("The `version` value returned by overview_read for this project (required)"),
 						description: str(
 							`${PROJECT_CONTENT_NAMES.description}：完整说明项目用途、对象和使用方式，与网页同一正文。`,
 						),
@@ -578,25 +576,25 @@ export class LibraryBridge {
 			{
 				name: "architecture_read",
 				description:
-					"Read the selected project's architecture record (项目架构) — the full Markdown document and its version.",
+					"Read the specified project's architecture record (项目架构) — the full Markdown document and its version.",
 				inputSchema: { type: "object" as const, properties: {} },
 			},
 			{
 				name: "architecture_write",
 				description:
-					"Replace the selected project's architecture record with the given Markdown content. Requires base_version from a preceding architecture_read — the write conflicts if the record changed since that read.",
+					"Replace the specified project's architecture record with the given Markdown content. Requires base_version from a preceding architecture_read — the write conflicts if the record changed since that read.",
 				inputSchema: {
 					type: "object" as const,
 					properties: {
 						content: str("The full architecture Markdown document"),
-						base_version: str("The `version` value returned by your last architecture_read (required)"),
+						base_version: str("The `version` value returned by architecture_read for this project (required)"),
 					},
 					required: ["content", "base_version"],
 				},
 			},
 			{
 				name: "task_list",
-				description: "List tasks in the selected project, optionally filtered by status.",
+				description: "List tasks in the specified project, optionally filtered by status.",
 				inputSchema: {
 					type: "object" as const,
 					properties: { status: str('Status filter, e.g. "In Progress"') },
@@ -614,7 +612,7 @@ export class LibraryBridge {
 			{
 				name: "task_create",
 				description:
-					"Create a task in the selected project. Priority is P0 (current focus, the default) or P1 (later).",
+					"Create a task in the specified project. Priority is P0 (current focus, the default) or P1 (later).",
 				inputSchema: {
 					type: "object" as const,
 					properties: {
@@ -634,7 +632,7 @@ export class LibraryBridge {
 					type: "object" as const,
 					properties: {
 						task_id: str("Task ID, e.g. TASK-1"),
-						base_version: str("The `version` value returned by your last read of this task (required)"),
+						base_version: str("The `version` value returned by a read of this task in this project (required)"),
 						title: str("New title"),
 						status: str("New status"),
 						description: str("New description"),
@@ -646,7 +644,7 @@ export class LibraryBridge {
 			{
 				name: "history_list",
 				description:
-					"List the selected project's change history (who changed what, before → after values). Optionally filter by ISO timestamps.",
+					"List the specified project's change history (who changed what, before → after values). Optionally filter by ISO timestamps.",
 				inputSchema: {
 					type: "object" as const,
 					properties: {
@@ -671,7 +669,7 @@ export class LibraryBridge {
 			},
 			{
 				name: "question_list",
-				description: "List the selected project's pending questions (待决定事项). Filter by status: Open or Answered.",
+				description: "List the specified project's pending questions (待决定事项). Filter by status: Open or Answered.",
 				inputSchema: {
 					type: "object" as const,
 					properties: { status: str('"Open" or "Answered"') },
@@ -701,13 +699,13 @@ export class LibraryBridge {
 			},
 			{
 				name: "resource_list",
-				description: "List the selected project's uploaded resources (项目资料) — names and sizes.",
+				description: "List the specified project's uploaded resources (项目资料) — names and sizes.",
 				inputSchema: { type: "object" as const, properties: {} },
 			},
 			{
 				name: "resource_write",
 				description:
-					'Add or replace a file in the selected project\'s 资料 (resources) by name — agents can publish documents the user then opens in the web UI. Text is written as UTF-8; pass encoding "base64" for binary. A same-name file is overwritten.',
+					'Add or replace a file in the specified project\'s 资料 (resources) by name — agents can publish documents the user then opens in the web UI. Text is written as UTF-8; pass encoding "base64" for binary. A same-name file is overwritten.',
 				inputSchema: {
 					type: "object" as const,
 					properties: {
@@ -727,7 +725,21 @@ export class LibraryBridge {
 					required: ["name"],
 				},
 			},
-		];
+		].map((tool) =>
+			DISCOVERY_TOOLS.has(tool.name)
+				? tool
+				: {
+						...tool,
+						inputSchema: {
+							...tool.inputSchema,
+							properties: {
+								project_id: str("Exact target project ID from project_open (opened.id) or project_list"),
+								...tool.inputSchema.properties,
+							},
+							required: ["project_id", ...(tool.inputSchema.required ?? [])],
+						},
+					},
+		);
 	}
 }
 

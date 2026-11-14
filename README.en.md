@@ -44,7 +44,7 @@ The terminal prints the web address, normally `http://127.0.0.1:6420`. If that p
 1. On first launch, choose a memory library directory. The suggested location is `~/Documents/MemoryMaster`.
 2. Select **＋ 新建项目** (New project) under **所有项目** (All projects) and enter a name. To associate an existing working folder, expand **关联本地文件夹（可选）** and enter its absolute path.
 3. Fill in the introduction and current progress in the overview, or connect an agent and ask it to organize those records in chat.
-4. Open **设置** (Settings) and enable the agent client you want to use.
+4. Open **全局设置** (Global Settings) and enable the agent client you want to use.
 
 Keep the service process running in your terminal. Closing the browser leaves the service running. Press `Ctrl+C` in the terminal to stop it.
 
@@ -80,7 +80,7 @@ flowchart LR
 
 ### Enable a client in Settings
 
-1. Start the service and open **设置** (Settings) in the web workspace.
+1. Start the service and open **全局设置** (Global Settings) in the web workspace.
 2. Enable access for an installed client. Memory Master writes its MCP configuration, collaboration instructions, and `memory-master` skill while preserving other existing configuration content.
 3. Start a new session in that client or reload its MCP connection.
 4. Wait for **已配置，等待接入** (Configured, awaiting connection) to become **已接入** (Connected), then name your project in chat.
@@ -97,7 +97,7 @@ Configuration installers and independent authorization are available for these c
 | Hermes | `hermes` |
 | DeepSeek Harness | `dsh` |
 
-Connected means the client's bridge has successfully contacted the service. Disabling a client makes the service reject its subsequent project read and write requests.
+Connected means the client's bridge has successfully contacted the service. Newly enabled clients are read-only by default. Use Global Settings to let a client modify projects by default, or Project Settings to override access for a particular project. Disabling a client cuts off access to all projects.
 
 For manual setup, enable the client in Settings first, then run the matching command from the repository to print a configuration snippet in that client's format.
 
@@ -114,7 +114,7 @@ After connecting your agent, ask it to create a project directly.
 
 > Create an “Order System” project in Memory Master, associate `/Users/me/workspace/orders`, and organize the requirements we just agreed on into its introduction and next tasks.
 
-The agent searches for related projects first. When a candidate may describe the same work, it explains the connection and asks in the current chat whether to update that project or create a new one. It saves after your choice. You can also ask it to check whether the current discussion belongs to an existing project.
+Creating a project in chat requires the client's global default modify permission. The agent searches for related projects it can read first. When a candidate may describe the same work, it explains the connection and asks in the current chat whether to update that project or create a new one. It saves after your choice. You can also ask it to check whether the current discussion belongs to an existing project.
 
 Candidate discovery matches names, overview content, and an explicitly supplied working directory. It returns up to 20 summaries. The agent assesses relevance using the chat context and can try other keywords or inspect the project list when wording differs. Newly created projects appear in the web workspace, whose project list refreshes periodically and when you return to the window.
 
@@ -134,9 +134,9 @@ The installed collaboration skill instructs agents to read records first and mai
 
 You can enter an existing absolute directory when creating a project. For an existing project, open its overview and choose **关联本地文件夹** (Associate local folder) or **修改关联** (Change association) below the project name. Save the complete path. Clear the input and save to unlink. Update the path here after moving the working folder.
 
-You can also ask your agent to associate a named project with an explicit path. The agent reads the current configuration version before updating it. The working directory tells the agent where to find work files. Project records live in the memory library. Access to work files depends on the agent client's filesystem permissions.
+You can also ask your agent to associate a named project with an explicit path. The agent needs permission to modify that project and supplies its ID and current configuration version when updating the association. The working directory tells the agent where to find work files. Project records live in the memory library. Access to work files depends on the agent client's filesystem permissions.
 
-After upgrading, restart the service, re-enable the relevant client in Settings to install updated instructions and the skill, then reconnect MCP or start a new chat to load the new tools.
+After upgrading, restart the service, re-enable the relevant client in Settings to install updated instructions and the skill, then reconnect MCP or start a new chat to load the new tools. Custom MCP calls must pass the target project ID as top-level `project_id` on each project data call.
 
 ## Everyday use
 

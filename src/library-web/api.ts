@@ -1,6 +1,8 @@
 import type { Goal, Progress, TrackingPage } from "../library/tracking.ts";
 
-export type { Goal, Progress, TrackingPage };
+import type { ProjectAgentAccess } from "../library/types.ts";
+
+export type { Goal, Progress, ProjectAgentAccess, TrackingPage };
 /** Thin fetch helpers for the library web API (loopback-only, no credential). */
 
 export interface LibraryProject {
@@ -103,6 +105,7 @@ export interface ClientSlotInfo {
 	id: string;
 	label: string;
 	enabled: boolean;
+	allowWrite: boolean;
 	/** The harness's config/binary paths were found on this machine. */
 	detected: boolean;
 	token: string | null;
@@ -220,6 +223,17 @@ export const api = {
 	listClients: () => request<ClientSlotInfo[]>("/api/clients"),
 	setClient: (id: string, enabled: boolean) =>
 		request<ClientSlotInfo>(`/api/clients/${id}`, { method: "PUT", body: { enabled } }),
+	setClientDefaultWrite: (id: string, allowWrite: boolean) =>
+		request<Pick<ClientSlotInfo, "allowWrite">>(`/api/clients/${id}/write-access`, {
+			method: "PUT",
+			body: { allowWrite },
+		}),
+	listProjectAgentAccess: (id: string) => request<ProjectAgentAccess[]>(`/api/projects/${id}/agent-access`),
+	setProjectAgentAccess: (
+		id: string,
+		clientId: string,
+		patch: { allowConnection?: boolean | null; allowWrite?: boolean | null },
+	) => request<ProjectAgentAccess>(`/api/projects/${id}/agent-access/${clientId}`, { method: "PUT", body: patch }),
 	listQuestions: (id: string) => request<ProjectQuestion[]>(`/api/projects/${id}/questions`),
 	createQuestion: (id: string, title: string, task?: string, detail?: string) =>
 		request<ProjectQuestion>(`/api/projects/${id}/questions`, {

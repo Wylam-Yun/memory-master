@@ -67,6 +67,9 @@ describe("library service", () => {
 		const res = await req(`/api/clients/${id}`, { method: "PUT", body: { enabled: true } });
 		expect(res.status).toBe(200);
 		const token = (await json(res)).token;
+		expect((await req(`/api/clients/${id}/write-access`, { method: "PUT", body: { allowWrite: true } })).status).toBe(
+			200,
+		);
 		const ping = await req("/api/agent/ping", { token });
 		expect(ping.status).toBe(200);
 		return token;
@@ -96,9 +99,10 @@ describe("library service", () => {
 		const project = value(await bridge.callTool("project_create", { name: "读书会", working_dir: home })).opened;
 		expect(project.version).toStartWith("sha256:");
 		expect((await json(await req("/api/projects")))[0].id).toBe(project.id);
-		const overview = value(await bridge.callTool("overview_read", {}));
+		const overview = value(await bridge.callTool("overview_read", { project_id: project.id }));
 		value(
 			await bridge.callTool("overview_write", {
+				project_id: project.id,
 				base_version: overview.version,
 				description: "组织每月科幻阅读和线下交流",
 			}),
@@ -118,10 +122,18 @@ describe("library service", () => {
 		const before = value(await bridge.callTool("project_current", {})).project;
 		const work = join(home, 'O\'Brien-"资料"');
 		await import("node:fs/promises").then(({ mkdir }) => mkdir(work));
+		value(await bridge.callTool("project_open", { name: selected.id }));
 		const changed = value(
-			await bridge.callTool("project_update", { working_dir: work, base_version: before.version }),
+			await bridge.callTool("project_update", {
+				project_id: project.id,
+				working_dir: work,
+				base_version: before.version,
+			}),
 		).project;
 		expect(changed.workingDir).toBe(work);
+		expect(value(await bridge.callTool("project_current", {})).project.id).toBe(selected.id);
+		expect((await json(await req(`/api/projects/${selected.id}`))).workingDir).toBeUndefined();
+		value(await bridge.callTool("project_open", { name: project.id }));
 		expect((await json(await req(`/api/projects/${project.id}`))).workingDir).toBe(work);
 		expect(await Bun.file(configPath).text()).toContain("# 用户自定义配置\ncustom_key: keep-me");
 		const conflict = await req(`/api/projects/${project.id}`, {
@@ -131,11 +143,23 @@ describe("library service", () => {
 		expect(conflict.status).toBe(409);
 		expect((await json(conflict)).current.workingDir).toBe(work);
 		const historyBefore = await json(await req(`/api/projects/${project.id}/history`));
-		value(await bridge.callTool("project_update", { working_dir: work, base_version: changed.version }));
+		value(
+			await bridge.callTool("project_update", {
+				project_id: project.id,
+				working_dir: work,
+				base_version: changed.version,
+			}),
+		);
 		expect((await json(await req(`/api/projects/${project.id}/history`))).length).toBe(historyBefore.length);
 		holds.armHistoryFailure();
 		expect(
-			(await bridge.callTool("project_update", { working_dir: null, base_version: changed.version })).isError,
+			(
+				await bridge.callTool("project_update", {
+					project_id: project.id,
+					working_dir: null,
+					base_version: changed.version,
+				})
+			).isError,
 		).toBe(true);
 		expect(value(await bridge.callTool("project_current", {})).project.workingDir).toBe(work);
 		const unlinked = await req(`/api/projects/${project.id}`, {
@@ -148,6 +172,57 @@ describe("library service", () => {
 		const history = await json(await req(`/api/projects/${project.id}/history`));
 		expect(history[0].actor).toEqual({ type: "agent", client: "codex" });
 		expect(history[0].changes.workingDir.to).toBe(home);
+	});
+
+	test("Agent search, project creation and directory association use the new permissions", async () => {
+		await setupLibrary();
+		const hidden = await createProject("隐藏项目");
+		const visible = await createProject("可见项目");
+		const token = await enableClient("codex");
+		const setWrite = (allowWrite: boolean) =>
+			req("/api/clients/codex/write-access", { method: "PUT", body: { allowWrite } });
+		const policy = (projectId: string, body: unknown) =>
+			req(`/api/projects/${projectId}/agent-access/codex`, { method: "PUT", body });
+		const update = () =>
+			req(`/api/agent/projects/${visible.id}`, {
+				method: "PUT",
+				token,
+				body: { workingDir: home, baseVersion: visible.version },
+			});
+		const create = (name: string) => req("/api/agent/projects", { method: "POST", token, body: { name } });
+		expect((await policy(hidden.id, { allowConnection: false })).status).toBe(200);
+		expect((await setWrite(false)).status).toBe(200);
+		const search = await req("/api/agent/projects/search", { method: "POST", token, body: { query: "项目" } });
+		expect(search.status).toBe(200);
+		expect((await json(search)).projects.map((p: { id: string }) => p.id)).toEqual([visible.id]);
+		expect((await json(await create("只读建项目"))).code).toBe("WRITE_DISABLED");
+		expect((await json(await update())).code).toBe("WRITE_DISABLED");
+		expect((await policy(visible.id, { allowWrite: true })).status).toBe(200);
+		const directoryHold = holds.create("directory-before-permission-change");
+		const pendingUpdate = update();
+		try {
+			await holds.waitForWaiter(1000);
+			expect((await policy(visible.id, { allowWrite: false })).status).toBe(200);
+		} finally {
+			holds.release(directoryHold.id);
+		}
+		expect((await json(await pendingUpdate)).code).toBe("WRITE_DISABLED");
+		expect((await json(await req(`/api/projects/${visible.id}`))).workingDir).toBeUndefined();
+
+		expect((await setWrite(true)).status).toBe(200);
+		const creationHold = holds.create("create-before-permission-change");
+		const pendingCreate = create("撤销修改时创建");
+		try {
+			await holds.waitForWaiter(1000);
+			expect((await setWrite(false)).status).toBe(200);
+		} finally {
+			holds.release(creationHold.id);
+		}
+		expect((await json(await pendingCreate)).code).toBe("WRITE_DISABLED");
+		expect((await json(await req("/api/projects"))).map((p: { id: string }) => p.id).sort()).toEqual(
+			[visible.id, hidden.id].sort(),
+		);
+		expect((await readdir(library)).some((name) => name.startsWith(".project-"))).toBe(false);
 	});
 
 	test("project creation is serialized and failures or revocation leave no partial project", async () => {
@@ -391,14 +466,14 @@ describe("library service", () => {
 		expect(opened.isError).toBeUndefined();
 		expect(opened.content[0]!.text).toContain(project.id);
 
-		const created = await bridge.callTool("task_create", { title: "桥接创建的任务" });
+		const created = await bridge.callTool("task_create", { project_id: project.id, title: "桥接创建的任务" });
 		expect(created.isError).toBeUndefined();
 		const tasks = await json(await req(`/api/projects/${project.id}/tasks`));
 		expect(tasks.map((t: { title: string }) => t.title)).toEqual(["桥接创建的任务"]);
 
 		// Revocation shows up at the tool layer as a readable error, not a stack trace.
 		await req("/api/clients/codex", { method: "PUT", body: { enabled: false } });
-		const denied = await bridge.callTool("task_list", {});
+		const denied = await bridge.callTool("task_list", { project_id: project.id });
 		expect(denied.isError).toBe(true);
 		expect(denied.content[0]!.text).toContain("ACCESS_DISABLED");
 

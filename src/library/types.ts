@@ -41,6 +41,8 @@ export type ClientConnection = "none" | "configured" | "connected";
 /** Per-client authorization slot: enable switch + access credential + setup state. */
 export interface ClientSlot {
 	enabled: boolean;
+	/** Default modification permission, overridable by each project. */
+	allowWrite: boolean;
 	/** Credential identifying this client; kept across disable so re-enable reuses config. */
 	token: string | null;
 	connection: ClientConnection;
@@ -52,6 +54,21 @@ export interface ClientSlot {
 	setupGeneration?: number;
 }
 
+export interface ProjectAgentOverride {
+	allowConnection?: boolean;
+	allowWrite?: boolean;
+}
+
+export interface ProjectAgentAccess {
+	id: LibraryClientId;
+	label: string;
+	globallyEnabled: boolean;
+	defaultAllowWrite: boolean;
+	override: ProjectAgentOverride;
+	canRead: boolean;
+	canWrite: boolean;
+}
+
 /** Application settings persisted in <home>/settings.json (independent of project storage). */
 export interface LibrarySettings {
 	version: 1;
@@ -60,6 +77,7 @@ export interface LibrarySettings {
 	/** Preferred port for the local service. */
 	port: number;
 	clients: Record<LibraryClientId, ClientSlot>;
+	projectAccess: Record<string, Partial<Record<LibraryClientId, ProjectAgentOverride>>>;
 }
 
 /** One project inside the library. */
@@ -90,6 +108,7 @@ export interface ProjectOverview {
 export const LIBRARY_ERROR_CODES = {
 	UNAUTHORIZED: "UNAUTHORIZED",
 	ACCESS_DISABLED: "ACCESS_DISABLED",
+	WRITE_DISABLED: "WRITE_DISABLED",
 	CONNECTION_PENDING: "CONNECTION_PENDING",
 	PROJECT_NOT_FOUND: "PROJECT_NOT_FOUND",
 	PROJECT_AMBIGUOUS: "PROJECT_AMBIGUOUS",
